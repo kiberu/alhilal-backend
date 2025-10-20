@@ -58,13 +58,23 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
-        setError(result.error)
+        // Handle specific Auth.js errors
+        if (result.error === "Configuration") {
+          setError("Authentication service is not properly configured. Please contact support.")
+        } else if (result.error === "CredentialsSignin") {
+          setError("Invalid phone number or password. Please try again.")
+        } else if (result.error === "AccessDenied") {
+          setError("Access denied. Only staff members can login.")
+        } else {
+          setError(result.error)
+        }
       } else if (result?.ok) {
         router.push("/")
         router.refresh()
       }
     } catch (err: any) {
-      setError(err.message || "An error occurred during login")
+      console.error("Login error:", err)
+      setError(err.message || "An unexpected error occurred. Please try again.")
     } finally {
       setIsLoading(false)
     }

@@ -1,222 +1,191 @@
-"""
-Authentication views for OTP and JWT.
-"""
-import random
-import logging
-from datetime import timedelta
-from django.utils import timezone
-from django.contrib.auth import get_user_model
-from django.conf import settings
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
-from django_ratelimit.decorators import ratelimit
-from django.utils.decorators import method_decorator
+from django.contrib.auth import get_user_model
+import random
 
-from apps.accounts.models import OTPCode, PilgrimProfile
-from .serializers import RequestOTPSerializer, VerifyOTPSerializer, TokenResponseSerializer
+from apps.accounts.models import Account
+from .serializers import StaffLoginSerializer
 
-Account = get_user_model()
-logger = logging.getLogger(__name__)
+User = get_user_model()
 
 
-@method_decorator(ratelimit(key='ip', rate='5/m', method='POST'), name='post')
-@method_decorator(ratelimit(key='user_or_ip', rate='10/h', method='POST'), name='post')
 class RequestOTPView(APIView):
-    """
-    Request an OTP code for authentication.
-    
-    Rate limits:
-    - 5 requests per minute per IP
-    - 10 requests per hour per phone
-    
-    POST /api/v1/auth/request-otp
-    {
-        "phone": "+256712345678"
-    }
-    
-    Returns:
-    {
-        "sent": true,
-        "expires_in": 600
-    }
-    """
-    
+    """Request OTP for pilgrim authentication (NO OTP FOR STAFF/ADMINS)"""
     permission_classes = [AllowAny]
-    serializer_class = RequestOTPSerializer
-    
+
     def post(self, request):
-        """Generate and send OTP code."""
-        serializer = RequestOTPSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        phone = serializer.validated_data['phone']
-        
-        # Check for recent OTP requests (prevent spam)
-        recent_otp = OTPCode.objects.filter(
-            phone=phone,
-            created_at__gte=timezone.now() - timedelta(seconds=60)
-        ).first()
-        
-        if recent_otp and not recent_otp.consumed_at:
+        phone = request.data.get('phone')
+        if not phone:
             return Response(
-                {
-                    'error': {
-                        'code': 'TOO_MANY_REQUESTS',
-                        'message': 'Please wait before requesting another OTP code'
-                    }
-                },
-                status=status.HTTP_429_TOO_MANY_REQUESTS
+                {'error': 'Phone number is required'},
+                status=status.HTTP_400_BAD_REQUEST
             )
-        
-        # Generate 6-digit OTP code
-        code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
-        
-        # Calculate expiry
-        expiry = timezone.now() + timedelta(seconds=settings.OTP_EXPIRY_SECONDS)
-        
-        # Save OTP code
-        otp = OTPCode.objects.create(
-            phone=phone,
-            code=code,
-            expires_at=expiry,
-            attempts=0
-        )
-        
-        # TODO: Send SMS in production
-        # For MVP, we log the code
-        logger.info(f"OTP for {phone}: {code}")
-        if settings.DEBUG:
-            # In development, return the code for testing
+
+        try:
+            # Get or create pilgrim account
+            user, created = User.objects.get_or_create(
+                phone=phone,
+                defaults={'role': 'PILGRIM', 'name': phone}
+            )
+
+            if not created and user.role != 'PILGRIM':
+                return Response(
+                    {'error': 'This phone number is registered for staff use. Please use password login.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Generate OTP (simple implementation for now)
+            otp_code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+            
+            # TODO: Store OTP in Redis cache and send via SMS
+            # For development, return the OTP
+            
             return Response({
-                'sent': True,
-                'expires_in': settings.OTP_EXPIRY_SECONDS,
-                'debug_code': code  # Remove in production!
+                'message': 'OTP sent successfully',
+                'otp': otp_code,  # For development only - remove in production
             })
-        
+
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class VerifyOTPView(APIView):
+    """Verify OTP and return JWT tokens (FOR PILGRIMS ONLY)"""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        phone = request.data.get('phone')
+        otp = request.data.get('otp')
+
+        if not phone or not otp:
+            return Response(
+                {'error': 'Phone and OTP are required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            # Verify OTP (simplified - in production use Redis cache)
+            if not otp or len(otp) != 6:
+                return Response(
+                    {'error': 'Invalid OTP format'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Get user
+            user = User.objects.get(phone=phone)
+
+            # Generate tokens
+            refresh = RefreshToken.for_user(user)
+
+            # Get profile (simplified - no profile model for now)
+            profile_data = None
+
+            return Response({
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                'user': {
+                    'id': str(user.id),
+                    'phone': user.phone,
+                    'name': user.name,
+                    'email': user.email or '',
+                    'role': user.role,
+                },
+                'profile': profile_data,
+            })
+
+        except User.DoesNotExist:
+            return Response(
+                {'error': 'User not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+class StaffLoginView(APIView):
+    """Staff/Admin login with phone and password (NO OTP REQUIRED)"""
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = StaffLoginSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            # Format errors properly
+            errors = serializer.errors
+            if 'non_field_errors' in errors:
+                error_message = errors['non_field_errors'][0]
+            else:
+                error_message = "Invalid credentials"
+            
+            return Response(
+                {'error': error_message},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = serializer.validated_data['user']
+
+        # Generate JWT tokens
+        refresh = RefreshToken.for_user(user)
+
+        # Get staff profile if exists
+        staff_profile = None
+        if hasattr(user, 'staffprofile'):
+            staff_profile = {
+                'id': str(user.staffprofile.id),
+                'role': user.staffprofile.role,
+            }
+
         return Response({
-            'sent': True,
-            'expires_in': settings.OTP_EXPIRY_SECONDS
+            'user': {
+                'id': str(user.id),
+                'phone': user.phone,
+                'name': user.name,
+                'email': user.email or '',
+                'role': user.role,
+                'isStaff': user.is_staff,
+                'staffProfile': staff_profile,
+            },
+            'accessToken': str(refresh.access_token),
+            'refreshToken': str(refresh),
+            'expiresAt': refresh.access_token.payload['exp'],
         })
 
 
-@method_decorator(ratelimit(key='ip', rate='10/m', method='POST'), name='post')
-class VerifyOTPView(APIView):
-    """
-    Verify OTP code and get JWT tokens.
-    
-    Creates a new pilgrim account if this is the first time logging in.
-    
-    POST /api/v1/auth/verify-otp
-    {
-        "phone": "+256712345678",
-        "code": "123456"
-    }
-    
-    Returns:
-    {
-        "access": "eyJ...",
-        "refresh": "eyJ...",
-        "user": {
-            "id": "uuid",
-            "name": "John Doe",
-            "phone": "+256712345678",
-            "role": "PILGRIM"
-        }
-    }
-    """
-    
-    permission_classes = [AllowAny]
-    serializer_class = VerifyOTPSerializer
-    
-    def post(self, request):
-        """Verify OTP and issue JWT tokens."""
-        serializer = VerifyOTPSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        
-        phone = serializer.validated_data['phone']
-        code = serializer.validated_data['code']
-        
-        # Find valid OTP
-        try:
-            otp = OTPCode.objects.filter(
-                phone=phone,
-                consumed_at__isnull=True,
-                expires_at__gt=timezone.now()
-            ).latest('created_at')
-        except OTPCode.DoesNotExist:
-            return Response(
-                {
-                    'error': {
-                        'code': 'INVALID_OTP',
-                        'message': 'Invalid or expired OTP code'
-                    }
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Check attempts
-        if otp.attempts >= settings.OTP_MAX_ATTEMPTS:
-            return Response(
-                {
-                    'error': {
-                        'code': 'MAX_ATTEMPTS_EXCEEDED',
-                        'message': 'Maximum OTP attempts exceeded. Please request a new code.'
-                    }
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Verify code
-        if otp.code != code:
-            otp.attempts += 1
-            otp.save()
-            
-            remaining = settings.OTP_MAX_ATTEMPTS - otp.attempts
-            return Response(
-                {
-                    'error': {
-                        'code': 'INVALID_CODE',
-                        'message': f'Invalid OTP code. {remaining} attempts remaining.'
-                    }
-                },
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        # Mark OTP as consumed
-        otp.consumed_at = timezone.now()
-        otp.save()
-        
-        # Get or create user account
-        user, created = Account.objects.get_or_create(
-            phone=phone,
-            defaults={
-                'role': 'PILGRIM',
-                'name': f'Pilgrim {phone[-4:]}',  # Temporary name
-                'is_active': True
-            }
-        )
-        
-        # Create pilgrim profile if new user
-        if created:
-            PilgrimProfile.objects.create(user=user)
-            logger.info(f"Created new pilgrim account for {phone}")
-        
-        # Generate JWT tokens
-        refresh = RefreshToken.for_user(user)
-        
-        # Update last login
-        user.last_login = timezone.now()
-        user.save(update_fields=['last_login'])
-        
-        response_data = {
-            'access': str(refresh.access_token),
-            'refresh': str(refresh),
-            'user': user
-        }
-        
-        serializer = TokenResponseSerializer(response_data)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+class StaffProfileView(APIView):
+    """Get authenticated staff profile"""
+    permission_classes = [IsAuthenticated]
 
+    def get(self, request):
+        user = request.user
+
+        if not user.is_staff:
+            return Response(
+                {'error': 'Only staff members can access this endpoint'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        staff_profile = None
+        if hasattr(user, 'staffprofile'):
+            staff_profile = {
+                'id': str(user.staffprofile.id),
+                'role': user.staffprofile.role,
+            }
+
+        return Response({
+            'id': str(user.id),
+            'phone': user.phone,
+            'name': user.name,
+            'email': user.email or '',
+            'role': user.role,
+            'isStaff': user.is_staff,
+            'staffProfile': staff_profile,
+        })
