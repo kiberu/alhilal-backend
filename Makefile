@@ -20,7 +20,8 @@ help:
 dev-up:
 	docker-compose up -d
 	@echo "Development environment started!"
-	@echo "Admin: http://localhost/admin/"
+	@echo "Django Admin: http://localhost/admin/"
+	@echo "Admin Dashboard: http://localhost:3001/"
 	@echo "API Docs: http://localhost/api/v1/docs/"
 
 dev-down:
@@ -44,8 +45,17 @@ superuser:
 shell:
 	docker-compose exec backend python manage.py shell
 
+shell-frontend:
+	docker-compose exec frontend sh
+
 seed:
 	docker-compose exec backend python manage.py seed_data
+
+frontend-logs:
+	docker-compose logs -f frontend
+
+frontend-install:
+	docker-compose exec frontend npm install
 
 test:
 	docker-compose exec backend pytest
