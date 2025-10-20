@@ -1,0 +1,27 @@
+# Development and testing dependencies
+-r requirements.txt
+
+# Testing
+pytest==7.4.4
+pytest-django==4.7.0
+pytest-cov==4.1.0
+factory-boy==3.3.0
+faker==22.6.0
+
+# Code quality
+black==24.1.1
+flake8==7.0.0
+isort==5.13.2
+mypy==1.8.0
+django-stubs==4.2.7
+
+# Debug toolbar
+django-debug-toolbar==4.2.0
+
+# Shell enhancement
+ipython==8.20.0
+django-extensions==3.2.3
+
+# Live reload
+watchdog==3.0.0
+

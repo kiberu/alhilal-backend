@@ -1,0 +1,61 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<h1>{{ title }}</h1>
+
+<div class="instructions">
+    {{ instructions|safe }}
+</div>
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    <div class="form-row">
+        <label for="csv_file">Select CSV file:</label>
+        <input type="file" name="csv_file" accept=".csv" required>
+    </div>
+    
+    <div class="submit-row">
+        <input type="submit" value="Import Pilgrims" class="default">
+        <a href="{% url 'admin:accounts_pilgrimprofile_changelist' %}" class="button cancel-link">Cancel</a>
+    </div>
+</form>
+
+<style>
+.instructions {
+    background: #f8f8f8;
+    border: 1px solid #ddd;
+    padding: 20px;
+    margin: 20px 0;
+    border-radius: 4px;
+}
+
+.instructions h3 {
+    margin-top: 0;
+    color: #417690;
+}
+
+.instructions pre {
+    background: #fff;
+    border: 1px solid #ddd;
+    padding: 10px;
+    overflow-x: auto;
+}
+
+.form-row {
+    margin: 20px 0;
+}
+
+.form-row label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.form-row input[type="file"] {
+    padding: 5px;
+}
+</style>
+{% endblock %}
+
