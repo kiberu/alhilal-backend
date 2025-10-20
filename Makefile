@@ -1,4 +1,4 @@
-.PHONY: help dev-up dev-down logs migrate makemigrations superuser shell test format lint collectstatic clean
+.PHONY: help dev-up dev-down logs migrate makemigrations collectstatic superuser shell seed test format lint clean
 
 help:
 	@echo "Alhilal Project - Available Commands"
@@ -8,12 +8,13 @@ help:
 	@echo "logs             - View logs from all services"
 	@echo "migrate          - Run database migrations"
 	@echo "makemigrations   - Create new migrations"
+	@echo "collectstatic    - Collect static files"
 	@echo "superuser        - Create Django superuser"
 	@echo "shell            - Access Django shell"
+	@echo "seed             - Seed database with sample data"
 	@echo "test             - Run tests"
 	@echo "format           - Format code with black"
 	@echo "lint             - Run linters"
-	@echo "collectstatic    - Collect static files"
 	@echo "clean            - Clean up containers and volumes"
 
 dev-up:
@@ -34,11 +35,17 @@ migrate:
 makemigrations:
 	docker-compose exec backend python manage.py makemigrations
 
+collectstatic:
+	docker-compose exec backend python manage.py collectstatic --noinput
+
 superuser:
 	docker-compose exec backend python manage.py createsuperuser
 
 shell:
 	docker-compose exec backend python manage.py shell
+
+seed:
+	docker-compose exec backend python manage.py seed_data
 
 test:
 	docker-compose exec backend pytest
@@ -51,9 +58,6 @@ lint:
 	docker-compose exec backend flake8 apps/
 	docker-compose exec backend black --check apps/
 	docker-compose exec backend isort --check apps/
-
-collectstatic:
-	docker-compose exec backend python manage.py collectstatic --noinput
 
 clean:
 	docker-compose down -v

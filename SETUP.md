@@ -99,7 +99,19 @@ make migrate
 docker-compose exec backend python manage.py migrate
 ```
 
-### 6. Create Superuser
+### 6. Collect Static Files
+
+```bash
+# Collect CSS, JavaScript, and images for admin
+make collectstatic
+
+# Or directly
+docker-compose exec backend python manage.py collectstatic --noinput
+```
+
+**Note:** This step is required for the Django admin dashboard to display correctly.
+
+### 7. Create Superuser
 
 ```bash
 # Interactive prompt
@@ -114,13 +126,44 @@ docker-compose exec backend python manage.py createsuperuser
 - Name: `Admin User`
 - Password: (choose a secure password)
 
-### 7. Access the System
+### 8. Access the System
 
 - **Admin Dashboard**: http://localhost/admin/
 - **API Documentation**: http://localhost/api/v1/docs/
 - **Health Check**: http://localhost/health/
 
-### 8. Load Test Data (Optional)
+### 9. Seed Database with Sample Data (Optional)
+
+```bash
+# Populate database with test data
+make seed
+
+# Or directly
+docker-compose exec backend python manage.py seed_data
+```
+
+This creates:
+- **2 Staff Users**: Admin and Agent (password: `admin123`)
+- **5 Pilgrims**: With profiles, passports, and contact details
+- **2 Trips**: One upcoming (May 2025) and one past (Dec 2024)
+- **Packages**: Gold and Premium packages with flights and hotels
+- **Bookings**: 3 sample bookings with visa records
+- **Itinerary**: 5 itinerary items for the main trip
+- **Travel Guide**: Packing list and weather information
+- **Essentials**: Checklist items, emergency contacts, and FAQs
+- **Updates**: Trip notifications
+- **5 Duas**: Organized by category (Tawaf, Sai, Arafat, General)
+
+**Test Accounts:**
+- Staff: `+256700000001` / password: `admin123`
+- Pilgrim: `+256712000001` (Use OTP authentication via API)
+
+**To clear and reseed:**
+```bash
+docker-compose exec backend python manage.py seed_data --clear
+```
+
+### 10. Load Additional Test Data (Optional)
 
 ```bash
 # Django shell
