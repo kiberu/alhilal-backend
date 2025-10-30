@@ -9,17 +9,35 @@ class Booking(models.Model):
     STATUS_CHOICES = [
         ('EOI', 'Expression of Interest'),
         ('BOOKED', 'Booked'),
+        ('CONFIRMED', 'Confirmed'),
         ('CANCELLED', 'Cancelled'),
     ]
     
+    PAYMENT_STATUS_CHOICES = [
+        ('PENDING', 'Pending'),
+        ('PARTIAL', 'Partial Payment'),
+        ('PAID', 'Fully Paid'),
+        ('REFUNDED', 'Refunded'),
+    ]
+    
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    reference_number = models.CharField(max_length=20, unique=True, editable=False, null=True, blank=True)
     pilgrim = models.ForeignKey('accounts.PilgrimProfile', on_delete=models.CASCADE, related_name='bookings')
     package = models.ForeignKey('trips.TripPackage', on_delete=models.PROTECT, related_name='bookings')
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='EOI')
+    
+    # Payment information
+    payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, default='PENDING')
+    amount_paid_minor_units = models.IntegerField(default=0, help_text='Amount in smallest currency unit (e.g., cents)')
+    currency = models.CharField(max_length=3, default='USD')
     payment_note = models.TextField(null=True, blank=True)
+    
+    # Travel details
     ticket_number = models.CharField(max_length=32, null=True, blank=True)
     room_assignment = models.CharField(max_length=64, null=True, blank=True)
     special_needs = models.TextField(null=True, blank=True)
+    notes = models.TextField(null=True, blank=True, help_text='Internal staff notes')
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -38,8 +56,25 @@ class Booking(models.Model):
             )
         ]
     
+    def save(self, *args, **kwargs):
+        """Generate reference number on creation."""
+        if not self.reference_number:
+            # Generate reference number: BK-YYYYMMDD-XXXX
+            from django.utils import timezone
+            import random
+            date_str = timezone.now().strftime('%Y%m%d')
+            random_suffix = ''.join([str(random.randint(0, 9)) for _ in range(4)])
+            self.reference_number = f"BK-{date_str}-{random_suffix}"
+            
+            # Ensure uniqueness
+            while Booking.objects.filter(reference_number=self.reference_number).exists():
+                random_suffix = ''.join([str(random.randint(0, 9)) for _ in range(4)])
+                self.reference_number = f"BK-{date_str}-{random_suffix}"
+        
+        super().save(*args, **kwargs)
+    
     def __str__(self):
-        return f"{self.pilgrim.user.name} - {self.package.trip.code} - {self.status}"
+        return f"{self.reference_number} - {self.pilgrim.user.name} - {self.package.trip.code}"
     
     def clean(self):
         """Validate booking requirements."""

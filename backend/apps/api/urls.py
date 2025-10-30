@@ -10,36 +10,53 @@ from .views.packages import (
     PackageDetailView, PackageFlightsView, PackageHotelsView
 )
 from .views.content import DuaListView
+from .views.dashboard import (
+    DashboardStatsView, DashboardActivityView, DashboardUpcomingTripsView
+)
+from .views.admin import (
+    AdminTripViewSet, AdminBookingViewSet, AdminPilgrimViewSet,
+    AdminDuaViewSet, AdminPassportViewSet, AdminVisaViewSet
+)
 
 app_name = 'api'
 
-router = DefaultRouter()
+# Router for admin ViewSets (with trailing slash disabled to match frontend)
+router = DefaultRouter(trailing_slash=False)
+router.register(r'trips', AdminTripViewSet, basename='admin-trip')
+router.register(r'bookings', AdminBookingViewSet, basename='admin-booking')
+router.register(r'pilgrims', AdminPilgrimViewSet, basename='admin-pilgrim')
+router.register(r'duas', AdminDuaViewSet, basename='admin-dua')
+router.register(r'passports', AdminPassportViewSet, basename='admin-passport')
+router.register(r'visas', AdminVisaViewSet, basename='admin-visa')
 
 urlpatterns = [
     # Authentication
     path('auth/', include('apps.api.auth.urls')),
     
-    # Profile endpoints
+    # Dashboard endpoints (staff only)
+    path('dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
+    path('dashboard/activity/', DashboardActivityView.as_view(), name='dashboard-activity'),
+    path('dashboard/upcoming-trips/', DashboardUpcomingTripsView.as_view(), name='dashboard-upcoming-trips'),
+    
+    # Profile endpoints (pilgrim-facing)
     path('me/', MeView.as_view(), name='me'),
     path('me/visas/', MyVisasView.as_view(), name='my-visas'),
     path('me/bookings/', MyBookingsView.as_view(), name='my-bookings'),
+    path('me/trips/', TripListView.as_view(), name='my-trips'),
+    path('me/trips/<uuid:pk>/', TripDetailView.as_view(), name='my-trip-detail'),
+    path('me/trips/<uuid:trip_id>/itinerary/', TripItineraryView.as_view(), name='my-trip-itinerary'),
+    path('me/trips/<uuid:trip_id>/updates/', TripUpdatesView.as_view(), name='my-trip-updates'),
+    path('me/trips/<uuid:trip_id>/essentials/', TripEssentialsView.as_view(), name='my-trip-essentials'),
     
-    # Trip endpoints
-    path('trips/', TripListView.as_view(), name='trip-list'),
-    path('trips/<uuid:pk>/', TripDetailView.as_view(), name='trip-detail'),
-    path('trips/<uuid:trip_id>/itinerary/', TripItineraryView.as_view(), name='trip-itinerary'),
-    path('trips/<uuid:trip_id>/updates/', TripUpdatesView.as_view(), name='trip-updates'),
-    path('trips/<uuid:trip_id>/essentials/', TripEssentialsView.as_view(), name='trip-essentials'),
+    # Package endpoints (pilgrim-facing)
+    path('me/packages/<uuid:pk>/', PackageDetailView.as_view(), name='my-package-detail'),
+    path('me/packages/<uuid:package_id>/flights/', PackageFlightsView.as_view(), name='my-package-flights'),
+    path('me/packages/<uuid:package_id>/hotels/', PackageHotelsView.as_view(), name='my-package-hotels'),
     
-    # Package endpoints
-    path('packages/<uuid:pk>/', PackageDetailView.as_view(), name='package-detail'),
-    path('packages/<uuid:package_id>/flights/', PackageFlightsView.as_view(), name='package-flights'),
-    path('packages/<uuid:package_id>/hotels/', PackageHotelsView.as_view(), name='package-hotels'),
+    # Content endpoints (pilgrim-facing)
+    path('me/duas/', DuaListView.as_view(), name='my-dua-list'),
     
-    # Content endpoints
-    path('duas/', DuaListView.as_view(), name='dua-list'),
-    
-    # Router URLs (for future ViewSets)
+    # Admin ViewSets (staff only) - registered via router
     path('', include(router.urls)),
 ]
 

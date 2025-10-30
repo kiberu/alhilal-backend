@@ -36,6 +36,9 @@ cryptography==42.0.2
 # Rate limiting
 django-ratelimit==4.1.0
 
+# Filtering for DRF
+django-filter==24.1
+
 # Production server
 gunicorn==21.2.0
 

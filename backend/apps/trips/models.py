@@ -17,6 +17,7 @@ class Trip(models.Model):
     cities = models.JSONField(default=list)
     start_date = models.DateField()
     end_date = models.DateField()
+    cover_image = models.URLField(max_length=500, null=True, blank=True, help_text='URL to cover image (Cloudinary)')
     visibility = models.CharField(max_length=7, choices=VISIBILITY_CHOICES, default='PUBLIC')
     operator_notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

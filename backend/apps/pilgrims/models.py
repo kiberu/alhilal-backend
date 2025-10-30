@@ -9,10 +9,14 @@ class Passport(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     pilgrim = models.ForeignKey('accounts.PilgrimProfile', on_delete=models.CASCADE, related_name='passports')
-    number = EncryptedCharField(max_length=256)  # Encrypted field (needs extra space for encryption)
-    country = models.CharField(max_length=2)
+    passport_no = EncryptedCharField(max_length=256, null=True, blank=True)  # Encrypted field
+    number = EncryptedCharField(max_length=256)  # Primary field for backward compatibility
+    issue_country = models.CharField(max_length=2, null=True, blank=True)
+    country = models.CharField(max_length=2)  # Primary field for backward compatibility
+    issue_date = models.DateField(null=True, blank=True)
     expiry_date = models.DateField()
-    photo_public_id = models.CharField(max_length=160, null=True, blank=True)
+    scanned_copy_public_id = models.CharField(max_length=160, null=True, blank=True)
+    photo_public_id = models.CharField(max_length=160, null=True, blank=True)  # Alias
     photo_url = models.URLField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -43,10 +47,12 @@ class Visa(models.Model):
     pilgrim = models.ForeignKey('accounts.PilgrimProfile', on_delete=models.CASCADE, related_name='visas')
     trip = models.ForeignKey('trips.Trip', on_delete=models.CASCADE, related_name='visas')
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='PENDING')
+    visa_no = models.CharField(max_length=40, null=True, blank=True)
     ref_no = models.CharField(max_length=40, null=True, blank=True)
     issue_date = models.DateField(null=True, blank=True)
     expiry_date = models.DateField(null=True, blank=True)
-    doc_public_id = models.CharField(max_length=160, null=True, blank=True)
+    scanned_copy_public_id = models.CharField(max_length=160, null=True, blank=True)
+    doc_public_id = models.CharField(max_length=160, null=True, blank=True)  # Alias
     doc_url = models.URLField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

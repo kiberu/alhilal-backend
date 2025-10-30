@@ -1,0 +1,435 @@
+"use client"
+
+import { useEffect, useState } from "react"
+import { useRouter, useParams } from "next/navigation"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  ArrowLeft,
+  Edit,
+  Trash2,
+  Copy,
+  Calendar,
+  MapPin,
+  Eye,
+  Package,
+  Users,
+  FileText,
+  Map,
+  BookOpen,
+  AlertCircle,
+} from "lucide-react"
+import { TripService } from "@/lib/api/services/trips"
+import { useAuth } from "@/hooks/useAuth"
+import { StatusBadge } from "@/components/shared"
+import type { TripFullDetails } from "@/types/models"
+import { format } from "date-fns"
+import { Skeleton } from "@/components/ui/skeleton"
+
+export default function TripDetailsPage() {
+  const router = useRouter()
+  const params = useParams()
+  const { accessToken } = useAuth()
+  const tripId = params.id as string
+
+  const [trip, setTrip] = useState<TripFullDetails | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (tripId) {
+      loadTripDetails()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tripId])
+
+  const loadTripDetails = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const response = await TripService.getById(tripId, accessToken)
+
+      if (response.success && response.data) {
+        setTrip(response.data)
+      } else {
+        setError(response.error || "Failed to load trip details")
+      }
+    } catch (err) {
+      console.error("Error loading trip:", err)
+      const errorMessage = err instanceof Error ? err.message : "Failed to load trip"
+      setError(errorMessage)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!confirm("Are you sure you want to delete this trip?")) return
+
+    try {
+      const response = await TripService.delete(tripId, accessToken)
+      if (response.success) {
+        router.push("/trips")
+      } else {
+        alert(response.error || "Failed to delete trip")
+      }
+    } catch (err) {
+      console.error("Error deleting trip:", err)
+      alert("Failed to delete trip")
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    )
+  }
+
+  if (error || !trip) {
+    return (
+      <div className="space-y-6">
+        <Button variant="ghost" size="sm" onClick={() => router.back()}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Trips
+        </Button>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error || "Trip not found"}</AlertDescription>
+        </Alert>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => router.back()}
+          className="mb-4"
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Trips
+        </Button>
+
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold tracking-tight">{trip.name}</h1>
+              <StatusBadge status={trip.visibility} />
+            </div>
+            <p className="text-muted-foreground">
+              <span className="font-mono text-sm">{trip.code}</span>
+            </p>
+          </div>
+
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm">
+              <Copy className="mr-2 h-4 w-4" />
+              Duplicate
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(`/trips/${tripId}/edit`)}
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Edit
+            </Button>
+            <Button variant="destructive" size="sm" onClick={handleDelete}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                <Package className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Packages</p>
+                <p className="text-2xl font-bold">{trip.packages?.length || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 text-green-600">
+                <Users className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Bookings</p>
+                <p className="text-2xl font-bold">{trip.bookingStats?.total || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-purple-100 text-purple-600">
+                <Map className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Itinerary</p>
+                <p className="text-2xl font-bold">{trip.itinerary?.length || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-100 text-orange-600">
+                <BookOpen className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Guide Sections</p>
+                <p className="text-2xl font-bold">{trip.guideSections?.length || 0}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">
+            <Eye className="mr-2 h-4 w-4" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="packages">
+            <Package className="mr-2 h-4 w-4" />
+            Packages ({trip.packages?.length || 0})
+          </TabsTrigger>
+          <TabsTrigger value="bookings">
+            <Users className="mr-2 h-4 w-4" />
+            Bookings ({trip.bookingStats?.total || 0})
+          </TabsTrigger>
+          <TabsTrigger value="itinerary">
+            <Map className="mr-2 h-4 w-4" />
+            Itinerary ({trip.itinerary?.length || 0})
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Overview Tab */}
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Trip Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <Calendar className="mt-0.5 h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Duration</p>
+                    <p className="text-sm text-muted-foreground">
+                      {format(new Date(trip.startDate), "MMM dd, yyyy")} -{" "}
+                      {format(new Date(trip.endDate), "MMM dd, yyyy")}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3">
+                  <MapPin className="mt-0.5 h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">Cities</p>
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {trip.cities.map((city) => (
+                        <Badge key={city} variant="outline">
+                          {city}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {trip.coverImage && (
+                  <div>
+                    <p className="mb-2 text-sm font-medium">Cover Image</p>
+                    <img
+                      src={trip.coverImage}
+                      alt={trip.name}
+                      className="h-32 w-full rounded-md object-cover"
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Booking Statistics</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">EOI</span>
+                  <span className="text-sm font-medium">
+                    {trip.bookingStats?.eoiCount || 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Booked</span>
+                  <span className="text-sm font-medium">
+                    {trip.bookingStats?.bookedCount || 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Confirmed</span>
+                  <span className="text-sm font-medium">
+                    {trip.bookingStats?.confirmedCount || 0}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between border-t pt-3">
+                  <span className="text-sm font-medium">Total</span>
+                  <span className="text-lg font-bold">
+                    {trip.bookingStats?.total || 0}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {trip.operatorNotes && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Operator Notes</CardTitle>
+                <CardDescription>Internal notes (staff only)</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {trip.operatorNotes}
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Packages Tab */}
+        <TabsContent value="packages">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Packages</CardTitle>
+                <Button
+                  size="sm"
+                  onClick={() => router.push(`/trips/${tripId}/packages/new`)}
+                >
+                  <Package className="mr-2 h-4 w-4" />
+                  Add Package
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {trip.packages && trip.packages.length > 0 ? (
+                <div className="space-y-4">
+                  {trip.packages.map((pkg) => (
+                    <Card key={pkg.id}>
+                      <CardContent className="pt-6">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h3 className="font-semibold">{pkg.name}</h3>
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              Capacity: {pkg.capacity} pilgrims
+                            </p>
+                            <p className="mt-1 text-lg font-bold">
+                              {pkg.currency} {(pkg.priceMinorUnits / 100).toFixed(2)}
+                            </p>
+                          </div>
+                          <StatusBadge status={pkg.visibility} />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-sm text-muted-foreground py-8">
+                  No packages added yet
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Bookings Tab */}
+        <TabsContent value="bookings">
+          <Card>
+            <CardHeader>
+              <CardTitle>Bookings</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-center text-sm text-muted-foreground py-8">
+                Bookings list will be available in Phase 4
+              </p>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Itinerary Tab */}
+        <TabsContent value="itinerary">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Itinerary</CardTitle>
+                <Button
+                  size="sm"
+                  onClick={() => router.push(`/trips/${tripId}/itinerary`)}
+                >
+                  <Map className="mr-2 h-4 w-4" />
+                  Manage Itinerary
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {trip.itinerary && trip.itinerary.length > 0 ? (
+                <div className="space-y-3">
+                  {trip.itinerary.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-start gap-3 border-l-2 border-blue-500 pl-4 py-2"
+                    >
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{item.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Day {item.dayNumber} • {item.startTime}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-sm text-muted-foreground py-8">
+                  No itinerary items added yet
+                </p>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+}
+

@@ -4,7 +4,7 @@ A comprehensive backend system for managing Umrah and Hajj pilgrimages, built wi
 
 ## 📋 Overview
 
-Alhilal is a production-ready pilgrimage management platform that handles the complete lifecycle of pilgrimage trips, from booking to post-trip follow-up. The system provides a secure REST API for mobile/web applications and a powerful Django Admin dashboard for staff operations.
+Alhilal is a production-ready pilgrimage management platform that handles the complete lifecycle of pilgrimage trips, from booking to post-trip follow-up. The system provides a secure REST API for mobile/admin_dashboard applications and a powerful Django Admin dashboard for staff operations.
 
 ### Key Features
 
@@ -14,7 +14,7 @@ Alhilal is a production-ready pilgrimage management platform that handles the co
 - **Visa Processing** - Track visa applications from submission to approval
 - **Document Management** - Secure document storage with Cloudinary
 - **Admin Dashboard** - Powerful tools with 14 custom actions for operations
-- **REST API** - 15 endpoints for mobile/web integration
+- **REST API** - 15 endpoints for mobile/admin_dashboard integration
 - **Audit Trail** - Full history tracking on sensitive models
 - **Data Encryption** - Passport numbers encrypted at rest
 
@@ -171,7 +171,7 @@ alhilal/
 
 - **70 Python files** - Clean, documented code
 - **19 Data models** - Complete domain coverage
-- **15 API endpoints** - Full mobile/web integration
+- **15 API endpoints** - Full mobile/admin_dashboard integration
 - **14 Admin actions** - Operational efficiency
 - **50+ Tests** - Comprehensive test coverage
 - **5 Permission classes** - Secure access control

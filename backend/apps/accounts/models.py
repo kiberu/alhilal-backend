@@ -86,11 +86,20 @@ class StaffProfile(models.Model):
 class PilgrimProfile(models.Model):
     """Profile for pilgrims."""
     
+    GENDER_CHOICES = [
+        ('MALE', 'Male'),
+        ('FEMALE', 'Female'),
+        ('OTHER', 'Other'),
+    ]
+    
     user = models.OneToOneField(Account, on_delete=models.CASCADE, primary_key=True, related_name='pilgrim_profile')
     dob = models.DateField(null=True, blank=True)
+    gender = models.CharField(max_length=6, choices=GENDER_CHOICES, null=True, blank=True)
     nationality = models.CharField(max_length=2, null=True, blank=True)
+    address = models.TextField(null=True, blank=True)
     emergency_name = models.CharField(max_length=120, null=True, blank=True)
     emergency_phone = models.CharField(max_length=24, null=True, blank=True)
+    medical_conditions = models.TextField(null=True, blank=True, help_text='Medical conditions or special needs')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     

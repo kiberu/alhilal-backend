@@ -65,11 +65,11 @@ services:
 
   frontend:
     build:
-      context: ./web
+      context: ./admin_dashboard
       target: development
     container_name: alhilal-frontend
     volumes:
-      - ./web:/app
+      - ./admin_dashboard:/app
       - /app/node_modules
       - /app/.next
     environment:

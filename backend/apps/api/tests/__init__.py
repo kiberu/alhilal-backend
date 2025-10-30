@@ -1,2 +1,3 @@
-# Tests for API
-
+"""
+Unit tests for Admin API endpoints.
+"""
