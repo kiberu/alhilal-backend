@@ -147,7 +147,7 @@ export default function BookingsPage() {
       } else if (bulkAction.startsWith("payment:")) {
         const newPaymentStatus = bulkAction.split(":")[1] as "PENDING" | "PARTIAL" | "PAID" | "REFUNDED"
         await Promise.all(
-          selectedIds.map(id => BookingService.update(id, { paymentStatus: newPaymentStatus }, accessToken))
+          selectedIds.map(id => BookingService.update(id, { payment_status: newPaymentStatus }, accessToken))
         )
         setSelectedIds([])
         loadBookings()
@@ -186,7 +186,7 @@ export default function BookingsPage() {
       className: "w-12",
     },
     {
-      key: "referenceNumber",
+      key: "reference_number",
       header: "Reference",
       className: "font-mono text-sm",
     },
@@ -224,26 +224,26 @@ export default function BookingsPage() {
       render: (booking) => <StatusBadge status={booking.status} />,
     },
     {
-      key: "paymentStatus",
+      key: "payment_status",
       header: "Payment",
-      render: (booking) => <StatusBadge status={booking.paymentStatus} />,
+      render: (booking) => <StatusBadge status={booking.payment_status} />,
     },
     {
       key: "amountPaid",
       header: "Amount",
       render: (booking) => (
         <span className="text-sm font-medium">
-          {formatCurrency(booking.amountPaidMinorUnits, booking.currency)}
+          {formatCurrency(booking.amount_paid_minor_units, booking.currency?.code || "USD")}
         </span>
       ),
       className: "text-right",
     },
     {
-      key: "createdAt",
+      key: "created_at",
       header: "Created",
       render: (booking) => (
         <span className="text-sm text-muted-foreground">
-          {format(new Date(booking.createdAt), "MMM dd, yyyy")}
+          {format(new Date(booking.created_at), "MMM dd, yyyy")}
         </span>
       ),
     },

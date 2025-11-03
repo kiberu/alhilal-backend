@@ -48,7 +48,7 @@ class TripPackage(models.Model):
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name='packages')
     name = models.CharField(max_length=40)
     price_minor_units = models.IntegerField(null=True, blank=True)
-    currency = models.CharField(max_length=3, null=True, blank=True)
+    currency = models.ForeignKey('common.Currency', on_delete=models.PROTECT, related_name='packages', null=True, blank=True)
     capacity = models.IntegerField(null=True, blank=True)
     visibility = models.CharField(max_length=7, choices=VISIBILITY_CHOICES, default='PUBLIC')
     created_at = models.DateTimeField(auto_now_add=True)

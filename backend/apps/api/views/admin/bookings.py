@@ -8,8 +8,8 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 
-from apps.bookings.models import Booking
-from apps.api.serializers.admin import AdminBookingListSerializer, AdminBookingDetailSerializer
+from apps.bookings.models import Booking, Payment
+from apps.api.serializers.admin import AdminBookingListSerializer, AdminBookingDetailSerializer, AdminPaymentSerializer
 
 
 class AdminBookingViewSet(viewsets.ModelViewSet):
@@ -180,4 +180,47 @@ class AdminBookingViewSet(viewsets.ModelViewSet):
                 updated += 1
         
         return Response({'updated': updated}, status=status.HTTP_200_OK)
+    
+    @action(detail=True, methods=['post'], url_path='payments')
+    def add_payment(self, request, pk=None):
+        """Add a payment to a booking."""
+        if not request.user.is_staff:
+            return Response(
+                {'error': 'Only staff members can add payments.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        booking = self.get_object()
+        serializer = AdminPaymentSerializer(
+            data=request.data,
+            context={'request': request}
+        )
+        
+        if serializer.is_valid():
+            serializer.save(booking=booking)
+            # Refresh booking to get updated payment status
+            booking.refresh_from_db()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=True, methods=['get'], url_path='payments/list')
+    def list_payments(self, request, pk=None):
+        """List all payments for a booking."""
+        if not request.user.is_staff:
+            return Response(
+                {'error': 'Only staff members can view payments.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        booking = self.get_object()
+        payments = booking.payments.all()
+        serializer = AdminPaymentSerializer(payments, many=True)
+        
+        return Response({
+            'payments': serializer.data,
+            'total_paid': booking.amount_paid_minor_units,
+            'package_price': booking.package.price_minor_units,
+            'balance': (booking.package.price_minor_units or 0) - booking.amount_paid_minor_units,
+        }, status=status.HTTP_200_OK)
 

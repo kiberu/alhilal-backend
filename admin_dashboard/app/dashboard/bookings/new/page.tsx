@@ -33,15 +33,10 @@ const bookingSchema = z.object({
   pilgrim: z.string().uuid("Please select a pilgrim"),
   package: z.string().uuid("Please select a package"),
   status: z.enum(["EOI", "BOOKED", "CONFIRMED", "CANCELLED"]),
-  paymentStatus: z.enum(["PENDING", "PARTIAL", "PAID", "REFUNDED"]),
-  amountPaid: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) >= 0, {
-    message: "Amount must be a valid positive number",
-  }),
-  currency: z.string().min(3).max(3, "Currency code must be 3 characters"),
-  paymentNote: z.string().optional(),
   ticketNumber: z.string().optional(),
   roomAssignment: z.string().optional(),
   specialNeeds: z.string().optional(),
+  notes: z.string().optional(),
 })
 
 type BookingFormData = z.infer<typeof bookingSchema>
@@ -70,9 +65,6 @@ export default function NewBookingPage() {
     resolver: zodResolver(bookingSchema),
     defaultValues: {
       status: "EOI",
-      paymentStatus: "PENDING",
-      amountPaid: "0",
-      currency: "USD",
     },
   })
 
@@ -80,7 +72,6 @@ export default function NewBookingPage() {
   const selectedPilgrim = watch("pilgrim")
   const selectedPackage = watch("package")
   const selectedStatus = watch("status")
-  const selectedPaymentStatus = watch("paymentStatus")
 
   // Load trips on mount
   useEffect(() => {
@@ -170,7 +161,7 @@ export default function NewBookingPage() {
           : (response.data as any).results || []
         
         const packageOptions: SearchableSelectOption[] = dataArray.map((pkg: any) => {
-          const priceMinorUnits = pkg.priceMinorUnits || pkg.price_minor_units || 0
+          const priceMinorUnits = pkg.price_minor_units || 0
           const price = priceMinorUnits > 0 ? (priceMinorUnits / 100).toFixed(2) : '0.00'
           const currency = pkg.currency || 'USD'
           const capacity = pkg.capacity || 'N/A'
@@ -201,26 +192,20 @@ export default function NewBookingPage() {
       setIsSubmitting(true)
       setError(null)
 
-      // Convert amount to minor units (cents)
-      const amountPaidMinorUnits = Math.round(parseFloat(data.amountPaid) * 100)
-
       const bookingData = {
         pilgrim: data.pilgrim,
         package: data.package,
         status: data.status,
-        paymentStatus: data.paymentStatus,
-        amountPaidMinorUnits,
-        currency: data.currency,
-        paymentNote: data.paymentNote || "",
         ticketNumber: data.ticketNumber || "",
         roomAssignment: data.roomAssignment || "",
         specialNeeds: data.specialNeeds || "",
+        notes: data.notes || "",
       }
 
       const response = await BookingService.create(bookingData, accessToken)
 
       if (response.success && response.data) {
-        toast.success("Booking created successfully")
+        toast.success("Booking created successfully! You can now record payments.")
         router.push(`/dashboard/bookings/${response.data.id}`)
       } else {
         handleFormErrors(setValue as any, response)
@@ -350,7 +335,7 @@ export default function NewBookingPage() {
           </Card>
 
           {/* Booking Status */}
-          <Card>
+          <Card className="md:col-span-2">
             <CardHeader>
               <CardTitle>Booking Status</CardTitle>
             </CardHeader>
@@ -376,89 +361,9 @@ export default function NewBookingPage() {
                 {errors.status && (
                   <p className="text-sm text-red-500">{errors.status.message}</p>
                 )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="paymentStatus">
-                  Payment Status <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={selectedPaymentStatus}
-                  onValueChange={(value) => setValue("paymentStatus", value as any)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="PENDING">Pending</SelectItem>
-                    <SelectItem value="PARTIAL">Partial Payment</SelectItem>
-                    <SelectItem value="PAID">Fully Paid</SelectItem>
-                    <SelectItem value="REFUNDED">Refunded</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.paymentStatus && (
-                  <p className="text-sm text-red-500">{errors.paymentStatus.message}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Payment Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="amountPaid">
-                    Amount Paid <span className="text-red-500">*</span>
-                  </Label>
-                  <Input
-                    id="amountPaid"
-                    type="number"
-                    step="0.01"
-                    {...register("amountPaid")}
-                    placeholder="0.00"
-                  />
-                  {errors.amountPaid && (
-                    <p className="text-sm text-red-500">{errors.amountPaid.message}</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="currency">
-                    Currency <span className="text-red-500">*</span>
-                  </Label>
-                  <Select
-                    value={watch("currency")}
-                    onValueChange={(value) => setValue("currency", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD - US Dollar</SelectItem>
-                      <SelectItem value="UGX">UGX - Ugandan Shilling</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {errors.currency && (
-                    <p className="text-sm text-red-500">{errors.currency.message}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="paymentNote">Payment Note</Label>
-                <Textarea
-                  id="paymentNote"
-                  {...register("paymentNote")}
-                  placeholder="Optional payment notes or reference"
-                  rows={3}
-                />
-                {errors.paymentNote && (
-                  <p className="text-sm text-red-500">{errors.paymentNote.message}</p>
-                )}
+                <p className="text-xs text-muted-foreground">
+                  Payment information can be added after creating the booking
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -505,6 +410,19 @@ export default function NewBookingPage() {
                 />
                 {errors.specialNeeds && (
                   <p className="text-sm text-red-500">{errors.specialNeeds.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  {...register("notes")}
+                  placeholder="Any additional notes about this booking"
+                  rows={3}
+                />
+                {errors.notes && (
+                  <p className="text-sm text-red-500">{errors.notes.message}</p>
                 )}
               </div>
             </CardContent>

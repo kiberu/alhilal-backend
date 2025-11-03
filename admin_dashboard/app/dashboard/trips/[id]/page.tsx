@@ -22,7 +22,16 @@ import {
   BookOpen,
   AlertCircle,
 } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { TripService } from "@/lib/api/services/trips"
+import { PackageService } from "@/lib/api/services/packages"
 import { useAuth } from "@/hooks/useAuth"
 import { StatusBadge } from "@/components/shared"
 import type { TripFullDetails } from "@/types/models"
@@ -39,6 +48,9 @@ export default function TripDetailsPage() {
   const [trip, setTrip] = useState<TripFullDetails | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [packageToDelete, setPackageToDelete] = useState<{ id: string; name: string } | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (tripId) {
@@ -69,6 +81,37 @@ export default function TripDetailsPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleDeletePackage = async () => {
+    if (!packageToDelete) return
+
+    try {
+      setDeleting(true)
+      const response = await PackageService.delete(packageToDelete.id, accessToken)
+
+      if (response.success) {
+        toast.success("Package deleted successfully")
+        setDeleteDialogOpen(false)
+        setPackageToDelete(null)
+        // Reload trip details to reflect the deletion
+        loadTripDetails()
+      } else {
+        const errorMessage = response.error || "Failed to delete package"
+        toast.error(errorMessage)
+      }
+    } catch (err) {
+      console.error("Error deleting package:", err)
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete package"
+      toast.error(errorMessage)
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  const openDeleteDialog = (packageId: string, packageName: string) => {
+    setPackageToDelete({ id: packageId, name: packageName })
+    setDeleteDialogOpen(true)
   }
 
   const handleDelete = async () => {
@@ -390,16 +433,32 @@ export default function TripDetailsPage() {
                     <Card key={pkg.id}>
                       <CardContent className="pt-6">
                         <div className="flex items-start justify-between">
-                          <div>
+                          <div className="flex-1">
                             <h3 className="font-semibold">{pkg.name}</h3>
                             <p className="mt-1 text-sm text-muted-foreground">
                               Capacity: {pkg.capacity} pilgrims
                             </p>
                             <p className="mt-1 text-lg font-bold">
-                              {pkg.currency} {(pkg.priceMinorUnits / 100).toFixed(2)}
+                              {pkg.currency?.symbol || pkg.currency?.code || 'USD'} {(pkg.price_minor_units / 100).toFixed(2)}
                             </p>
                           </div>
+                          <div className="flex items-center gap-2">
                           <StatusBadge status={pkg.visibility} />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => router.push(`/dashboard/trips/${tripId}/packages/${pkg.id}/edit`)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openDeleteDialog(pkg.id, pkg.name)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -418,12 +477,47 @@ export default function TripDetailsPage() {
         <TabsContent value="bookings">
           <Card>
             <CardHeader>
-              <CardTitle>Bookings</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle>Bookings</CardTitle>
+                <Button
+                  size="sm"
+                  onClick={() => router.push(`/dashboard/bookings?trip=${tripId}`)}
+                >
+                  <Users className="mr-2 h-4 w-4" />
+                  View All Bookings
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
-              <p className="text-center text-sm text-muted-foreground py-8">
-                Bookings list will be available in Phase 4
-              </p>
+              {trip.bookingStats && trip.bookingStats.total > 0 ? (
+                <div className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-4">
+                    <div className="rounded-lg border p-4">
+                      <p className="text-sm text-muted-foreground">EOI</p>
+                      <p className="text-2xl font-bold">{trip.bookingStats.eoiCount || 0}</p>
+                    </div>
+                    <div className="rounded-lg border p-4">
+                      <p className="text-sm text-muted-foreground">Booked</p>
+                      <p className="text-2xl font-bold">{trip.bookingStats.bookedCount || 0}</p>
+                    </div>
+                    <div className="rounded-lg border p-4">
+                      <p className="text-sm text-muted-foreground">Confirmed</p>
+                      <p className="text-2xl font-bold">{trip.bookingStats.confirmedCount || 0}</p>
+                    </div>
+                    <div className="rounded-lg border p-4 bg-blue-50">
+                      <p className="text-sm text-muted-foreground">Total</p>
+                      <p className="text-2xl font-bold">{trip.bookingStats.total || 0}</p>
+                    </div>
+                  </div>
+                  <p className="text-center text-sm text-muted-foreground">
+                    Click "View All Bookings" to manage bookings for this trip
+                  </p>
+                </div>
+              ) : (
+                <p className="text-center text-sm text-muted-foreground py-8">
+                  No bookings for this trip yet
+                </p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -469,6 +563,35 @@ export default function TripDetailsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Delete Package Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Package</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete the package "{packageToDelete?.name}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeletePackage}
+              disabled={deleting}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              {deleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -1,5 +1,14 @@
 // TypeScript types matching Django models
 
+/** Currency */
+export interface Currency {
+  id: string
+  code: string
+  name: string
+  symbol: string
+  is_active: boolean
+}
+
 /** User Roles */
 export type UserRole = "STAFF" | "PILGRIM"
 export type StaffRole = "ADMIN" | "AGENT" | "AUDITOR"
@@ -14,8 +23,8 @@ export interface Account {
   isActive: boolean
   isStaff: boolean
   isSuperuser: boolean
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
   lastLogin?: string
 }
 
@@ -24,8 +33,8 @@ export interface StaffProfile {
   id: string
   user: string // Account ID
   role: StaffRole
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 /** User with Staff Profile (for Admin Management) */
@@ -39,8 +48,8 @@ export interface User {
   isStaff: boolean
   isSuperuser: boolean
   staffRole?: StaffRole
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 /** Create User Data */
@@ -97,8 +106,8 @@ export interface PilgrimProfile {
   medicalConditions?: string
   medicalInfo?: string // Deprecated: use medicalConditions
   bookingsCount?: number
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 /** Create Pilgrim Data (no user account required) */
@@ -124,8 +133,8 @@ export interface Passport {
   country: string
   expiryDate: string
   scannedCopy?: string // Cloudinary URL
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 /** Visa Status */
@@ -145,8 +154,8 @@ export interface Visa {
   rejectedAt?: string
   visaCopy?: string // Cloudinary URL
   notes?: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 /** Trip Visibility */
@@ -163,8 +172,8 @@ export interface Trip {
   coverImage?: string // Cloudinary URL
   visibility: TripVisibility
   operatorNotes?: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 /** Package Visibility */
@@ -175,12 +184,12 @@ export interface TripPackage {
   id: string
   trip: string // Trip ID
   name: string
-  priceMinorUnits: number
-  currency: string
+  price_minor_units: number
+  currency: Currency | null
   capacity: number
   visibility: PackageVisibility
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 /** Flight Leg Type */
@@ -198,8 +207,8 @@ export interface PackageFlight {
   arrAirport: string
   arrDt: string
   groupPnr?: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 /** Package Hotel */
@@ -212,8 +221,8 @@ export interface PackageHotel {
   checkIn: string
   checkOut: string
   groupConfirmationNo?: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 /** Itinerary Item */
@@ -226,8 +235,8 @@ export interface ItineraryItem {
   startTime?: string
   endTime?: string
   notes?: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 /** Trip Guide Section */
@@ -237,8 +246,8 @@ export interface TripGuideSection {
   order: number
   title: string
   contentMd: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 /** Checklist Category */
@@ -251,8 +260,8 @@ export interface ChecklistItem {
   label: string
   category: ChecklistCategory
   isRequired: boolean
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 /** Emergency Contact */
@@ -263,8 +272,8 @@ export interface EmergencyContact {
   phone: string
   hours?: string
   notes?: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 /** Trip FAQ */
@@ -274,8 +283,8 @@ export interface TripFAQ {
   question: string
   answer: string
   order: number
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 /** Update Urgency */
@@ -290,12 +299,34 @@ export interface TripUpdate {
   urgency: UpdateUrgency
   pinned: boolean
   publishAt: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 /** Booking Status */
 export type BookingStatus = "EOI" | "BOOKED" | "CONFIRMED" | "CANCELLED"
+
+/** Payment Status */
+export type PaymentStatus = "PENDING" | "PARTIAL" | "PAID" | "REFUNDED"
+
+/** Payment Method */
+export type PaymentMethod = "CASH" | "BANK_TRANSFER" | "CREDIT_CARD" | "DEBIT_CARD" | "MOBILE_MONEY" | "CHECK" | "OTHER"
+
+/** Payment */
+export interface Payment {
+  id: string
+  booking: string
+  amount_minor_units: number
+  currency: Currency | null
+  payment_method: PaymentMethod
+  payment_date: string
+  reference_number?: string
+  notes?: string
+  recorded_by: string
+  recorded_by_name?: string
+  created_at: string
+  updated_at: string
+}
 
 /** Booking */
 export interface Booking {
@@ -303,15 +334,18 @@ export interface Booking {
   pilgrim: string // PilgrimProfile ID
   package: string // TripPackage ID
   status: BookingStatus
-  paymentStatus: PaymentStatus
-  amountPaidMinorUnits: number
-  currency: string
-  specialRequests?: string
-  ticketNumber?: string
-  roomAssignment?: string
-  referenceNumber: string
-  createdAt: string
-  updatedAt: string
+  payment_status: PaymentStatus
+  amount_paid_minor_units: number
+  currency: Currency | null
+  payment_note?: string
+  ticket_number?: string
+  room_assignment?: string
+  special_needs?: string
+  notes?: string
+  reference_number: string
+  created_at: string
+  updated_at: string
+  payments?: Payment[]
 }
 
 /** Dua Category */
@@ -328,8 +362,8 @@ export interface Dua {
   transliteration?: string
   reference?: string
   orderIndex: number
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 /** Notification Log */
@@ -341,8 +375,8 @@ export interface NotificationLog {
   channel: string
   sentAt?: string
   deliveredAt?: string
-  createdAt: string
-  updatedAt: string
+  created_at: string
+  updated_at: string
 }
 
 // Extended types with relations (for API responses)

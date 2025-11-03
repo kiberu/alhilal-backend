@@ -151,7 +151,7 @@ export default function PilgrimsPage() {
       header: "Joined",
       render: (pilgrim) => (
         <span className="text-sm text-muted-foreground">
-          {format(new Date(pilgrim.createdAt), "MMM yyyy")}
+          {format(new Date(pilgrim.created_at), "MMM yyyy")}
         </span>
       ),
     },

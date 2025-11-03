@@ -26,8 +26,8 @@ import { toast } from "sonner"
 
 const bookingSchema = z.object({
   status: z.enum(["EOI", "BOOKED", "CONFIRMED", "CANCELLED"]),
-  paymentStatus: z.enum(["PENDING", "PARTIAL", "PAID", "REFUNDED"]),
-  amountPaid: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) >= 0, {
+  payment_status: z.enum(["PENDING", "PARTIAL", "PAID", "REFUNDED"]),
+  amount_paid: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) >= 0, {
     message: "Amount must be a valid positive number",
   }),
   currency: z.string().min(3).max(3, "Currency must be 3 characters"),
@@ -61,7 +61,7 @@ export default function EditBookingPage() {
   })
 
   const selectedStatus = watch("status")
-  const selectedPaymentStatus = watch("paymentStatus")
+  const selectedPaymentStatus = watch("payment_status")
 
   useEffect(() => {
     if (bookingId) {
@@ -81,8 +81,8 @@ export default function EditBookingPage() {
         const booking = response.data
         reset({
           status: booking.status,
-          paymentStatus: booking.paymentStatus,
-          amountPaid: (booking.amountPaidMinorUnits / 100).toFixed(2),
+          payment_status: booking.payment_status,
+          amount_paid: (booking.amount_paid_minor_units / 100).toFixed(2),
           currency: booking.currency || "USD",
           paymentNote: booking.paymentNote || "",
           ticketNumber: booking.ticketNumber || "",
@@ -109,17 +109,17 @@ export default function EditBookingPage() {
       setIsSubmitting(true)
       setError(null)
 
-      const amountPaidMinorUnits = Math.round(parseFloat(data.amountPaid) * 100)
+      const amountPaidMinorUnits = Math.round(parseFloat(data.amount_paid) * 100)
 
       const updateData = {
         status: data.status,
-        paymentStatus: data.paymentStatus,
-        amountPaidMinorUnits,
+        payment_status: data.payment_status,
+        amount_paid_minor_units: amountPaidMinorUnits,
         currency: data.currency,
-        paymentNote: data.paymentNote || "",
-        ticketNumber: data.ticketNumber || "",
-        roomAssignment: data.roomAssignment || "",
-        specialNeeds: data.specialNeeds || "",
+        payment_note: data.paymentNote || "",
+        ticket_number: data.ticketNumber || "",
+        room_assignment: data.roomAssignment || "",
+        special_needs: data.specialNeeds || "",
       }
 
       const response = await BookingService.update(bookingId, updateData, accessToken)
@@ -212,12 +212,12 @@ export default function EditBookingPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="paymentStatus">
+                <Label htmlFor="payment_status">
                   Payment Status <span className="text-red-500">*</span>
                 </Label>
                 <Select
                   value={selectedPaymentStatus}
-                  onValueChange={(value) => setValue("paymentStatus", value as "PENDING" | "PARTIAL" | "PAID" | "REFUNDED")}
+                  onValueChange={(value) => setValue("payment_status", value as "PENDING" | "PARTIAL" | "PAID" | "REFUNDED")}
                 >
                   <SelectTrigger>
                     <SelectValue />
@@ -229,8 +229,8 @@ export default function EditBookingPage() {
                     <SelectItem value="REFUNDED">Refunded</SelectItem>
                   </SelectContent>
                 </Select>
-                {errors.paymentStatus && (
-                  <p className="text-sm text-red-500">{errors.paymentStatus.message}</p>
+                {errors.payment_status && (
+                  <p className="text-sm text-red-500">{errors.payment_status.message}</p>
                 )}
               </div>
             </CardContent>

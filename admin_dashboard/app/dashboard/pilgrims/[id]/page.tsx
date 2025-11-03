@@ -209,7 +209,7 @@ export default function PilgrimDetailsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Member Since</p>
                 <p className="text-lg font-medium">
-                  {format(new Date(pilgrim.createdAt), "MMM yyyy")}
+                  {format(new Date(pilgrim.created_at), "MMM yyyy")}
                 </p>
               </div>
             </div>

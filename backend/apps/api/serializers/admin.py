@@ -7,10 +7,23 @@ from apps.trips.models import (
     Trip, TripPackage, PackageFlight, PackageHotel, ItineraryItem,
     TripUpdate, TripGuideSection, ChecklistItem, EmergencyContact, TripFAQ
 )
-from apps.bookings.models import Booking
+from apps.bookings.models import Booking, Payment
 from apps.accounts.models import Account, PilgrimProfile, StaffProfile
 from apps.pilgrims.models import Passport, Visa
 from apps.content.models import Dua
+from apps.common.models import Currency
+
+
+# ============================================================================
+# CURRENCY SERIALIZERS
+# ============================================================================
+
+class CurrencySerializer(serializers.ModelSerializer):
+    """Serializer for Currency model."""
+    
+    class Meta:
+        model = Currency
+        fields = ['id', 'code', 'name', 'symbol', 'is_active']
 
 
 # ============================================================================
@@ -19,11 +32,19 @@ from apps.content.models import Dua
 
 class AdminTripPackageListSerializer(serializers.ModelSerializer):
     """Serializer for packages in trip list/detail."""
+    currency = CurrencySerializer(read_only=True)
+    currency_id = serializers.PrimaryKeyRelatedField(
+        queryset=Currency.objects.all(),
+        source='currency',
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
     
     class Meta:
         model = TripPackage
         fields = [
-            'id', 'name', 'price_minor_units', 'currency',
+            'id', 'name', 'price_minor_units', 'currency', 'currency_id',
             'capacity', 'visibility', 'created_at', 'updated_at'
         ]
 
@@ -45,19 +66,69 @@ class AdminTripDetailSerializer(serializers.ModelSerializer):
     """Serializer for trip detail/create/update (admin)."""
     
     packages = AdminTripPackageListSerializer(many=True, read_only=True)
+    booking_stats = serializers.SerializerMethodField()
+    itinerary = serializers.SerializerMethodField()
+    guide_sections = serializers.SerializerMethodField()
     
     class Meta:
         model = Trip
         fields = [
             'id', 'code', 'name', 'cities', 'start_date', 'end_date',
             'cover_image', 'visibility', 'operator_notes', 'created_at', 'updated_at',
-            'packages'
+            'packages', 'booking_stats', 'itinerary', 'guide_sections'
         ]
         extra_kwargs = {
             'id': {'read_only': True},
             'created_at': {'read_only': True},
             'updated_at': {'read_only': True},
         }
+    
+    def get_booking_stats(self, obj):
+        """Get booking statistics for this trip."""
+        from apps.bookings.models import Booking
+        from django.db.models import Count, Q
+        
+        # Get all bookings for packages in this trip
+        bookings = Booking.objects.filter(package__trip=obj)
+        
+        stats = bookings.aggregate(
+            total=Count('id'),
+            eoi_count=Count('id', filter=Q(status='EOI')),
+            booked_count=Count('id', filter=Q(status='BOOKED')),
+            confirmed_count=Count('id', filter=Q(status='CONFIRMED'))
+        )
+        
+        return {
+            'total': stats['total'] or 0,
+            'eoiCount': stats['eoi_count'] or 0,
+            'bookedCount': stats['booked_count'] or 0,
+            'confirmedCount': stats['confirmed_count'] or 0
+        }
+    
+    def get_itinerary(self, obj):
+        """Get itinerary items for this trip."""
+        from apps.trips.models import ItineraryItem
+        items = ItineraryItem.objects.filter(trip=obj).order_by('day_index', 'start_time')
+        return [{
+            'id': str(item.id),
+            'dayNumber': item.day_index,
+            'startTime': item.start_time.strftime('%H:%M') if item.start_time else None,
+            'endTime': item.end_time.strftime('%H:%M') if item.end_time else None,
+            'title': item.title,
+            'description': item.notes,
+            'location': item.location
+        } for item in items]
+    
+    def get_guide_sections(self, obj):
+        """Get guide sections for this trip."""
+        from apps.trips.models import TripGuideSection
+        sections = TripGuideSection.objects.filter(trip=obj).order_by('order')
+        return [{
+            'id': str(section.id),
+            'title': section.title,
+            'content': section.content,
+            'order': section.order
+        } for section in sections]
     
     def to_representation(self, instance):
         """Convert to frontend format (camelCase)."""
@@ -75,6 +146,9 @@ class AdminTripDetailSerializer(serializers.ModelSerializer):
             'createdAt': data['created_at'],
             'updatedAt': data['updated_at'],
             'packages': data['packages'],
+            'bookingStats': data['booking_stats'],
+            'itinerary': data['itinerary'],
+            'guideSections': data['guide_sections'],
         }
     
     def to_internal_value(self, data):
@@ -98,141 +172,6 @@ class AdminTripDetailSerializer(serializers.ModelSerializer):
 # ============================================================================
 # BOOKING SERIALIZERS (Admin)
 # ============================================================================
-
-class BookingPilgrimUserSerializer(serializers.ModelSerializer):
-    """Nested user serializer for bookings."""
-    
-    class Meta:
-        model = Account
-        fields = ['id', 'name', 'phone', 'email']
-
-
-class BookingPilgrimSerializer(serializers.ModelSerializer):
-    """Nested pilgrim serializer for bookings."""
-    
-    user = BookingPilgrimUserSerializer(read_only=True)
-    
-    class Meta:
-        model = PilgrimProfile
-        fields = ['user', 'dob', 'gender', 'nationality']
-    
-    def to_representation(self, instance):
-        """Convert to frontend format with id."""
-        data = super().to_representation(instance)
-        return {
-            'id': str(instance.user_id),
-            'user': data['user'],
-            'dateOfBirth': data.get('dob'),
-            'gender': data.get('gender'),
-            'nationality': data.get('nationality'),
-        }
-
-
-class BookingPackageSerializer(serializers.ModelSerializer):
-    """Nested package serializer for bookings."""
-    
-    trip = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = TripPackage
-        fields = ['id', 'name', 'price_minor_units', 'currency', 'trip']
-    
-    def get_trip(self, obj):
-        return {
-            'id': str(obj.trip.id),
-            'code': obj.trip.code,
-            'name': obj.trip.name,
-        }
-
-
-class AdminBookingListSerializer(serializers.ModelSerializer):
-    """Serializer for booking list view (admin)."""
-    
-    pilgrim_details = BookingPilgrimSerializer(source='pilgrim', read_only=True)
-    package_details = BookingPackageSerializer(source='package', read_only=True)
-    
-    class Meta:
-        model = Booking
-        fields = [
-            'id', 'reference_number', 'pilgrim', 'package',
-            'status', 'payment_status', 'amount_paid_minor_units',
-            'currency', 'created_at', 'updated_at',
-            'pilgrim_details', 'package_details'
-        ]
-    
-    def to_representation(self, instance):
-        """Convert to frontend format (camelCase)."""
-        data = super().to_representation(instance)
-        return {
-            'id': str(data['id']),
-            'referenceNumber': data['reference_number'],
-            'pilgrim': str(data['pilgrim']),
-            'package': str(data['package']),
-            'status': data['status'],
-            'paymentStatus': data['payment_status'],
-            'amountPaidMinorUnits': data['amount_paid_minor_units'],
-            'currency': data['currency'],
-            'createdAt': data['created_at'],
-            'updatedAt': data['updated_at'],
-            'pilgrimDetails': data['pilgrim_details'],
-            'packageDetails': data['package_details'],
-        }
-
-
-class AdminBookingDetailSerializer(serializers.ModelSerializer):
-    """Serializer for booking detail/create/update (admin)."""
-    
-    pilgrim_details = BookingPilgrimSerializer(source='pilgrim', read_only=True)
-    package_details = BookingPackageSerializer(source='package', read_only=True)
-    
-    class Meta:
-        model = Booking
-        fields = [
-            'id', 'reference_number', 'pilgrim', 'package',
-            'status', 'payment_status', 'amount_paid_minor_units',
-            'currency', 'notes', 'created_at', 'updated_at',
-            'pilgrim_details', 'package_details'
-        ]
-        extra_kwargs = {
-            'id': {'read_only': True},
-            'reference_number': {'read_only': True},
-            'created_at': {'read_only': True},
-            'updated_at': {'read_only': True},
-        }
-    
-    def to_representation(self, instance):
-        """Convert to frontend format (camelCase)."""
-        data = super().to_representation(instance)
-        return {
-            'id': str(data['id']),
-            'referenceNumber': data['reference_number'],
-            'pilgrim': str(data['pilgrim']),
-            'package': str(data['package']),
-            'status': data['status'],
-            'paymentStatus': data['payment_status'],
-            'amountPaidMinorUnits': data['amount_paid_minor_units'],
-            'currency': data['currency'],
-            'notes': data.get('notes'),
-            'createdAt': data['created_at'],
-            'updatedAt': data['updated_at'],
-            'pilgrimDetails': data['pilgrim_details'],
-            'packageDetails': data['package_details'],
-        }
-    
-    def to_internal_value(self, data):
-        """Convert from frontend format (camelCase) to Django format (snake_case)."""
-        mapped_data = {}
-        field_mapping = {
-            'referenceNumber': 'reference_number',
-            'paymentStatus': 'payment_status',
-            'amountPaidMinorUnits': 'amount_paid_minor_units',
-        }
-        
-        for key, value in data.items():
-            mapped_key = field_mapping.get(key, key)
-            mapped_data[mapped_key] = value
-        
-        return super().to_internal_value(mapped_data)
 
 
 # ============================================================================
@@ -287,8 +226,8 @@ class AdminPilgrimListSerializer(serializers.ModelSerializer):
             'emergencyName': data.get('emergency_name'),
             'emergencyPhone': data.get('emergency_phone'),
             'medicalConditions': data.get('medical_conditions'),
-            'createdAt': data['created_at'],
-            'updatedAt': data['updated_at'],
+            'created_at': data['created_at'],
+            'updated_at': data['updated_at'],
             'bookingsCount': data['bookings_count'],
         }
 
@@ -486,8 +425,8 @@ class AdminPilgrimDetailSerializer(serializers.ModelSerializer):
             'emergencyContact': f"{data.get('emergency_name')} ({data.get('emergency_phone')})" if data.get('emergency_name') and data.get('emergency_phone') else None,
             'medicalConditions': data.get('medical_conditions'),
             'medicalInfo': data.get('medical_conditions'),  # Alias for compatibility
-            'createdAt': data['created_at'],
-            'updatedAt': data['updated_at'],
+            'created_at': data['created_at'],
+            'updated_at': data['updated_at'],
             'bookings': data.get('bookings', []),
             'passport': data.get('passport'),
             'visas': data.get('visas', []),
@@ -675,11 +614,19 @@ class AdminVisaSerializer(serializers.ModelSerializer):
 
 class AdminPackageSerializer(serializers.ModelSerializer):
     """Serializer for trip package CRUD (admin)."""
+    currency = CurrencySerializer(read_only=True)
+    currency_id = serializers.PrimaryKeyRelatedField(
+        queryset=Currency.objects.all(),
+        source='currency',
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
     
     class Meta:
         model = TripPackage
         fields = [
-            'id', 'trip', 'name', 'price_minor_units', 'currency',
+            'id', 'trip', 'name', 'price_minor_units', 'currency', 'currency_id',
             'capacity', 'visibility', 'created_at', 'updated_at'
         ]
 
@@ -956,4 +903,185 @@ class AdminUserCreateSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         """Convert to frontend format."""
         return AdminUserDetailSerializer(instance).data
+
+
+# ============================================================================
+# BOOKING & PAYMENT SERIALIZERS (Admin)
+# ============================================================================
+
+class AdminPaymentSerializer(serializers.ModelSerializer):
+    """Serializer for Payment CRUD."""
+    
+    recorded_by_name = serializers.CharField(source='recorded_by.name', read_only=True)
+    currency = CurrencySerializer(read_only=True)
+    currency_id = serializers.PrimaryKeyRelatedField(
+        queryset=Currency.objects.all(),
+        source='currency',
+        write_only=True,
+        required=False,
+        allow_null=True
+    )
+    
+    class Meta:
+        model = Payment
+        fields = [
+            'id', 'booking', 'amount_minor_units', 'currency', 'currency_id',
+            'payment_method', 'payment_date', 'reference_number',
+            'notes', 'recorded_by', 'recorded_by_name',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'booking', 'recorded_by', 'recorded_by_name', 'created_at', 'updated_at']
+    
+    def create(self, validated_data):
+        """Set recorded_by to current user."""
+        validated_data['recorded_by'] = self.context['request'].user
+        return super().create(validated_data)
+
+
+class AdminBookingListSerializer(serializers.ModelSerializer):
+    """Serializer for booking list."""
+    
+    pilgrim_details = serializers.SerializerMethodField()
+    package_details = serializers.SerializerMethodField()
+    currency = CurrencySerializer(read_only=True)
+    
+    class Meta:
+        model = Booking
+        fields = [
+            'id', 'reference_number', 'pilgrim', 'pilgrim_details',
+            'package', 'package_details',
+            'status', 'payment_status', 'amount_paid_minor_units', 'currency',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'reference_number', 'amount_paid_minor_units', 'currency', 'created_at', 'updated_at']
+    
+    def get_pilgrim_details(self, obj):
+        """Get pilgrim summary for list view."""
+        pilgrim = obj.pilgrim
+        return {
+            'user': {
+                'id': str(pilgrim.user_id),
+                'name': pilgrim.user.name,
+                'email': pilgrim.user.email,
+                'phone': pilgrim.user.phone,
+            }
+        }
+    
+    def get_package_details(self, obj):
+        """Get package summary for list view."""
+        package = obj.package
+        trip = package.trip
+        return {
+            'id': str(package.id),
+            'name': package.name,
+            'price_minor_units': package.price_minor_units,
+            'currency': CurrencySerializer(package.currency).data if package.currency else None,
+            'trip': {
+                'id': str(trip.id),
+                'code': trip.code,
+                'name': trip.name,
+                'startDate': str(trip.start_date) if trip.start_date else None,
+                'endDate': str(trip.end_date) if trip.end_date else None,
+            }
+        }
+    
+    def to_representation(self, instance):
+        """Convert to frontend format (camelCase)."""
+        data = super().to_representation(instance)
+        return {
+            'id': str(data['id']),
+            'reference_number': data['reference_number'],
+            'pilgrim': str(data['pilgrim']),
+            'pilgrimDetails': data['pilgrim_details'],
+            'package': str(data['package']),
+            'packageDetails': data['package_details'],
+            'status': data['status'],
+            'payment_status': data['payment_status'],
+            'amount_paid_minor_units': data['amount_paid_minor_units'],
+            'currency': data['currency'],
+            'created_at': data['created_at'],
+            'updated_at': data['updated_at'],
+        }
+
+
+class AdminBookingDetailSerializer(serializers.ModelSerializer):
+    """Serializer for booking detail and CRUD."""
+    
+    pilgrim_details = serializers.SerializerMethodField()
+    package_details = serializers.SerializerMethodField()
+    payments = AdminPaymentSerializer(many=True, read_only=True)
+    total_paid = serializers.IntegerField(source='amount_paid_minor_units', read_only=True)
+    currency = CurrencySerializer(read_only=True)
+    
+    class Meta:
+        model = Booking
+        fields = [
+            'id', 'reference_number', 'pilgrim', 'pilgrim_details',
+            'package', 'package_details', 'status', 'payment_status',
+            'amount_paid_minor_units', 'total_paid', 'currency',
+            'payment_note', 'ticket_number', 'room_assignment',
+            'special_needs', 'notes', 'payments',
+            'created_at', 'updated_at'
+        ]
+        read_only_fields = ['id', 'reference_number', 'amount_paid_minor_units', 'total_paid', 'currency', 'payment_status', 'created_at', 'updated_at']
+    
+    def get_pilgrim_details(self, obj):
+        """Get pilgrim summary."""
+        pilgrim = obj.pilgrim
+        return {
+            'id': str(pilgrim.user_id),
+            'user': {
+                'id': str(pilgrim.user_id),
+                'name': pilgrim.user.name,
+                'email': pilgrim.user.email,
+                'phone': pilgrim.user.phone,
+                'isActive': pilgrim.user.is_active,
+            },
+            'dob': pilgrim.dob,
+            'nationality': pilgrim.nationality,
+        }
+    
+    def get_package_details(self, obj):
+        """Get package summary."""
+        package = obj.package
+        trip = package.trip
+        return {
+            'id': str(package.id),
+            'name': package.name,
+            'price_minor_units': package.price_minor_units,
+            'currency': CurrencySerializer(package.currency).data if package.currency else None,
+            'trip': {
+                'id': str(trip.id),
+                'code': trip.code,
+                'name': trip.name,
+                'startDate': str(trip.start_date) if trip.start_date else None,
+                'endDate': str(trip.end_date) if trip.end_date else None,
+            }
+        }
+    
+    def to_representation(self, instance):
+        """Convert to frontend format (camelCase)."""
+        data = super().to_representation(instance)
+        return {
+            'id': str(data['id']),
+            'reference_number': data['reference_number'],
+            'pilgrim': str(data['pilgrim']),
+            'pilgrimDetails': data['pilgrim_details'],
+            'package': str(data['package']),
+            'packageDetails': data['package_details'],
+            'status': data['status'],
+            'payment_status': data['payment_status'],
+            'amount_paid_minor_units': data['amount_paid_minor_units'],
+            'total_paid': data['total_paid'],
+            'currency': data['currency'],
+            'payment_note': data.get('payment_note'),
+            'ticket_number': data.get('ticket_number'),
+            'room_assignment': data.get('room_assignment'),
+            'special_needs': data.get('special_needs'),
+            'specialRequests': data.get('special_needs'),  # Alias for frontend
+            'notes': data.get('notes'),
+            'payments': data.get('payments', []),
+            'created_at': data['created_at'],
+            'updated_at': data['updated_at'],
+        }
 

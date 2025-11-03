@@ -158,7 +158,7 @@ export default function UsersPage() {
       header: "Created",
       render: (user) => (
         <span className="text-sm text-muted-foreground">
-          {format(new Date(user.createdAt), "MMM dd, yyyy")}
+          {format(new Date(user.created_at), "MMM dd, yyyy")}
         </span>
       ),
     },

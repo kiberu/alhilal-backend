@@ -29,7 +29,7 @@ class Booking(models.Model):
     # Payment information
     payment_status = models.CharField(max_length=10, choices=PAYMENT_STATUS_CHOICES, default='PENDING')
     amount_paid_minor_units = models.IntegerField(default=0, help_text='Amount in smallest currency unit (e.g., cents)')
-    currency = models.CharField(max_length=3, default='USD')
+    currency = models.ForeignKey('common.Currency', on_delete=models.PROTECT, related_name='bookings', null=True, blank=True)
     payment_note = models.TextField(null=True, blank=True)
     
     # Travel details
@@ -57,7 +57,7 @@ class Booking(models.Model):
         ]
     
     def save(self, *args, **kwargs):
-        """Generate reference number on creation."""
+        """Generate reference number and set currency on creation."""
         if not self.reference_number:
             # Generate reference number: BK-YYYYMMDD-XXXX
             from django.utils import timezone
@@ -70,6 +70,15 @@ class Booking(models.Model):
             while Booking.objects.filter(reference_number=self.reference_number).exists():
                 random_suffix = ''.join([str(random.randint(0, 9)) for _ in range(4)])
                 self.reference_number = f"BK-{date_str}-{random_suffix}"
+        
+        # Always inherit currency from package
+        if self.package and self.package.currency:
+            self.currency = self.package.currency
+        elif self.package and not self.package.currency:
+            # If package doesn't have a currency, log warning
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Package {self.package.id} does not have a currency set. Booking {self.reference_number} may have currency issues.")
         
         super().save(*args, **kwargs)
     
@@ -102,3 +111,77 @@ class Booking(models.Model):
                 if booked_count >= self.package.capacity:
                     raise ValidationError(f"Package capacity ({self.package.capacity}) reached")
 
+    def update_payment_status(self):
+        """Update payment status based on total payments."""
+        total_paid = self.payments.aggregate(
+            total=models.Sum('amount_minor_units')
+        )['total'] or 0
+        
+        self.amount_paid_minor_units = total_paid
+        
+        # Get package price
+        package_price = self.package.price_minor_units or 0
+        
+        if total_paid == 0:
+            self.payment_status = 'PENDING'
+        elif total_paid >= package_price:
+            self.payment_status = 'PAID'
+        else:
+            self.payment_status = 'PARTIAL'
+        
+        self.save()
+
+
+class Payment(models.Model):
+    """Payment transaction model for tracking individual payments."""
+    
+    PAYMENT_METHOD_CHOICES = [
+        ('CASH', 'Cash'),
+        ('BANK_TRANSFER', 'Bank Transfer'),
+        ('CREDIT_CARD', 'Credit Card'),
+        ('DEBIT_CARD', 'Debit Card'),
+        ('MOBILE_MONEY', 'Mobile Money'),
+        ('CHECK', 'Check'),
+        ('OTHER', 'Other'),
+    ]
+    
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    booking = models.ForeignKey(Booking, on_delete=models.CASCADE, related_name='payments')
+    amount_minor_units = models.IntegerField(help_text='Amount in smallest currency unit (e.g., cents)')
+    currency = models.ForeignKey('common.Currency', on_delete=models.PROTECT, related_name='payments', null=True, blank=True)
+    payment_method = models.CharField(max_length=20, choices=PAYMENT_METHOD_CHOICES)
+    payment_date = models.DateField(help_text='Date payment was received')
+    reference_number = models.CharField(max_length=100, blank=True, help_text='Transaction/Receipt reference')
+    notes = models.TextField(blank=True, help_text='Additional payment notes')
+    recorded_by = models.ForeignKey('accounts.Account', on_delete=models.PROTECT, related_name='recorded_payments')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    # Audit trail
+    history = HistoricalRecords()
+    
+    class Meta:
+        db_table = 'payments'
+        verbose_name = 'Payment'
+        verbose_name_plural = 'Payments'
+        ordering = ['-payment_date', '-created_at']
+    
+    def __str__(self):
+        amount = self.amount_minor_units / 100
+        currency_code = self.currency.code if self.currency else 'N/A'
+        return f"{self.booking.reference_number} - {currency_code} {amount:.2f} on {self.payment_date}"
+    
+    def save(self, *args, **kwargs):
+        """Inherit currency from booking and update payment status."""
+        # Always inherit currency from booking
+        if self.booking and self.booking.currency and not self.currency:
+            self.currency = self.booking.currency
+        
+        super().save(*args, **kwargs)
+        self.booking.update_payment_status()
+    
+    def delete(self, *args, **kwargs):
+        """Update booking payment status after deleting payment."""
+        booking = self.booking
+        super().delete(*args, **kwargs)
+        booking.update_payment_status()
