@@ -10,11 +10,11 @@ import {
   Plane,
   Users,
   FileText,
-  BookOpen,
   ChevronLeft,
   ChevronRight,
   Settings,
   LogOut,
+  Shield,
 } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 
@@ -23,11 +23,10 @@ const navigation = [
   { name: "Trips", href: "/dashboard/trips", icon: Plane },
   { name: "Bookings", href: "/dashboard/bookings", icon: FileText },
   { name: "Pilgrims", href: "/dashboard/pilgrims", icon: Users },
-  { name: "Duas", href: "/dashboard/duas", icon: BookOpen },
+  { name: "Users", href: "/dashboard/users", icon: Shield },
 ]
 
 const adminNavigation = [
-  { name: "Staff", href: "/dashboard/staff", icon: Users },
   { name: "Audit Log", href: "/dashboard/audit", icon: FileText },
 ]
 

@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Loader2 } from "lucide-react"
+import { AlertCircle, Loader2, Info } from "lucide-react"
 
 const loginSchema = z.object({
   phone: z.string().min(10, "Phone number must be at least 10 digits"),
@@ -35,8 +35,17 @@ type LoginFormValues = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sessionExpired, setSessionExpired] = useState(false)
+
+  useEffect(() => {
+    // Check if user was redirected due to session expiry
+    if (searchParams.get("expired") === "true") {
+      setSessionExpired(true)
+    }
+  }, [searchParams])
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
@@ -58,18 +67,10 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
-        // Handle specific Auth.js errors
-        if (result.error === "Configuration") {
-          setError("Authentication service is not properly configured. Please contact support.")
-        } else if (result.error === "CredentialsSignin") {
-          setError("Invalid phone number or password. Please try again.")
-        } else if (result.error === "AccessDenied") {
-          setError("Access denied. Only staff members can login.")
-        } else {
-          setError(result.error)
-        }
+        // NextAuth returns "CredentialsSignin" when authorize() returns null
+        setError("Invalid phone number or password. Please check your credentials and try again.")
           } else if (result?.ok) {
-            router.push("/")
+        router.push("/dashboard")
             router.refresh()
           }
         } catch (err) {
@@ -93,6 +94,15 @@ export default function LoginPage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              {sessionExpired && (
+                <Alert className="bg-blue-50 text-blue-900 border-blue-200">
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Your session has expired. Please sign in again to continue.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               {error && (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />

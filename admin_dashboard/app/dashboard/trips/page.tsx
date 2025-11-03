@@ -163,7 +163,7 @@ export default function TripsPage() {
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => router.push(`/trips/${trip.id}`)}
+          onClick={() => router.push(`/dashboard/trips/${trip.id}`)}
         >
           View Details
         </Button>
@@ -182,7 +182,7 @@ export default function TripsPage() {
             Manage all trips, packages, and itineraries
           </p>
         </div>
-        <Button onClick={() => router.push("/trips/new")}>
+        <Button onClick={() => router.push("/dashboard/trips/new")}>
           <Plus className="mr-2 h-4 w-4" />
           Create Trip
         </Button>
@@ -322,7 +322,7 @@ export default function TripsPage() {
               pageSize,
               onPageChange: setPage,
             }}
-            onRowClick={(trip) => router.push(`/trips/${trip.id}`)}
+            onRowClick={(trip) => router.push(`/dashboard/trips/${trip.id}`)}
           />
         </CardContent>
       </Card>

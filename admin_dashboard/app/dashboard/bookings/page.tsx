@@ -280,7 +280,7 @@ export default function BookingsPage() {
             Manage all pilgrim bookings and payments
           </p>
         </div>
-        <Button onClick={() => router.push("/bookings/new")}>
+        <Button onClick={() => router.push("/dashboard/bookings/new")}>
           <Plus className="mr-2 h-4 w-4" />
           New Booking
         </Button>
@@ -487,7 +487,7 @@ export default function BookingsPage() {
               pageSize,
               onPageChange: setPage,
             }}
-            onRowClick={(booking) => router.push(`/bookings/${booking.id}`)}
+            onRowClick={(booking) => router.push(`/dashboard/bookings/${booking.id}`)}
           />
         </CardContent>
       </Card>

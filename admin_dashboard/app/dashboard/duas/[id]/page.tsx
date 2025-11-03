@@ -10,6 +10,7 @@ import { DuaService } from "@/lib/api/services/duas"
 import { useAuth } from "@/hooks/useAuth"
 import type { Dua } from "@/types/models"
 import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
 
 export default function DuaDetailsPage() {
   const router = useRouter()
@@ -38,12 +39,15 @@ export default function DuaDetailsPage() {
       if (response.success && response.data) {
         setDua(response.data)
       } else {
-        setError(response.error || "Failed to load dua details")
+        const errorMessage = response.error || "Failed to load dua details"
+        setError(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Error loading dua:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to load dua"
       setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -55,13 +59,16 @@ export default function DuaDetailsPage() {
     try {
       const response = await DuaService.delete(duaId, accessToken)
       if (response.success) {
+        toast.success("Dua deleted successfully")
         router.push("/dashboard/duas")
       } else {
-        alert(response.error || "Failed to delete dua")
+        const errorMessage = response.error || "Failed to delete dua"
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Error deleting dua:", err)
-      alert("Failed to delete dua")
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete dua"
+      toast.error(errorMessage)
     }
   }
 

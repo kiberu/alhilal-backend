@@ -15,7 +15,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.phone || !credentials?.password) {
-          throw new Error("Phone and password are required")
+          return null
         }
 
         try {
@@ -38,11 +38,14 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             }
           }
 
-          throw new Error(response.error || "Authentication failed")
+          // Return null for authentication failures
+          // The login page will handle showing the error
+          console.error("Auth failed:", response.error)
+          return null
         } catch (error) {
           console.error("Auth error:", error)
-          const errorMessage = error instanceof Error ? error.message : "Authentication failed"
-          throw new Error(errorMessage)
+          // Return null instead of throwing to avoid NextAuth error conversion
+          return null
         }
       },
     }),

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { SessionProvider } from "next-auth/react";
 import { Toaster } from "sonner";
+import { ErrorHandlerProvider } from "@/components/providers/ErrorHandlerProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -30,8 +31,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SessionProvider>
-          {children}
-          <Toaster position="top-right" richColors />
+          <ErrorHandlerProvider>
+            {children}
+            <Toaster position="top-right" richColors />
+          </ErrorHandlerProvider>
         </SessionProvider>
       </body>
     </html>

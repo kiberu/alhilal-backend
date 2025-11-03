@@ -15,7 +15,11 @@ from .views.dashboard import (
 )
 from .views.admin import (
     AdminTripViewSet, AdminBookingViewSet, AdminPilgrimViewSet,
-    AdminDuaViewSet, AdminPassportViewSet, AdminVisaViewSet
+    AdminDuaViewSet, AdminPassportViewSet, AdminVisaViewSet,
+    AdminPackageViewSet, AdminPackageFlightViewSet, AdminPackageHotelViewSet,
+    AdminItineraryItemViewSet, AdminTripUpdateViewSet, AdminTripGuideSectionViewSet,
+    AdminChecklistItemViewSet, AdminEmergencyContactViewSet, AdminTripFAQViewSet,
+    AdminUserListView, AdminUserDetailView, AdminUserChangePasswordView
 )
 
 app_name = 'api'
@@ -28,10 +32,22 @@ router.register(r'pilgrims', AdminPilgrimViewSet, basename='admin-pilgrim')
 router.register(r'duas', AdminDuaViewSet, basename='admin-dua')
 router.register(r'passports', AdminPassportViewSet, basename='admin-passport')
 router.register(r'visas', AdminVisaViewSet, basename='admin-visa')
+router.register(r'packages', AdminPackageViewSet, basename='admin-package')
+router.register(r'flights', AdminPackageFlightViewSet, basename='admin-flight')
+router.register(r'hotels', AdminPackageHotelViewSet, basename='admin-hotel')
+router.register(r'itinerary', AdminItineraryItemViewSet, basename='admin-itinerary')
+router.register(r'updates', AdminTripUpdateViewSet, basename='admin-update')
+router.register(r'guides', AdminTripGuideSectionViewSet, basename='admin-guide')
+router.register(r'checklists', AdminChecklistItemViewSet, basename='admin-checklist')
+router.register(r'contacts', AdminEmergencyContactViewSet, basename='admin-contact')
+router.register(r'faqs', AdminTripFAQViewSet, basename='admin-faq')
 
 urlpatterns = [
     # Authentication
     path('auth/', include('apps.api.auth.urls')),
+    
+    # Common utilities
+    path('common/', include('apps.common.urls')),
     
     # Dashboard endpoints (staff only)
     path('dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
@@ -55,6 +71,11 @@ urlpatterns = [
     
     # Content endpoints (pilgrim-facing)
     path('me/duas/', DuaListView.as_view(), name='my-dua-list'),
+    
+    # Admin User Management (staff only)
+    path('users/', AdminUserListView.as_view(), name='admin-user-list'),
+    path('users/<uuid:user_id>/', AdminUserDetailView.as_view(), name='admin-user-detail'),
+    path('users/<uuid:user_id>/change-password/', AdminUserChangePasswordView.as_view(), name='admin-user-change-password'),
     
     # Admin ViewSets (staff only) - registered via router
     path('', include(router.urls)),

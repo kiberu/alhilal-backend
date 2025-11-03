@@ -7,6 +7,24 @@ from .pilgrims import AdminPilgrimViewSet
 from .duas import AdminDuaViewSet
 from .passports import AdminPassportViewSet
 from .visas import AdminVisaViewSet
+from .packages import (
+    AdminPackageViewSet,
+    AdminPackageFlightViewSet,
+    AdminPackageHotelViewSet
+)
+from .itinerary import AdminItineraryItemViewSet
+from .trip_content import (
+    AdminTripUpdateViewSet,
+    AdminTripGuideSectionViewSet,
+    AdminChecklistItemViewSet,
+    AdminEmergencyContactViewSet,
+    AdminTripFAQViewSet
+)
+from .users import (
+    AdminUserListView,
+    AdminUserDetailView,
+    AdminUserChangePasswordView
+)
 
 __all__ = [
     'AdminTripViewSet',
@@ -15,5 +33,17 @@ __all__ = [
     'AdminDuaViewSet',
     'AdminPassportViewSet',
     'AdminVisaViewSet',
+    'AdminPackageViewSet',
+    'AdminPackageFlightViewSet',
+    'AdminPackageHotelViewSet',
+    'AdminItineraryItemViewSet',
+    'AdminTripUpdateViewSet',
+    'AdminTripGuideSectionViewSet',
+    'AdminChecklistItemViewSet',
+    'AdminEmergencyContactViewSet',
+    'AdminTripFAQViewSet',
+    'AdminUserListView',
+    'AdminUserDetailView',
+    'AdminUserChangePasswordView',
 ]
 

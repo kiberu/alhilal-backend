@@ -21,6 +21,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ArrowLeft, Save, AlertCircle } from "lucide-react"
 import { DuaService } from "@/lib/api/services/duas"
 import { useAuth } from "@/hooks/useAuth"
+import { toast } from "sonner"
 
 const duaSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -72,14 +73,18 @@ export default function NewDuaPage() {
       const response = await DuaService.create(duaData, accessToken)
 
       if (response.success && response.data) {
+        toast.success("Dua created successfully")
         router.push(`/dashboard/duas/${response.data.id}`)
       } else {
-        setError(response.error || "Failed to create dua")
+        const errorMessage = response.error || "Failed to create dua"
+        setError(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Error creating dua:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to create dua"
       setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
     }

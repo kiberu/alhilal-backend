@@ -28,6 +28,7 @@ import { StatusBadge } from "@/components/shared"
 import type { TripFullDetails } from "@/types/models"
 import { format } from "date-fns"
 import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
 
 export default function TripDetailsPage() {
   const router = useRouter()
@@ -56,12 +57,15 @@ export default function TripDetailsPage() {
       if (response.success && response.data) {
         setTrip(response.data)
       } else {
-        setError(response.error || "Failed to load trip details")
+        const errorMessage = response.error || "Failed to load trip details"
+        setError(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Error loading trip:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to load trip"
       setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -73,13 +77,49 @@ export default function TripDetailsPage() {
     try {
       const response = await TripService.delete(tripId, accessToken)
       if (response.success) {
-        router.push("/trips")
+        toast.success("Trip deleted successfully")
+        router.push("/dashboard/trips")
       } else {
-        alert(response.error || "Failed to delete trip")
+        const errorMessage = response.error || "Failed to delete trip"
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Error deleting trip:", err)
-      alert("Failed to delete trip")
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete trip"
+      toast.error(errorMessage)
+    }
+  }
+
+  const handleDuplicate = async () => {
+    if (!trip) return
+    
+    const newCode = prompt("Enter code for the duplicate trip:", `${trip.code}-COPY`)
+    if (!newCode) return
+
+    try {
+      const duplicateData = {
+        code: newCode,
+        name: `${trip.name} (Copy)`,
+        cities: trip.cities || [],
+        startDate: trip.startDate,
+        endDate: trip.endDate,
+        visibility: trip.visibility || "PRIVATE",
+        coverImage: trip.coverImage,
+        operatorNotes: trip.operatorNotes ? `${trip.operatorNotes}\n\n(Duplicated from ${trip.code})` : `Duplicated from ${trip.code}`,
+      }
+
+      const response = await TripService.create(duplicateData, accessToken)
+      if (response.success && response.data) {
+        toast.success("Trip duplicated successfully")
+        router.push(`/dashboard/trips/${response.data.id}`)
+      } else {
+        const errorMessage = response.error || "Failed to duplicate trip"
+        toast.error(errorMessage)
+      }
+    } catch (err) {
+      console.error("Error duplicating trip:", err)
+      const errorMessage = err instanceof Error ? err.message : "Failed to duplicate trip"
+      toast.error(errorMessage)
     }
   }
 
@@ -134,14 +174,14 @@ export default function TripDetailsPage() {
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleDuplicate}>
               <Copy className="mr-2 h-4 w-4" />
               Duplicate
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => router.push(`/trips/${tripId}/edit`)}
+              onClick={() => router.push(`/dashboard/trips/${tripId}/edit`)}
             >
               <Edit className="mr-2 h-4 w-4" />
               Edit
@@ -336,7 +376,7 @@ export default function TripDetailsPage() {
                 <CardTitle>Packages</CardTitle>
                 <Button
                   size="sm"
-                  onClick={() => router.push(`/trips/${tripId}/packages/new`)}
+                  onClick={() => router.push(`/dashboard/trips/${tripId}/packages/new`)}
                 >
                   <Package className="mr-2 h-4 w-4" />
                   Add Package
@@ -396,7 +436,7 @@ export default function TripDetailsPage() {
                 <CardTitle>Itinerary</CardTitle>
                 <Button
                   size="sm"
-                  onClick={() => router.push(`/trips/${tripId}/itinerary`)}
+                  onClick={() => router.push(`/dashboard/trips/${tripId}/itinerary`)}
                 >
                   <Map className="mr-2 h-4 w-4" />
                   Manage Itinerary

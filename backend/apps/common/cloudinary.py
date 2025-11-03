@@ -44,7 +44,7 @@ def signed_delivery(public_id: str, expires_in: int = 600, resource_type: str = 
     return url
 
 
-def upload_file(file, folder: str = '', public_id: Optional[str] = None, resource_type: str = 'raw') -> dict:
+def upload_file(file, folder: str = '', public_id: Optional[str] = None, resource_type: str = 'raw', is_public: bool = False) -> dict:
     """
     Upload a file to Cloudinary with server-side signing.
     
@@ -53,6 +53,7 @@ def upload_file(file, folder: str = '', public_id: Optional[str] = None, resourc
         folder: Cloudinary folder to upload to
         public_id: Custom public_id (optional, will be generated if not provided)
         resource_type: Type of resource ('raw', 'image', 'video', etc.)
+        is_public: Whether the file should be publicly accessible (default: False for private)
         
     Returns:
         Dict with 'public_id', 'secure_url', 'resource_type'
@@ -61,10 +62,16 @@ def upload_file(file, folder: str = '', public_id: Optional[str] = None, resourc
         >>> result = upload_file(request.FILES['passport'], folder='passports')
         >>> # Returns {'public_id': 'passports/xyz', 'secure_url': '...', ...}
     """
+    # Determine if this should be public based on folder or explicit flag
+    # Public folders: trips, content, public
+    # Private folders: passports, visas, documents
+    public_folders = ['trips', 'content', 'public']
+    should_be_public = is_public or any(folder.startswith(pf) for pf in public_folders)
+    
     upload_params = {
         'folder': folder,
         'resource_type': resource_type,
-        'type': 'authenticated',  # Non-public upload
+        'type': 'upload' if should_be_public else 'authenticated',  # Public or private
         'overwrite': False,
     }
     

@@ -29,6 +29,8 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ArrowLeft, Save, AlertCircle } from "lucide-react"
 import { TripService } from "@/lib/api/services/trips"
 import { useAuth } from "@/hooks/useAuth"
+import { toast } from "sonner"
+import { PhotoUpload } from "@/components/shared"
 
 const tripSchema = z.object({
   code: z.string().min(3, "Code must be at least 3 characters").max(20, "Code must be less than 20 characters"),
@@ -89,14 +91,18 @@ export default function NewTripPage() {
       const response = await TripService.create(tripData, accessToken)
 
       if (response.success && response.data) {
-        router.push(`/trips/${response.data.id}`)
+        toast.success("Trip created successfully")
+        router.push(`/dashboard/trips/${response.data.id}`)
       } else {
-        setError(response.error || "Failed to create trip")
+        const errorMessage = response.error || "Failed to create trip"
+        setError(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Error creating trip:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to create trip"
       setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -266,15 +272,19 @@ export default function NewTripPage() {
                 name="coverImage"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cover Image URL</FormLabel>
                     <FormControl>
-                      <Input
-                        placeholder="https://res.cloudinary.com/..."
-                        {...field}
+                      <PhotoUpload
+                        label="Cover Image"
+                        value={field.value}
+                        onChange={field.onChange}
+                        placeholder="Upload trip cover image"
+                        maxSize={5}
+                        folder="trips/covers"
+                        required={false}
                       />
                     </FormControl>
                     <FormDescription>
-                      Cloudinary URL for the trip cover image (optional)
+                      Upload a cover image for this trip (optional, max 5MB)
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

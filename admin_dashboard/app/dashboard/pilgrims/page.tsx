@@ -99,28 +99,28 @@ export default function PilgrimsPage() {
 
   const columns: Column<PilgrimWithDetails>[] = [
     {
-      key: "user",
+      key: "fullName",
       header: "Name",
       render: (pilgrim) => (
         <div>
-          <p className="font-medium">{pilgrim.userDetails?.name || "N/A"}</p>
+          <p className="font-medium">{pilgrim.fullName || pilgrim.user?.name || "N/A"}</p>
           <p className="text-xs text-muted-foreground">
-            {pilgrim.userDetails?.phone || ""}
+            {pilgrim.passportNumber || "No passport"}
           </p>
         </div>
       ),
     },
     {
-      key: "email",
-      header: "Email",
+      key: "phone",
+      header: "Phone",
       render: (pilgrim) => (
-        <span className="text-sm">{pilgrim.userDetails?.email || "N/A"}</span>
+        <span className="text-sm">{pilgrim.phone || "N/A"}</span>
       ),
     },
     {
       key: "nationality",
       header: "Nationality",
-      className: "text-sm",
+      className: "text-sm uppercase",
     },
     {
       key: "gender",
@@ -139,10 +139,10 @@ export default function PilgrimsPage() {
       },
     },
     {
-      key: "bookings",
+      key: "bookingsCount",
       header: "Bookings",
       render: (pilgrim) => (
-        <span className="text-sm">{pilgrim.bookings?.length || 0}</span>
+        <span className="text-sm">{pilgrim.bookingsCount || 0}</span>
       ),
       className: "text-center",
     },

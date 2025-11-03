@@ -21,15 +21,20 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ArrowLeft, Save, AlertCircle } from "lucide-react"
 import { PilgrimService } from "@/lib/api/services/pilgrims"
 import { useAuth } from "@/hooks/useAuth"
+import { toast } from "sonner"
 
 const pilgrimSchema = z.object({
-  user: z.string().uuid("Invalid user ID"),
+  fullName: z.string().min(2, "Full name is required"),
+  passportNumber: z.string().min(6, "Passport number is required"),
+  phone: z.string().min(10, "Phone number is required"),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]),
-  nationality: z.string().min(2, "Nationality is required"),
+  nationality: z.string().min(2, "Nationality is required").max(2, "Use 2-letter country code"),
   address: z.string().optional(),
-  emergencyContact: z.string().optional(),
-  medicalInfo: z.string().optional(),
+  emergencyName: z.string().min(2, "Emergency contact name is required"),
+  emergencyPhone: z.string().min(10, "Emergency contact phone is required"),
+  emergencyRelationship: z.string().optional(),
+  medicalConditions: z.string().optional(),
 })
 
 type PilgrimFormData = z.infer<typeof pilgrimSchema>
@@ -50,7 +55,16 @@ export default function NewPilgrimPage() {
     resolver: zodResolver(pilgrimSchema),
     defaultValues: {
       gender: "MALE",
-      nationality: "UG",
+      nationality: "",
+      fullName: "",
+      passportNumber: "",
+      phone: "",
+      dateOfBirth: "",
+      address: "",
+      emergencyName: "",
+      emergencyPhone: "",
+      emergencyRelationship: "",
+      medicalConditions: "",
     },
   })
 
@@ -64,14 +78,18 @@ export default function NewPilgrimPage() {
       const response = await PilgrimService.create(data, accessToken)
 
       if (response.success && response.data) {
+        toast.success("Pilgrim created successfully")
         router.push(`/dashboard/pilgrims/${response.data.id}`)
       } else {
-        setError(response.error || "Failed to create pilgrim")
+        const errorMessage = response.error || "Failed to create pilgrim"
+        setError(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Error creating pilgrim:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to create pilgrim"
       setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -108,26 +126,76 @@ export default function NewPilgrimPage() {
       {/* Form */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
-          {/* User Information */}
+          {/* Identity Information */}
           <Card className="md:col-span-2">
             <CardHeader>
-              <CardTitle>Account Information</CardTitle>
+              <CardTitle>Identity Information</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="user">
-                  User ID <span className="text-red-500">*</span>
+                <Label htmlFor="fullName">
+                  Full Name <span className="text-red-500">*</span>
                 </Label>
                 <Input
-                  id="user"
-                  {...register("user")}
-                  placeholder="Enter user UUID"
+                  id="fullName"
+                  {...register("fullName")}
+                  placeholder="e.g., Ahmed Ali"
                 />
-                {errors.user && (
-                  <p className="text-sm text-red-500">{errors.user.message}</p>
+                {errors.fullName && (
+                  <p className="text-sm text-red-500">{errors.fullName.message}</p>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  Enter the UUID of the user account for this pilgrim
+                  Full name as on passport
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="passportNumber">
+                  Passport Number <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="passportNumber"
+                  {...register("passportNumber")}
+                  placeholder="e.g., AB123456"
+                />
+                {errors.passportNumber && (
+                  <p className="text-sm text-red-500">{errors.passportNumber.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone">
+                  Phone Number <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="phone"
+                  type="tel"
+                  {...register("phone")}
+                  placeholder="e.g., +966501234567"
+                />
+                {errors.phone && (
+                  <p className="text-sm text-red-500">{errors.phone.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Used for OTP verification in mobile app
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nationality">
+                  Nationality <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="nationality"
+                  {...register("nationality")}
+                  placeholder="e.g., SA, US, UK"
+                  maxLength={2}
+                />
+                {errors.nationality && (
+                  <p className="text-sm text-red-500">{errors.nationality.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  2-letter ISO country code
                 </p>
               </div>
             </CardContent>
@@ -175,32 +243,6 @@ export default function NewPilgrimPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="nationality">
-                  Nationality <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="nationality"
-                  {...register("nationality")}
-                  placeholder="e.g., UG, KE, TZ"
-                  maxLength={2}
-                />
-                {errors.nationality && (
-                  <p className="text-sm text-red-500">{errors.nationality.message}</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Enter 2-letter country code
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Contact Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Additional Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
                 <Textarea
                   id="address"
@@ -216,21 +258,49 @@ export default function NewPilgrimPage() {
           </Card>
 
           {/* Emergency Contact */}
-          <Card className="md:col-span-2">
+          <Card>
             <CardHeader>
               <CardTitle>Emergency Contact</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="emergencyContact">Emergency Contact Details</Label>
-                <Textarea
-                  id="emergencyContact"
-                  {...register("emergencyContact")}
-                  placeholder="Name, relationship, phone number..."
-                  rows={3}
+                <Label htmlFor="emergencyName">
+                  Contact Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="emergencyName"
+                  {...register("emergencyName")}
+                  placeholder="e.g., Fatima Ali"
                 />
-                {errors.emergencyContact && (
-                  <p className="text-sm text-red-500">{errors.emergencyContact.message}</p>
+                {errors.emergencyName && (
+                  <p className="text-sm text-red-500">{errors.emergencyName.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="emergencyPhone">
+                  Contact Phone <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="emergencyPhone"
+                  type="tel"
+                  {...register("emergencyPhone")}
+                  placeholder="e.g., +966507654321"
+                />
+                {errors.emergencyPhone && (
+                  <p className="text-sm text-red-500">{errors.emergencyPhone.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="emergencyRelationship">Relationship</Label>
+                <Input
+                  id="emergencyRelationship"
+                  {...register("emergencyRelationship")}
+                  placeholder="e.g., Wife, Brother, Mother"
+                />
+                {errors.emergencyRelationship && (
+                  <p className="text-sm text-red-500">{errors.emergencyRelationship.message}</p>
                 )}
               </div>
             </CardContent>
@@ -243,15 +313,15 @@ export default function NewPilgrimPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <Label htmlFor="medicalInfo">Medical History & Allergies</Label>
+                <Label htmlFor="medicalConditions">Medical Conditions & Allergies</Label>
                 <Textarea
-                  id="medicalInfo"
-                  {...register("medicalInfo")}
+                  id="medicalConditions"
+                  {...register("medicalConditions")}
                   placeholder="List any medical conditions, allergies, or special requirements..."
                   rows={4}
                 />
-                {errors.medicalInfo && (
-                  <p className="text-sm text-red-500">{errors.medicalInfo.message}</p>
+                {errors.medicalConditions && (
+                  <p className="text-sm text-red-500">{errors.medicalConditions.message}</p>
                 )}
               </div>
             </CardContent>

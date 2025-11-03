@@ -159,6 +159,15 @@ CLOUDINARY_STORAGE = {
     'RESOURCE_TYPE': 'auto',
 }
 
+# Initialize Cloudinary SDK
+import cloudinary
+cloudinary.config(
+    cloud_name=env('CLOUDINARY_CLOUD_NAME'),
+    api_key=env('CLOUDINARY_API_KEY'),
+    api_secret=env('CLOUDINARY_API_SECRET'),
+    secure=True
+)
+
 # Use Cloudinary for default file storage
 DEFAULT_FILE_STORAGE = 'cloudinary_storage.storage.MediaCloudinaryStorage'
 

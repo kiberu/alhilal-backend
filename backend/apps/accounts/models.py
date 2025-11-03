@@ -84,7 +84,15 @@ class StaffProfile(models.Model):
 
 
 class PilgrimProfile(models.Model):
-    """Profile for pilgrims."""
+    """
+    Pilgrim profile - can exist independently or be linked to a user account.
+    
+    Primary identifiers for pilgrims:
+    - passport_number: Used for verification and future app login
+    - phone: Used for OTP verification
+    
+    Pilgrims are created by staff manually and can later get app access.
+    """
     
     GENDER_CHOICES = [
         ('MALE', 'Male'),
@@ -92,14 +100,42 @@ class PilgrimProfile(models.Model):
         ('OTHER', 'Other'),
     ]
     
-    user = models.OneToOneField(Account, on_delete=models.CASCADE, primary_key=True, related_name='pilgrim_profile')
-    dob = models.DateField(null=True, blank=True)
+    # Keep user as primary key for now (will be transitioned in next phase)
+    user = models.OneToOneField(
+        Account, 
+        on_delete=models.CASCADE,
+        primary_key=True,
+        related_name='pilgrim_profile'
+    )
+    
+    # Identity (Primary identifiers for future independent pilgrim records)
+    full_name = models.CharField(max_length=200, null=True, blank=True, help_text='Full name as on passport')
+    passport_number = models.CharField(max_length=128, unique=True, null=True, blank=True, db_index=True, help_text='Encrypted passport number')
+    phone = models.CharField(max_length=24, unique=True, null=True, blank=True, db_index=True, help_text='Phone number for OTP verification')
+    
+    # Bio Data
+    dob = models.DateField(null=True, blank=True, help_text='Date of birth')
     gender = models.CharField(max_length=6, choices=GENDER_CHOICES, null=True, blank=True)
-    nationality = models.CharField(max_length=2, null=True, blank=True)
+    nationality = models.CharField(max_length=2, null=True, blank=True, help_text='ISO 3166-1 alpha-2 country code')
     address = models.TextField(null=True, blank=True)
+    
+    # Emergency Contact
     emergency_name = models.CharField(max_length=120, null=True, blank=True)
     emergency_phone = models.CharField(max_length=24, null=True, blank=True)
+    emergency_relationship = models.CharField(max_length=50, null=True, blank=True, help_text='Relationship to pilgrim')
+    
+    # Medical Information
     medical_conditions = models.TextField(null=True, blank=True, help_text='Medical conditions or special needs')
+    
+    # Audit
+    created_by = models.ForeignKey(
+        Account, 
+        on_delete=models.PROTECT, 
+        null=True,
+        blank=True,
+        related_name='created_pilgrims',
+        help_text='Staff member who created this pilgrim'
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -110,9 +146,20 @@ class PilgrimProfile(models.Model):
         db_table = 'pilgrim_profiles'
         verbose_name = 'Pilgrim Profile'
         verbose_name_plural = 'Pilgrim Profiles'
+        indexes = [
+            models.Index(fields=['passport_number']),
+            models.Index(fields=['phone']),
+            models.Index(fields=['full_name']),
+        ]
     
     def __str__(self):
+        if self.full_name:
+            return f"{self.full_name} ({self.passport_number or 'N/A'})"
         return f"{self.user.name}"
+    
+    def get_active_bookings(self):
+        """Get all active bookings for this pilgrim."""
+        return self.bookings.exclude(status='CANCELLED')
 
 
 class OTPCode(models.Model):

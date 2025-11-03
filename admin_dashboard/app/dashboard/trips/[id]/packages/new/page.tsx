@@ -27,16 +27,20 @@ import {
 } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { ArrowLeft, Save, AlertCircle, Package } from "lucide-react"
-import { TripService } from "@/lib/api/services/trips"
+import { PackageService } from "@/lib/api/services/packages"
 import { useAuth } from "@/hooks/useAuth"
+import { toast } from "sonner"
 
 const packageSchema = z.object({
   name: z.string().min(3, "Name must be at least 3 characters"),
-  priceMinorUnits: z.string().min(1, "Price is required").transform(val => parseInt(val) * 100),
-  currency: z.string().default("USD"),
-  capacity: z.string().min(1, "Capacity is required").transform(val => parseInt(val)),
-  visibility: z.enum(["PUBLIC", "PRIVATE"]),
-  description: z.string().optional(),
+  price: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+    message: "Price must be a valid positive number",
+  }),
+  currency: z.string().min(3).max(3, "Currency must be 3 characters").default("USD"),
+  capacity: z.string().refine((val) => !isNaN(parseInt(val)) && parseInt(val) > 0, {
+    message: "Capacity must be a positive number",
+  }),
+  visibility: z.enum(["PUBLIC", "PRIVATE", "INTERNAL"]),
 })
 
 type PackageFormData = z.infer<typeof packageSchema>
@@ -54,11 +58,10 @@ export default function NewPackagePage() {
     resolver: zodResolver(packageSchema),
     defaultValues: {
       name: "",
-      priceMinorUnits: "0",
+      price: "",
       currency: "USD",
       capacity: "50",
       visibility: "PUBLIC",
-      description: "",
     },
   })
 
@@ -67,17 +70,33 @@ export default function NewPackagePage() {
       setLoading(true)
       setError(null)
 
-      const response = await TripService.createPackage(tripId, data, accessToken)
+      // Convert price to minor units (cents)
+      const priceMinorUnits = Math.round(parseFloat(data.price) * 100)
+
+      const packageData = {
+        trip: tripId,
+        name: data.name,
+        priceMinorUnits,
+        currency: data.currency,
+        capacity: parseInt(data.capacity),
+        visibility: data.visibility,
+      }
+
+      const response = await PackageService.create(packageData, accessToken)
 
       if (response.success && response.data) {
-        router.push(`/trips/${tripId}?tab=packages`)
+        toast.success("Package created successfully")
+        router.push(`/dashboard/trips/${tripId}?tab=packages`)
       } else {
-        setError(response.error || "Failed to create package")
+        const errorMessage = response.error || "Failed to create package"
+        setError(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Error creating package:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to create package"
       setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -149,13 +168,14 @@ export default function NewPackagePage() {
               <div className="grid gap-4 md:grid-cols-3">
                 <FormField
                   control={form.control}
-                  name="priceMinorUnits"
+                  name="price"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Price *</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
+                          step="0.01"
                           placeholder="2500.00"
                           {...field}
                         />
@@ -185,9 +205,7 @@ export default function NewPackagePage() {
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="USD">USD</SelectItem>
-                          <SelectItem value="EUR">EUR</SelectItem>
-                          <SelectItem value="GBP">GBP</SelectItem>
-                          <SelectItem value="SAR">SAR</SelectItem>
+                          <SelectItem value="UGX">UGX</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -235,29 +253,12 @@ export default function NewPackagePage() {
                       <SelectContent>
                         <SelectItem value="PUBLIC">Public</SelectItem>
                         <SelectItem value="PRIVATE">Private</SelectItem>
+                        <SelectItem value="INTERNAL">Internal</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormDescription>
                       Controls who can see this package
                     </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Describe what's included in this package..."
-                        className="min-h-[100px]"
-                        {...field}
-                      />
-                    </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}

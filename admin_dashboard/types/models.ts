@@ -2,7 +2,7 @@
 
 /** User Roles */
 export type UserRole = "STAFF" | "PILGRIM"
-export type StaffRole = "ADMIN" | "AGENT"
+export type StaffRole = "ADMIN" | "AGENT" | "AUDITOR"
 
 /** Account/User Model */
 export interface Account {
@@ -28,22 +28,92 @@ export interface StaffProfile {
   updatedAt: string
 }
 
+/** User with Staff Profile (for Admin Management) */
+export interface User {
+  id: string
+  phone: string
+  name: string
+  email?: string
+  role: UserRole
+  isActive: boolean
+  isStaff: boolean
+  isSuperuser: boolean
+  staffRole?: StaffRole
+  createdAt: string
+  updatedAt: string
+}
+
+/** Create User Data */
+export interface CreateUserData {
+  phone: string
+  name: string
+  email?: string
+  password: string
+  role: UserRole
+  isActive?: boolean
+  isStaff?: boolean
+  isSuperuser?: boolean
+  staffRole?: StaffRole
+}
+
+/** Update User Data */
+export interface UpdateUserData {
+  name?: string
+  email?: string
+  role?: UserRole
+  isActive?: boolean
+  isStaff?: boolean
+  isSuperuser?: boolean
+  staffRole?: StaffRole
+}
+
+/** Change Password Data (Admin) */
+export interface ChangeUserPasswordData {
+  newPassword: string
+}
+
 /** Pilgrim Profile */
 export interface PilgrimProfile {
   id: string
-  user: string // Account ID
-  dob: string
-  dateOfBirth?: string // Alias for dob
+  user?: {
+    id: string
+    name: string
+    phone: string
+    email?: string
+    isActive: boolean
+  }
+  fullName: string
+  passportNumber: string
+  phone: string
+  dateOfBirth: string
+  dob?: string // Deprecated: use dateOfBirth
   gender: "MALE" | "FEMALE" | "OTHER"
   nationality: string
   address?: string
   emergencyName: string
   emergencyPhone: string
-  emergencyContact?: string // Alias for combined emergency info
+  emergencyRelationship?: string
+  emergencyContact?: string // Deprecated: use emergencyName + emergencyPhone
   medicalConditions?: string
-  medicalInfo?: string // Alias for medicalConditions
+  medicalInfo?: string // Deprecated: use medicalConditions
+  bookingsCount?: number
   createdAt: string
   updatedAt: string
+}
+
+/** Create Pilgrim Data (no user account required) */
+export interface CreatePilgrimData {
+  fullName: string
+  passportNumber: string
+  phone: string
+  dateOfBirth: string
+  gender: "MALE" | "FEMALE" | "OTHER"
+  nationality: string
+  address?: string
+  emergencyName: string
+  emergencyPhone: string
+  emergencyRelationship?: string
+  medicalConditions?: string
 }
 
 /** Passport */

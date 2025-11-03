@@ -27,6 +27,7 @@ import { StatusBadge } from "@/components/shared"
 import type { PilgrimWithDetails } from "@/types/models"
 import { format } from "date-fns"
 import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
 
 export default function PilgrimDetailsPage() {
   const router = useRouter()
@@ -55,12 +56,15 @@ export default function PilgrimDetailsPage() {
       if (response.success && response.data) {
         setPilgrim(response.data)
       } else {
-        setError(response.error || "Failed to load pilgrim details")
+        const errorMessage = response.error || "Failed to load pilgrim details"
+        setError(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Error loading pilgrim:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to load pilgrim"
       setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -72,13 +76,16 @@ export default function PilgrimDetailsPage() {
     try {
       const response = await PilgrimService.delete(pilgrimId, accessToken)
       if (response.success) {
+        toast.success("Pilgrim deleted successfully")
         router.push("/dashboard/pilgrims")
       } else {
-        alert(response.error || "Failed to delete pilgrim")
+        const errorMessage = response.error || "Failed to delete pilgrim"
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Error deleting pilgrim:", err)
-      alert("Failed to delete pilgrim")
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete pilgrim"
+      toast.error(errorMessage)
     }
   }
 
@@ -137,6 +144,14 @@ export default function PilgrimDetailsPage() {
           </div>
 
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(`/dashboard/pilgrims/${pilgrimId}/documents`)}
+            >
+              <FileText className="mr-2 h-4 w-4" />
+              Upload Documents
+            </Button>
             <Button
               variant="outline"
               size="sm"

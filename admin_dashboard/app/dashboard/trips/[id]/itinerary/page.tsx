@@ -2,48 +2,41 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import * as z from "zod"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import {
   ArrowLeft,
   Plus,
+  Edit,
   Trash2,
-  GripVertical,
+  ArrowUp,
+  ArrowDown,
   Clock,
   MapPin,
   AlertCircle,
-  Save,
 } from "lucide-react"
-import { TripService } from "@/lib/api/services/trips"
+import { ItineraryService } from "@/lib/api/services/trip-content"
 import { useAuth } from "@/hooks/useAuth"
-import type { ItineraryItem } from "@/types/models"
+import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
 
-const itineraryItemSchema = z.object({
-  dayNumber: z.string().min(1).transform(val => parseInt(val)),
-  title: z.string().min(3, "Title must be at least 3 characters"),
-  description: z.string().optional(),
-  startTime: z.string().optional(),
-  endTime: z.string().optional(),
-  location: z.string().optional(),
-})
+interface ItineraryItem {
+  id: string
+  trip: string
+  dayIndex: number
+  startTime?: string
+  endTime?: string
+  title: string
+  location?: string
+  notes?: string
+  attachPublicId?: string
+  attachUrl?: string
+  createdAt: string
+  updatedAt: string
+}
 
-type ItineraryItemFormData = z.infer<typeof itineraryItemSchema>
-
-export default function ItineraryBuilderPage() {
+export default function ItineraryPage() {
   const router = useRouter()
   const params = useParams()
   const { accessToken } = useAuth()
@@ -51,83 +44,121 @@ export default function ItineraryBuilderPage() {
 
   const [items, setItems] = useState<ItineraryItem[]>([])
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showForm, setShowForm] = useState(false)
-
-  const form = useForm<ItineraryItemFormData>({
-    resolver: zodResolver(itineraryItemSchema),
-    defaultValues: {
-      dayNumber: "1",
-      title: "",
-      description: "",
-      startTime: "09:00",
-      endTime: "",
-      location: "",
-    },
-  })
 
   useEffect(() => {
-    loadItinerary()
+    if (tripId) {
+      loadItinerary()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tripId])
 
   const loadItinerary = async () => {
     try {
       setLoading(true)
-      const response = await TripService.getItinerary(tripId, accessToken)
+      setError(null)
+
+      const response = await ItineraryService.list(tripId, accessToken)
+
       if (response.success && response.data) {
-        setItems(response.data)
+        // Handle paginated response (with results array) or direct array
+        const dataArray = Array.isArray(response.data) 
+          ? response.data 
+          : (response.data as any).results || []
+        
+        // Sort by dayIndex
+        const sorted = [...dataArray].sort((a, b) => a.dayIndex - b.dayIndex)
+        setItems(sorted)
+      } else {
+        setError(response.error || "Failed to load itinerary")
+        toast.error(response.error || "Failed to load itinerary")
       }
     } catch (err) {
       console.error("Error loading itinerary:", err)
+      const errorMessage = "Failed to load itinerary"
+      setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
   }
 
-  const onSubmit = async (data: ItineraryItemFormData) => {
+  const handleMoveUp = async (index: number) => {
+    if (index === 0) return
+
+    const newItems = [...items]
+    const temp = newItems[index]
+    newItems[index] = newItems[index - 1]
+    newItems[index - 1] = temp
+
+    // Update dayIndex for both items
+    newItems[index].dayIndex = index + 1
+    newItems[index - 1].dayIndex = index
+
+    setItems(newItems)
+
     try {
-      setSaving(true)
-      setError(null)
+      await ItineraryService.reorder(
+        newItems.map((item, idx) => ({ id: item.id, dayIndex: idx + 1 })),
+        accessToken
+      )
+      toast.success("Itinerary reordered")
+    } catch (err) {
+      toast.error("Failed to reorder itinerary")
+      loadItinerary() // Reload on failure
+    }
+  }
 
-      const response = await TripService.addItineraryItem(tripId, data, accessToken)
+  const handleMoveDown = async (index: number) => {
+    if (index === items.length - 1) return
 
+    const newItems = [...items]
+    const temp = newItems[index]
+    newItems[index] = newItems[index + 1]
+    newItems[index + 1] = temp
+
+    // Update dayIndex
+    newItems[index].dayIndex = index + 1
+    newItems[index + 1].dayIndex = index + 2
+
+    setItems(newItems)
+
+    try {
+      await ItineraryService.reorder(
+        newItems.map((item, idx) => ({ id: item.id, dayIndex: idx + 1 })),
+        accessToken
+      )
+      toast.success("Itinerary reordered")
+    } catch (err) {
+      toast.error("Failed to reorder itinerary")
+      loadItinerary()
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this itinerary item?")) return
+
+    try {
+      const response = await ItineraryService.delete(id, accessToken)
       if (response.success) {
-        await loadItinerary()
-        setShowForm(false)
-        form.reset()
+        toast.success("Itinerary item deleted")
+        loadItinerary()
       } else {
-        setError(response.error || "Failed to add itinerary item")
+        toast.error(response.error || "Failed to delete item")
       }
     } catch (err) {
-      console.error("Error adding item:", err)
-      const errorMessage = err instanceof Error ? err.message : "Failed to add item"
-      setError(errorMessage)
-    } finally {
-      setSaving(false)
+      toast.error("Failed to delete item")
     }
   }
 
-  const handleDelete = async (itemId: string) => {
-    if (!confirm("Delete this itinerary item?")) return
-
-    try {
-      const response = await TripService.deleteItineraryItem(tripId, itemId, accessToken)
-      if (response.success) {
-        await loadItinerary()
-      }
-    } catch (err) {
-      console.error("Error deleting item:", err)
-    }
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-12 w-full" />
+        <Skeleton className="h-96 w-full" />
+      </div>
+    )
   }
-
-  const groupedByDay = items.reduce((acc, item) => {
-    const day = item.dayNumber
-    if (!acc[day]) acc[day] = []
-    acc[day].push(item)
-    return acc
-  }, {} as Record<number, ItineraryItem[]>)
 
   return (
     <div className="space-y-6">
@@ -143,14 +174,15 @@ export default function ItineraryBuilderPage() {
           Back to Trip
         </Button>
 
-        <div className="flex items-center justify-between">
+        <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Itinerary Builder</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Trip Itinerary</h1>
             <p className="mt-2 text-muted-foreground">
-              Create and manage the day-by-day schedule
+              Manage day-by-day schedule for this trip
             </p>
           </div>
-          <Button onClick={() => setShowForm(!showForm)}>
+
+          <Button onClick={() => router.push(`/dashboard/trips/${tripId}/itinerary/new`)}>
             <Plus className="mr-2 h-4 w-4" />
             Add Item
           </Button>
@@ -165,205 +197,120 @@ export default function ItineraryBuilderPage() {
         </Alert>
       )}
 
-      {/* Add Item Form */}
-      {showForm && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Add Itinerary Item</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="dayNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Day Number *</FormLabel>
-                        <FormControl>
-                          <Input type="number" min="1" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="location"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Location</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., Masjid al-Haram" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Title *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., Tawaf, Umrah, Ziyarat" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="startTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Start Time</FormLabel>
-                        <FormControl>
-                          <Input type="time" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="endTime"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>End Time</FormLabel>
-                        <FormControl>
-                          <Input type="time" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Textarea
-                          placeholder="Describe this activity..."
-                          className="min-h-[80px]"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <div className="flex gap-2">
-                  <Button type="submit" disabled={saving}>
-                    <Save className="mr-2 h-4 w-4" />
-                    {saving ? "Adding..." : "Add Item"}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setShowForm(false)}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Itinerary Items */}
-      {loading ? (
+      {items.length === 0 ? (
         <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">Loading...</p>
-          </CardContent>
-        </Card>
-      ) : Object.keys(groupedByDay).length === 0 ? (
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-center text-muted-foreground">
-              No itinerary items yet. Add your first item to get started.
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <Clock className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-lg font-medium text-muted-foreground mb-2">
+              No itinerary items yet
             </p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Add your first itinerary item to get started
+            </p>
+            <Button onClick={() => router.push(`/dashboard/trips/${tripId}/itinerary/new`)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add First Item
+            </Button>
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-6">
-          {Object.entries(groupedByDay)
-            .sort(([a], [b]) => parseInt(a) - parseInt(b))
-            .map(([day, dayItems]) => (
-              <Card key={day}>
-                <CardHeader>
-                  <CardTitle className="text-lg">Day {day}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {dayItems.map((item) => (
-                      <div
-                        key={item.id}
-                        className="flex items-start gap-3 rounded-lg border p-4 hover:bg-gray-50"
-                      >
-                        <GripVertical className="mt-1 h-5 w-5 text-muted-foreground cursor-move" />
-                        
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h4 className="font-semibold">{item.title}</h4>
-                              
-                              <div className="mt-2 flex flex-wrap gap-3 text-sm text-muted-foreground">
-                                {item.startTime && (
-                                  <div className="flex items-center gap-1">
-                                    <Clock className="h-4 w-4" />
-                                    <span>{item.startTime}</span>
-                                    {item.endTime && <span> - {item.endTime}</span>}
-                                  </div>
-                                )}
-                                {item.location && (
-                                  <div className="flex items-center gap-1">
-                                    <MapPin className="h-4 w-4" />
-                                    <span>{item.location}</span>
-                                  </div>
-                                )}
-                              </div>
+        <div className="space-y-4">
+          {items.map((item, index) => (
+            <Card key={item.id}>
+              <CardContent className="flex items-start gap-4 p-6">
+                {/* Reorder Controls */}
+                <div className="flex flex-col gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleMoveUp(index)}
+                    disabled={index === 0}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleMoveDown(index)}
+                    disabled={index === items.length - 1}
+                    className="h-8 w-8 p-0"
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                  </Button>
+                </div>
 
-                              {item.description && (
-                                <p className="mt-2 text-sm text-muted-foreground">
-                                  {item.description}
-                                </p>
-                              )}
-                            </div>
-
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDelete(item.id)}
-                            >
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                {/* Day Badge */}
+                <div className="flex-shrink-0">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">
+                    D{item.dayIndex}
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
+
+                  <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-2">
+                    {item.startTime && item.endTime && (
+                      <div className="flex items-center gap-1">
+                        <Clock className="h-4 w-4" />
+                        <span>
+                          {item.startTime} - {item.endTime}
+                        </span>
+                      </div>
+                    )}
+                    {item.location && (
+                      <div className="flex items-center gap-1">
+                        <MapPin className="h-4 w-4" />
+                        <span>{item.location}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {item.notes && (
+                    <p className="text-sm text-muted-foreground">{item.notes}</p>
+                  )}
+
+                  {item.attachUrl && (
+                    <div className="mt-2">
+                      <a
+                        href={item.attachUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary hover:underline"
+                      >
+                        View Attachment
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      router.push(`/dashboard/trips/${tripId}/itinerary/${item.id}/edit`)
+                    }
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDelete(item.id)}
+                  >
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
     </div>
   )
 }
-

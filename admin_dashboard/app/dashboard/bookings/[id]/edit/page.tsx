@@ -22,6 +22,7 @@ import { ArrowLeft, Save, AlertCircle } from "lucide-react"
 import { BookingService } from "@/lib/api/services/bookings"
 import { useAuth } from "@/hooks/useAuth"
 import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
 
 const bookingSchema = z.object({
   status: z.enum(["EOI", "BOOKED", "CONFIRMED", "CANCELLED"]),
@@ -29,7 +30,11 @@ const bookingSchema = z.object({
   amountPaid: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) >= 0, {
     message: "Amount must be a valid positive number",
   }),
-  specialRequests: z.string().optional(),
+  currency: z.string().min(3).max(3, "Currency must be 3 characters"),
+  paymentNote: z.string().optional(),
+  ticketNumber: z.string().optional(),
+  roomAssignment: z.string().optional(),
+  specialNeeds: z.string().optional(),
 })
 
 type BookingFormData = z.infer<typeof bookingSchema>
@@ -78,15 +83,22 @@ export default function EditBookingPage() {
           status: booking.status,
           paymentStatus: booking.paymentStatus,
           amountPaid: (booking.amountPaidMinorUnits / 100).toFixed(2),
-          specialRequests: booking.specialRequests || "",
+          currency: booking.currency || "USD",
+          paymentNote: booking.paymentNote || "",
+          ticketNumber: booking.ticketNumber || "",
+          roomAssignment: booking.roomAssignment || "",
+          specialNeeds: booking.specialNeeds || "",
         })
       } else {
-        setError(response.error || "Failed to load booking")
+        const errorMessage = response.error || "Failed to load booking"
+        setError(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Error loading booking:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to load booking"
       setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -103,20 +115,28 @@ export default function EditBookingPage() {
         status: data.status,
         paymentStatus: data.paymentStatus,
         amountPaidMinorUnits,
-        specialRequests: data.specialRequests || "",
+        currency: data.currency,
+        paymentNote: data.paymentNote || "",
+        ticketNumber: data.ticketNumber || "",
+        roomAssignment: data.roomAssignment || "",
+        specialNeeds: data.specialNeeds || "",
       }
 
       const response = await BookingService.update(bookingId, updateData, accessToken)
 
       if (response.success) {
+        toast.success("Booking updated successfully")
         router.push(`/dashboard/bookings/${bookingId}`)
       } else {
-        setError(response.error || "Failed to update booking")
+        const errorMessage = response.error || "Failed to update booking"
+        setError(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Error updating booking:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to update booking"
       setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -238,25 +258,91 @@ export default function EditBookingPage() {
                   <p className="text-sm text-red-500">{errors.amountPaid.message}</p>
                 )}
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="currency">
+                  Currency <span className="text-red-500">*</span>
+                </Label>
+                <Select
+                  value={watch("currency")}
+                  onValueChange={(value) => setValue("currency", value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="USD">USD - US Dollar</SelectItem>
+                    <SelectItem value="UGX">UGX - Ugandan Shilling</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.currency && (
+                  <p className="text-sm text-red-500">{errors.currency.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="paymentNote">Payment Note</Label>
+                <Textarea
+                  id="paymentNote"
+                  {...register("paymentNote")}
+                  placeholder="Add payment details or notes..."
+                  rows={3}
+                />
+                {errors.paymentNote && (
+                  <p className="text-sm text-red-500">{errors.paymentNote.message}</p>
+                )}
+              </div>
             </CardContent>
           </Card>
 
-          {/* Special Requests */}
+          {/* Booking Details */}
           <Card className="md:col-span-2">
             <CardHeader>
-              <CardTitle>Special Requests</CardTitle>
+              <CardTitle>Booking Details</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="ticketNumber">Ticket Number</Label>
+                <Input
+                  id="ticketNumber"
+                  {...register("ticketNumber")}
+                  placeholder="e.g., TKT123456"
+                />
+                {errors.ticketNumber && (
+                  <p className="text-sm text-red-500">{errors.ticketNumber.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="roomAssignment">Room Assignment</Label>
+                <Input
+                  id="roomAssignment"
+                  {...register("roomAssignment")}
+                  placeholder="e.g., Room 205"
+                />
+                {errors.roomAssignment && (
+                  <p className="text-sm text-red-500">{errors.roomAssignment.message}</p>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Special Needs */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle>Special Needs & Requirements</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <Label htmlFor="specialRequests">Notes</Label>
+                <Label htmlFor="specialNeeds">Special Needs</Label>
                 <Textarea
-                  id="specialRequests"
-                  {...register("specialRequests")}
-                  placeholder="Enter any special requests or notes..."
+                  id="specialNeeds"
+                  {...register("specialNeeds")}
+                  placeholder="Dietary requirements, accessibility needs, medical accommodations..."
                   rows={4}
                 />
-                {errors.specialRequests && (
-                  <p className="text-sm text-red-500">{errors.specialRequests.message}</p>
+                {errors.specialNeeds && (
+                  <p className="text-sm text-red-500">{errors.specialNeeds.message}</p>
                 )}
               </div>
             </CardContent>

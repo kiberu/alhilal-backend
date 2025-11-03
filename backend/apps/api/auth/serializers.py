@@ -13,11 +13,20 @@ class StaffLoginSerializer(serializers.Serializer):
         if not phone or not password:
             raise serializers.ValidationError("Phone and password are required")
 
+        # Check if user exists
+        try:
+            user_exists = Account.objects.filter(phone=phone).exists()
+            if not user_exists:
+                raise serializers.ValidationError("Invalid phone number or password")
+        except Exception:
+            raise serializers.ValidationError("Invalid phone number or password")
+
         # Authenticate user
         user = authenticate(username=phone, password=password)
 
         if not user:
-            raise serializers.ValidationError("Invalid credentials")
+            # User exists but password is wrong
+            raise serializers.ValidationError("Invalid password. Please check your password and try again.")
 
         if not user.is_staff:
             raise serializers.ValidationError("Only staff members can access the admin dashboard")

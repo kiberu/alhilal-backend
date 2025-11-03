@@ -9,7 +9,11 @@ from rest_framework.permissions import IsAuthenticated
 from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.accounts.models import PilgrimProfile
-from apps.api.serializers.admin import AdminPilgrimListSerializer, AdminPilgrimDetailSerializer
+from apps.api.serializers.admin import (
+    AdminPilgrimListSerializer, 
+    AdminPilgrimCreateSerializer,
+    AdminPilgrimDetailSerializer
+)
 
 
 class AdminPilgrimViewSet(viewsets.ModelViewSet):
@@ -17,7 +21,7 @@ class AdminPilgrimViewSet(viewsets.ModelViewSet):
     ViewSet for managing pilgrims (staff only).
     
     list:   GET /pilgrims - List all pilgrims with filters
-    create: POST /pilgrims - Create a new pilgrim
+    create: POST /pilgrims - Create a new pilgrim (no user account required)
     retrieve: GET /pilgrims/:id - Get pilgrim details
     update: PATCH /pilgrims/:id - Update pilgrim
     destroy: DELETE /pilgrims/:id - Delete pilgrim
@@ -26,8 +30,8 @@ class AdminPilgrimViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['nationality', 'gender']
-    search_fields = ['user__name', 'user__phone', 'user__email']
-    ordering_fields = ['created_at', 'user__name']
+    search_fields = ['user__name', 'user__phone', 'user__email', 'full_name', 'passport_number', 'phone']
+    ordering_fields = ['created_at', 'user__name', 'full_name']
     ordering = ['-created_at']
     
     def get_queryset(self):
@@ -42,9 +46,11 @@ class AdminPilgrimViewSet(viewsets.ModelViewSet):
         return queryset
     
     def get_serializer_class(self):
-        """Use different serializers for list and detail."""
+        """Use different serializers for different actions."""
         if self.action == 'list':
             return AdminPilgrimListSerializer
+        elif self.action == 'create':
+            return AdminPilgrimCreateSerializer
         return AdminPilgrimDetailSerializer
     
     def list(self, request, *args, **kwargs):

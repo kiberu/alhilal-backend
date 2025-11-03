@@ -22,14 +22,18 @@ import { ArrowLeft, Save, AlertCircle } from "lucide-react"
 import { PilgrimService } from "@/lib/api/services/pilgrims"
 import { useAuth } from "@/hooks/useAuth"
 import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
 
 const pilgrimSchema = z.object({
+  fullName: z.string().min(2, "Full name is required"),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
   gender: z.enum(["MALE", "FEMALE", "OTHER"]),
-  nationality: z.string().min(2, "Nationality is required"),
+  nationality: z.string().min(2, "Nationality is required").max(2, "Use 2-letter country code"),
   address: z.string().optional(),
-  emergencyContact: z.string().optional(),
-  medicalInfo: z.string().optional(),
+  emergencyName: z.string().min(2, "Emergency contact name is required"),
+  emergencyPhone: z.string().min(10, "Emergency contact phone is required"),
+  emergencyRelationship: z.string().optional(),
+  medicalConditions: z.string().optional(),
 })
 
 type PilgrimFormData = z.infer<typeof pilgrimSchema>
@@ -74,20 +78,26 @@ export default function EditPilgrimPage() {
       if (response.success && response.data) {
         const pilgrim = response.data
         reset({
+          fullName: pilgrim.fullName || "",
           dateOfBirth: pilgrim.dateOfBirth || "",
           gender: pilgrim.gender || "MALE",
           nationality: pilgrim.nationality || "",
           address: pilgrim.address || "",
-          emergencyContact: pilgrim.emergencyContact || "",
-          medicalInfo: pilgrim.medicalInfo || "",
+          emergencyName: pilgrim.emergencyName || "",
+          emergencyPhone: pilgrim.emergencyPhone || "",
+          emergencyRelationship: pilgrim.emergencyRelationship || "",
+          medicalConditions: pilgrim.medicalConditions || "",
         })
       } else {
-        setError(response.error || "Failed to load pilgrim")
+        const errorMessage = response.error || "Failed to load pilgrim"
+        setError(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Error loading pilgrim:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to load pilgrim"
       setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -101,14 +111,18 @@ export default function EditPilgrimPage() {
       const response = await PilgrimService.update(pilgrimId, data, accessToken)
 
       if (response.success) {
+        toast.success("Pilgrim updated successfully")
         router.push(`/dashboard/pilgrims/${pilgrimId}`)
       } else {
-        setError(response.error || "Failed to update pilgrim")
+        const errorMessage = response.error || "Failed to update pilgrim"
+        setError(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Error updating pilgrim:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to update pilgrim"
       setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setIsSubmitting(false)
     }
@@ -154,6 +168,49 @@ export default function EditPilgrimPage() {
       {/* Form */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
+          {/* Basic Information */}
+          <Card className="md:col-span-2">
+            <CardHeader>
+              <CardTitle>Basic Information</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="fullName">
+                  Full Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="fullName"
+                  {...register("fullName")}
+                  placeholder="e.g., Ahmed Ali"
+                />
+                {errors.fullName && (
+                  <p className="text-sm text-red-500">{errors.fullName.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  Full name as on passport
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="nationality">
+                  Nationality <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="nationality"
+                  {...register("nationality")}
+                  placeholder="e.g., SA, US, UK"
+                  maxLength={2}
+                />
+                {errors.nationality && (
+                  <p className="text-sm text-red-500">{errors.nationality.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">
+                  2-letter ISO country code
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Personal Information */}
           <Card>
             <CardHeader>
@@ -196,29 +253,6 @@ export default function EditPilgrimPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="nationality">
-                  Nationality <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="nationality"
-                  {...register("nationality")}
-                  placeholder="e.g., UG, KE, TZ"
-                  maxLength={2}
-                />
-                {errors.nationality && (
-                  <p className="text-sm text-red-500">{errors.nationality.message}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Contact Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Additional Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
                 <Textarea
                   id="address"
@@ -226,24 +260,58 @@ export default function EditPilgrimPage() {
                   placeholder="Enter full address..."
                   rows={3}
                 />
+                {errors.address && (
+                  <p className="text-sm text-red-500">{errors.address.message}</p>
+                )}
               </div>
             </CardContent>
           </Card>
 
           {/* Emergency Contact */}
-          <Card className="md:col-span-2">
+          <Card>
             <CardHeader>
               <CardTitle>Emergency Contact</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="emergencyContact">Emergency Contact Details</Label>
-                <Textarea
-                  id="emergencyContact"
-                  {...register("emergencyContact")}
-                  placeholder="Name, relationship, phone number..."
-                  rows={3}
+                <Label htmlFor="emergencyName">
+                  Contact Name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="emergencyName"
+                  {...register("emergencyName")}
+                  placeholder="e.g., Fatima Ali"
                 />
+                {errors.emergencyName && (
+                  <p className="text-sm text-red-500">{errors.emergencyName.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="emergencyPhone">
+                  Contact Phone <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="emergencyPhone"
+                  type="tel"
+                  {...register("emergencyPhone")}
+                  placeholder="e.g., +966507654321"
+                />
+                {errors.emergencyPhone && (
+                  <p className="text-sm text-red-500">{errors.emergencyPhone.message}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="emergencyRelationship">Relationship</Label>
+                <Input
+                  id="emergencyRelationship"
+                  {...register("emergencyRelationship")}
+                  placeholder="e.g., Wife, Brother, Mother"
+                />
+                {errors.emergencyRelationship && (
+                  <p className="text-sm text-red-500">{errors.emergencyRelationship.message}</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -255,13 +323,16 @@ export default function EditPilgrimPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                <Label htmlFor="medicalInfo">Medical History & Allergies</Label>
+                <Label htmlFor="medicalConditions">Medical Conditions & Allergies</Label>
                 <Textarea
-                  id="medicalInfo"
-                  {...register("medicalInfo")}
+                  id="medicalConditions"
+                  {...register("medicalConditions")}
                   placeholder="List any medical conditions, allergies, or special requirements..."
                   rows={4}
                 />
+                {errors.medicalConditions && (
+                  <p className="text-sm text-red-500">{errors.medicalConditions.message}</p>
+                )}
               </div>
             </CardContent>
           </Card>

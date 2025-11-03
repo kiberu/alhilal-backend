@@ -25,6 +25,7 @@ import { StatusBadge } from "@/components/shared"
 import type { BookingWithDetails } from "@/types/models"
 import { format } from "date-fns"
 import { Skeleton } from "@/components/ui/skeleton"
+import { toast } from "sonner"
 
 export default function BookingDetailsPage() {
   const router = useRouter()
@@ -53,12 +54,15 @@ export default function BookingDetailsPage() {
       if (response.success && response.data) {
         setBooking(response.data)
       } else {
-        setError(response.error || "Failed to load booking details")
+        const errorMessage = response.error || "Failed to load booking details"
+        setError(errorMessage)
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Error loading booking:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to load booking"
       setError(errorMessage)
+      toast.error(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -70,13 +74,16 @@ export default function BookingDetailsPage() {
     try {
       const response = await BookingService.delete(bookingId, accessToken)
       if (response.success) {
-        router.push("/bookings")
+        toast.success("Booking deleted successfully")
+        router.push("/dashboard/bookings")
       } else {
-        alert(response.error || "Failed to delete booking")
+        const errorMessage = response.error || "Failed to delete booking"
+        toast.error(errorMessage)
       }
     } catch (err) {
       console.error("Error deleting booking:", err)
-      alert("Failed to delete booking")
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete booking"
+      toast.error(errorMessage)
     }
   }
 
@@ -143,7 +150,7 @@ export default function BookingDetailsPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => router.push(`/bookings/${bookingId}/edit`)}
+              onClick={() => router.push(`/dashboard/bookings/${bookingId}/edit`)}
             >
               <Edit className="mr-2 h-4 w-4" />
               Edit
@@ -350,7 +357,7 @@ export default function BookingDetailsPage() {
               </div>
               <Button
                 variant="outline"
-                onClick={() => router.push(`/pilgrims/${booking.pilgrim}`)}
+                onClick={() => router.push(`/dashboard/pilgrims/${booking.pilgrim}`)}
               >
                 View Full Profile
               </Button>
