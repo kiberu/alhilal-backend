@@ -92,7 +92,52 @@ def trip(db):
 
 
 @pytest.fixture
-def trip_package(trip):
+def currency_ugx(db):
+    """Create or get UGX currency."""
+    from apps.common.models import Currency
+    
+    currency, _ = Currency.objects.get_or_create(
+        code="UGX",
+        defaults={
+            "name": "Ugandan Shilling",
+            "symbol": "USh"
+        }
+    )
+    return currency
+
+
+@pytest.fixture
+def currency_usd(db):
+    """Create or get USD currency."""
+    from apps.common.models import Currency
+    
+    currency, _ = Currency.objects.get_or_create(
+        code="USD",
+        defaults={
+            "name": "US Dollar",
+            "symbol": "$"
+        }
+    )
+    return currency
+
+
+@pytest.fixture
+def currency_sar(db):
+    """Create or get SAR currency."""
+    from apps.common.models import Currency
+    
+    currency, _ = Currency.objects.get_or_create(
+        code="SAR",
+        defaults={
+            "name": "Saudi Riyal",
+            "symbol": "﷼"
+        }
+    )
+    return currency
+
+
+@pytest.fixture
+def trip_package(trip, currency_ugx):
     """Create a test trip package."""
     from apps.trips.models import TripPackage
     
@@ -100,7 +145,7 @@ def trip_package(trip):
         trip=trip,
         name="Gold",
         price_minor_units=500000,
-        currency="UGX",
+        currency=currency_ugx,
         capacity=50,
         visibility="PUBLIC"
     )

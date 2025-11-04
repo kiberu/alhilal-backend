@@ -27,7 +27,7 @@ RUN pip install --upgrade pip && \
 # Development stage
 FROM base as development
 
-# Install development dependencies
+# Copy development dependencies
 COPY requirements-dev.txt .
 RUN pip install -r requirements-dev.txt
 
@@ -67,5 +67,6 @@ USER alhilal
 EXPOSE 8000
 
 # Run gunicorn
+WORKDIR /app/backend
 CMD ["gunicorn", "alhilal.wsgi:application", "--bind", "0.0.0.0:8000"]
 

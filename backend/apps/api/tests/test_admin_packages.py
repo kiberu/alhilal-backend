@@ -8,6 +8,7 @@ from django.contrib.auth import get_user_model
 from datetime import date, datetime, timedelta
 
 from apps.trips.models import Trip, TripPackage, PackageFlight, PackageHotel
+from apps.common.models import Currency
 
 Account = get_user_model()
 
@@ -27,6 +28,12 @@ class AdminPackageAPITestCase(TestCase):
             is_staff=True,
         )
         
+        # Create currency
+        self.currency_sar, _ = Currency.objects.get_or_create(
+            code='SAR',
+            defaults={'name': 'Saudi Riyal', 'symbol': '﷼'}
+        )
+        
         # Create trip
         self.trip = Trip.objects.create(
             code='UMR2025',
@@ -42,7 +49,7 @@ class AdminPackageAPITestCase(TestCase):
             trip=self.trip,
             name='Gold Package',
             price_minor_units=500000,
-            currency='SAR',
+            currency=self.currency_sar,
             capacity=50,
             visibility='PUBLIC'
         )
@@ -51,7 +58,7 @@ class AdminPackageAPITestCase(TestCase):
             trip=self.trip,
             name='Premium Package',
             price_minor_units=800000,
-            currency='SAR',
+            currency=self.currency_sar,
             capacity=30,
             visibility='PUBLIC'
         )

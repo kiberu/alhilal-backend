@@ -4,9 +4,11 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
+from django.utils import timezone
+from datetime import timedelta
 import random
 
-from apps.accounts.models import Account
+from apps.accounts.models import Account, OTPCode
 from .serializers import StaffLoginSerializer
 
 User = get_user_model()
@@ -25,6 +27,18 @@ class RequestOTPView(APIView):
             )
 
         try:
+            # Check for recent OTP requests (rate limiting)
+            recent_otp = OTPCode.objects.filter(
+                phone=phone,
+                created_at__gte=timezone.now() - timedelta(seconds=60)
+            ).first()
+            
+            if recent_otp:
+                return Response(
+                    {'error': 'OTP already sent. Please wait before requesting again.'},
+                    status=status.HTTP_429_TOO_MANY_REQUESTS
+                )
+
             # Get or create pilgrim account
             user, created = User.objects.get_or_create(
                 phone=phone,
@@ -37,15 +51,25 @@ class RequestOTPView(APIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Generate OTP (simple implementation for now)
+            # Generate OTP
             otp_code = ''.join([str(random.randint(0, 9)) for _ in range(6)])
+            expires_at = timezone.now() + timedelta(minutes=10)
             
-            # TODO: Store OTP in Redis cache and send via SMS
-            # For development, return the OTP
+            # Create OTP record
+            OTPCode.objects.create(
+                phone=phone,
+                code=otp_code,
+                expires_at=expires_at,
+                attempts=0
+            )
+            
+            # TODO: Send OTP via SMS in production
+            # For development, the OTP is stored in database
             
             return Response({
+                'sent': True,
+                'expires_in': 600,  # 10 minutes in seconds
                 'message': 'OTP sent successfully',
-                'otp': otp_code,  # For development only - remove in production
             })
 
         except Exception as e:
@@ -70,21 +94,67 @@ class VerifyOTPView(APIView):
             )
 
         try:
-            # Verify OTP (simplified - in production use Redis cache)
-            if not otp or len(otp) != 6:
+            # Get the most recent OTP for this phone
+            otp_record = OTPCode.objects.filter(
+                phone=phone,
+                consumed_at__isnull=True
+            ).order_by('-created_at').first()
+
+            if not otp_record:
                 return Response(
-                    {'error': 'Invalid OTP format'},
+                    {'error': 'No OTP found. Please request a new OTP.'},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Get user
-            user = User.objects.get(phone=phone)
+            # Check if OTP has expired
+            if timezone.now() > otp_record.expires_at:
+                return Response(
+                    {'error': 'OTP has expired. Please request a new OTP.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Check max attempts
+            if otp_record.attempts >= 5:
+                return Response(
+                    {'error': 'Maximum verification attempts exceeded. Please request a new OTP.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Verify OTP code
+            if otp_record.code != otp:
+                otp_record.attempts += 1
+                otp_record.save()
+                return Response(
+                    {'error': 'Invalid OTP code.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Mark OTP as consumed
+            otp_record.consumed_at = timezone.now()
+            otp_record.save()
+
+            # Get or create user
+            user, created = User.objects.get_or_create(
+                phone=phone,
+                defaults={'role': 'PILGRIM', 'name': phone}
+            )
+
+            # Create pilgrim profile if new user
+            if created:
+                from apps.accounts.models import PilgrimProfile
+                PilgrimProfile.objects.create(user=user)
 
             # Generate tokens
             refresh = RefreshToken.for_user(user)
 
-            # Get profile (simplified - no profile model for now)
+            # Get profile data
             profile_data = None
+            if hasattr(user, 'pilgrim_profile'):
+                profile_data = {
+                    'id': str(user.pilgrim_profile.id),
+                    'dob': str(user.pilgrim_profile.dob) if user.pilgrim_profile.dob else None,
+                    'nationality': user.pilgrim_profile.nationality,
+                }
 
             return Response({
                 'access': str(refresh.access_token),

@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 from datetime import date, timedelta
 
 from apps.trips.models import Trip, TripPackage
+from apps.common.models import Currency
 
 Account = get_user_model()
 
@@ -40,6 +41,12 @@ class AdminTripAPITestCase(TestCase):
         self.pilgrim_user.set_password('testpass123')
         self.pilgrim_user.save()
         
+        # Create currency
+        self.currency_usd, _ = Currency.objects.get_or_create(
+            code='USD',
+            defaults={'name': 'US Dollar', 'symbol': '$'}
+        )
+        
         # Create test trips
         self.trip1 = Trip.objects.create(
             code='UMR2025',
@@ -64,7 +71,7 @@ class AdminTripAPITestCase(TestCase):
             trip=self.trip1,
             name='Standard Package',
             price_minor_units=250000,
-            currency='USD',
+            currency=self.currency_usd,
             capacity=50,
             visibility='PUBLIC',
         )

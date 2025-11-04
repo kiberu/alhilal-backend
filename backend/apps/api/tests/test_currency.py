@@ -51,11 +51,13 @@ class PackageCurrencyTests(TestCase):
     
     def setUp(self):
         """Set up test data."""
-        self.currency = Currency.objects.create(
+        self.currency, _ = Currency.objects.get_or_create(
             code='UGX',
-            name='Ugandan Shilling',
-            symbol='USh',
-            is_active=True
+            defaults={
+                'name': 'Ugandan Shilling',
+                'symbol': 'USh',
+                'is_active': True
+            }
         )
         self.trip = Trip.objects.create(
             name='Test Umrah Trip',
@@ -91,11 +93,13 @@ class BookingCurrencyInheritanceTests(TestCase):
     
     def setUp(self):
         """Set up test data."""
-        self.currency = Currency.objects.create(
+        self.currency, _ = Currency.objects.get_or_create(
             code='UGX',
-            name='Ugandan Shilling',
-            symbol='USh',
-            is_active=True
+            defaults={
+                'name': 'Ugandan Shilling',
+                'symbol': 'USh',
+                'is_active': True
+            }
         )
         self.trip = Trip.objects.create(
             name='Test Umrah Trip',
@@ -138,11 +142,13 @@ class BookingCurrencyInheritanceTests(TestCase):
         )
         
         # Change package currency
-        new_currency = Currency.objects.create(
+        new_currency, _ = Currency.objects.get_or_create(
             code='USD',
-            name='US Dollar',
-            symbol='$',
-            is_active=True
+            defaults={
+                'name': 'US Dollar',
+                'symbol': '$',
+                'is_active': True
+            }
         )
         self.package.currency = new_currency
         self.package.save()
@@ -160,11 +166,13 @@ class PaymentCurrencyInheritanceTests(TestCase):
     
     def setUp(self):
         """Set up test data."""
-        self.currency = Currency.objects.create(
+        self.currency, _ = Currency.objects.get_or_create(
             code='UGX',
-            name='Ugandan Shilling',
-            symbol='USh',
-            is_active=True
+            defaults={
+                'name': 'Ugandan Shilling',
+                'symbol': 'USh',
+                'is_active': True
+            }
         )
         self.trip = Trip.objects.create(
             name='Test Umrah Trip',
@@ -233,11 +241,13 @@ class CurrencyAPITests(TestCase):
     def setUp(self):
         """Set up test data and API client."""
         self.client = APIClient()
-        self.currency = Currency.objects.create(
+        self.currency, _ = Currency.objects.get_or_create(
             code='UGX',
-            name='Ugandan Shilling',
-            symbol='USh',
-            is_active=True
+            defaults={
+                'name': 'Ugandan Shilling',
+                'symbol': 'USh',
+                'is_active': True
+            }
         )
         self.trip = Trip.objects.create(
             name='Test Umrah Trip',

@@ -11,6 +11,7 @@ from datetime import date, timedelta
 from apps.trips.models import Trip, TripPackage
 from apps.bookings.models import Booking
 from apps.accounts.models import PilgrimProfile
+from apps.common.models import Currency
 
 Account = get_user_model()
 
@@ -52,6 +53,12 @@ class AdminBookingAPITestCase(TestCase):
             emergency_phone='+1111111111',
         )
         
+        # Create currency
+        self.currency_usd, _ = Currency.objects.get_or_create(
+            code='USD',
+            defaults={'name': 'US Dollar', 'symbol': '$'}
+        )
+        
         # Create trip and package
         self.trip = Trip.objects.create(
             code='UMR2025',
@@ -66,7 +73,7 @@ class AdminBookingAPITestCase(TestCase):
             trip=self.trip,
             name='Standard Package',
             price_minor_units=250000,
-            currency='USD',
+            currency=self.currency_usd,
             capacity=50,
             visibility='PUBLIC',
         )
@@ -75,7 +82,7 @@ class AdminBookingAPITestCase(TestCase):
             trip=self.trip,
             name='Premium Package',
             price_minor_units=350000,
-            currency='USD',
+            currency=self.currency_usd,
             capacity=30,
             visibility='PUBLIC',
         )
@@ -87,7 +94,7 @@ class AdminBookingAPITestCase(TestCase):
             status='EOI',
             payment_status='PENDING',
             amount_paid_minor_units=0,
-            currency='USD',
+            currency=self.currency_usd,
         )
         
         self.booking2 = Booking.objects.create(
@@ -96,7 +103,7 @@ class AdminBookingAPITestCase(TestCase):
             status='BOOKED',
             payment_status='PARTIAL',
             amount_paid_minor_units=100000,
-            currency='USD',
+            currency=self.currency_usd,
         )
     
     def test_list_bookings_requires_authentication(self):

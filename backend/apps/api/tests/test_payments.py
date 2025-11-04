@@ -9,6 +9,7 @@ from rest_framework.test import APIClient
 from apps.bookings.models import Booking, Payment
 from apps.accounts.models import Account, PilgrimProfile
 from apps.trips.models import Trip, TripPackage
+from apps.common.models import Currency
 
 
 @pytest.fixture
@@ -62,26 +63,36 @@ def trip(db):
 
 
 @pytest.fixture
-def package(db, trip):
+def currency_usd(db):
+    """Create or get USD currency."""
+    currency, _ = Currency.objects.get_or_create(
+        code="USD",
+        defaults={'name': 'US Dollar', 'symbol': '$'}
+    )
+    return currency
+
+
+@pytest.fixture
+def package(db, trip, currency_usd):
     """Create a test package."""
     return TripPackage.objects.create(
         trip=trip,
         name="Economy Package",
         price_minor_units=500000,  # $5,000.00
-        currency="USD",
+        currency=currency_usd,
         capacity=50,
         visibility="PUBLIC"
     )
 
 
 @pytest.fixture
-def booking(db, pilgrim_user, package):
+def booking(db, pilgrim_user, package, currency_usd):
     """Create a test booking."""
     return Booking.objects.create(
         pilgrim=pilgrim_user.pilgrim_profile,
         package=package,
         status="BOOKED",
-        currency="USD"
+        currency=currency_usd
     )
 
 
@@ -259,13 +270,13 @@ class TestPaymentRecording:
 class TestPaymentListing:
     """Tests for listing payments."""
     
-    def test_list_payments_success(self, api_client, staff_user, booking):
+    def test_list_payments_success(self, api_client, staff_user, booking, currency_usd):
         """Test successfully listing payments for a booking."""
         # Create some payments
         Payment.objects.create(
             booking=booking,
             amount_minor_units=200000,
-            currency='USD',
+            currency=currency_usd,
             payment_method='BANK_TRANSFER',
             payment_date=date.today(),
             recorded_by=staff_user
@@ -273,7 +284,7 @@ class TestPaymentListing:
         Payment.objects.create(
             booking=booking,
             amount_minor_units=150000,
-            currency='USD',
+            currency=currency_usd,
             payment_method='CASH',
             payment_date=date.today(),
             recorded_by=staff_user
@@ -311,12 +322,12 @@ class TestPaymentListing:
         
         assert response.status_code == status.HTTP_403_FORBIDDEN
     
-    def test_list_payments_includes_payment_details(self, api_client, staff_user, booking):
+    def test_list_payments_includes_payment_details(self, api_client, staff_user, booking, currency_usd):
         """Test that payment list includes all necessary details."""
         payment = Payment.objects.create(
             booking=booking,
             amount_minor_units=200000,
-            currency='USD',
+            currency=currency_usd,
             payment_method='BANK_TRANSFER',
             payment_date=date.today(),
             reference_number='TXN-001',
@@ -343,13 +354,13 @@ class TestPaymentListing:
 class TestBookingDetailWithPayments:
     """Tests for booking detail endpoint including payments."""
     
-    def test_booking_detail_includes_payments(self, api_client, staff_user, booking):
+    def test_booking_detail_includes_payments(self, api_client, staff_user, booking, currency_usd):
         """Test that booking detail includes payment history."""
         # Create a payment
         Payment.objects.create(
             booking=booking,
             amount_minor_units=200000,
-            currency='USD',
+            currency=currency_usd,
             payment_method='CASH',
             payment_date=date.today(),
             recorded_by=staff_user
@@ -371,7 +382,7 @@ class TestBookingDetailWithPayments:
 class TestPaymentModel:
     """Tests for Payment model behavior."""
     
-    def test_payment_creation_updates_booking(self, staff_user, booking):
+    def test_payment_creation_updates_booking(self, staff_user, booking, currency_usd):
         """Test that creating a payment updates booking totals."""
         assert booking.amount_paid_minor_units == 0
         assert booking.payment_status == 'PENDING'
@@ -379,7 +390,7 @@ class TestPaymentModel:
         Payment.objects.create(
             booking=booking,
             amount_minor_units=100000,
-            currency='USD',
+            currency=currency_usd,
             payment_method='CASH',
             payment_date=date.today(),
             recorded_by=staff_user
@@ -389,12 +400,12 @@ class TestPaymentModel:
         assert booking.amount_paid_minor_units == 100000
         assert booking.payment_status == 'PARTIAL'
     
-    def test_payment_deletion_updates_booking(self, staff_user, booking):
+    def test_payment_deletion_updates_booking(self, staff_user, booking, currency_usd):
         """Test that deleting a payment updates booking totals."""
         payment = Payment.objects.create(
             booking=booking,
             amount_minor_units=100000,
-            currency='USD',
+            currency=currency_usd,
             payment_method='CASH',
             payment_date=date.today(),
             recorded_by=staff_user
@@ -409,12 +420,12 @@ class TestPaymentModel:
         assert booking.amount_paid_minor_units == 0
         assert booking.payment_status == 'PENDING'
     
-    def test_payment_str_representation(self, staff_user, booking):
+    def test_payment_str_representation(self, staff_user, booking, currency_usd):
         """Test payment string representation."""
         payment = Payment.objects.create(
             booking=booking,
             amount_minor_units=150000,
-            currency='USD',
+            currency=currency_usd,
             payment_method='CASH',
             payment_date=date.today(),
             recorded_by=staff_user
@@ -423,12 +434,12 @@ class TestPaymentModel:
         assert booking.reference_number in str(payment)
         assert 'USD 1500.00' in str(payment)
     
-    def test_overpayment_status(self, staff_user, booking):
+    def test_overpayment_status(self, staff_user, booking, currency_usd):
         """Test payment status when payment exceeds package price."""
         Payment.objects.create(
             booking=booking,
             amount_minor_units=600000,  # More than package price
-            currency='USD',
+            currency=currency_usd,
             payment_method='CASH',
             payment_date=date.today(),
             recorded_by=staff_user

@@ -4,14 +4,14 @@ from .views import RequestOTPView, VerifyOTPView, StaffLoginView, StaffProfileVi
 
 urlpatterns = [
     # OTP authentication (for pilgrims)
-    path('otp/request/', RequestOTPView.as_view(), name='request-otp'),
-    path('otp/verify/', VerifyOTPView.as_view(), name='verify-otp'),
+    path('request-otp/', RequestOTPView.as_view(), name='request-otp'),
+    path('verify-otp/', VerifyOTPView.as_view(), name='verify-otp'),
     
     # Staff authentication
     path('staff/login/', StaffLoginView.as_view(), name='staff-login'),
     path('staff/profile/', StaffProfileView.as_view(), name='staff-profile'),
     
     # JWT token refresh
-    path('token/refresh/', TokenRefreshView.as_view(), name='token-refresh'),
+    path('refresh/', TokenRefreshView.as_view(), name='token-refresh'),
 ]
 
