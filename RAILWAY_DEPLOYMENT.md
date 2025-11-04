@@ -45,6 +45,8 @@ In your backend service, go to **"Variables"** tab and add these:
 
 ### Required Variables
 
+⚠️ **CRITICAL**: You must set these environment variables BEFORE deploying, especially `FIELD_ENCRYPTION_KEY`!
+
 ```bash
 # Django Core
 SECRET_KEY=<generate-a-strong-secret-key-here>
@@ -62,8 +64,9 @@ CLOUDINARY_API_SECRET=your-cloudinary-api-secret
 # CORS (Add your frontend URLs)
 CORS_ALLOWED_ORIGINS=https://your-frontend.vercel.app,https://your-admin.vercel.app
 
-# Field Encryption (32 characters)
-FIELD_ENCRYPTION_KEY=<generate-32-character-random-string>
+# Field Encryption - REQUIRED for passport/visa encryption
+# Generate with the command below - NEVER use the temporary key in production!
+FIELD_ENCRYPTION_KEY=<generate-fernet-key-here>
 
 # OTP Settings
 OTP_EXPIRY_SECONDS=600
@@ -82,15 +85,22 @@ TIME_ZONE=Africa/Kampala
 
 ### Generate Secret Keys
 
-Run these commands locally to generate secure keys:
+⚠️ **Run these commands locally BEFORE deploying:**
 
 ```bash
-# Generate Django SECRET_KEY
+# 1. Generate Django SECRET_KEY
 python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
 
-# Generate FIELD_ENCRYPTION_KEY (32 chars)
-python -c "import secrets; print(secrets.token_urlsafe(32)[:32])"
+# 2. Generate FIELD_ENCRYPTION_KEY (Fernet key for passport/visa encryption)
+# Install cryptography first if needed: pip install cryptography
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
 ```
+
+**Important Notes:**
+- The `FIELD_ENCRYPTION_KEY` is used to encrypt sensitive data (passports, visas)
+- A temporary fallback key is used during build, but you MUST set a real key in production
+- Once you encrypt data with a key, you cannot change it without losing access to encrypted data
+- Keep your encryption key secure and backed up!
 
 ## Step 5: Configure Custom Domain (Optional)
 
