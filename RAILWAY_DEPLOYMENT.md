@@ -8,12 +8,21 @@ This guide will walk you through deploying your Django backend to Railway.
 2. Git repository pushed to GitHub/GitLab/Bitbucket
 3. Cloudinary account configured
 
+## Important: Configuration Files Location
+
+The Railway configuration files are at the **root** of your repository:
+- `Procfile` - Process commands for web and release
+- `railway.json` - Railway deployment settings
+- `nixpacks.toml` - Build configuration
+
+These files reference the `backend/` directory where your Django app lives.
+
 ## Step 1: Create a New Railway Project
 
 1. Go to https://railway.app/new
 2. Click **"Deploy from GitHub repo"**
 3. Select your repository: `alhilal`
-4. Railway will detect your Django app automatically
+4. Railway will detect the Procfile and deploy automatically
 
 ## Step 2: Add PostgreSQL Database
 

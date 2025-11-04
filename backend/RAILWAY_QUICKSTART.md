@@ -2,12 +2,15 @@
 
 ## What's Been Configured
 
-✅ **Configuration Files Created:**
+✅ **Configuration Files Created (at repository root):**
 - `Procfile` - Tells Railway how to run your app
 - `railway.json` - Railway-specific deployment config
 - `nixpacks.toml` - Build configuration
-- `runtime.txt` - Python version specification
-- `.railwayignore` - Files to exclude from deployment
+- Note: These files reference the `backend/` directory
+
+✅ **Backend Configuration:**
+- `backend/runtime.txt` - Python version specification
+- `backend/.railwayignore` - Files to exclude from deployment
 
 ✅ **Django Settings Updated:**
 - Added `DATABASE_URL` support (Railway auto-provides this)
