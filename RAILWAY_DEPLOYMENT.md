@@ -51,7 +51,7 @@ In your backend service, go to **"Variables"** tab and add these:
 # Django Core
 SECRET_KEY=<generate-a-strong-secret-key-here>
 DEBUG=False
-ALLOWED_HOSTS=your-app.railway.app
+ALLOWED_HOSTS=api.alhilaltravels.com,your-app.railway.app
 
 # Database (Railway auto-provides DATABASE_URL, but keep these as backup)
 # DB_NAME, DB_USER, DB_PASSWORD, DB_HOST, DB_PORT are auto-configured

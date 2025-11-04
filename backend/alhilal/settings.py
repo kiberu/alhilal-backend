@@ -43,7 +43,23 @@ SECRET_KEY = env('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
+# ALLOWED_HOSTS configuration
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
+
+# Automatically add Railway domain if running on Railway
+if os.environ.get('RAILWAY_ENVIRONMENT'):
+    railway_domain = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
+    if railway_domain and railway_domain not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(railway_domain)
+    # Also allow Railway's static domain format
+    if os.environ.get('RAILWAY_STATIC_URL'):
+        static_domain = os.environ.get('RAILWAY_STATIC_URL').replace('https://', '').replace('http://', '')
+        if static_domain and static_domain not in ALLOWED_HOSTS:
+            ALLOWED_HOSTS.append(static_domain)
+
+# In development or if no hosts specified, allow all (not recommended for production)
+if not ALLOWED_HOSTS or DEBUG:
+    ALLOWED_HOSTS = ['*']
 
 # Application definition
 INSTALLED_APPS = [

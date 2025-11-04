@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: alhilal
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: bash -c "cd backend && python3 manage.py migrate && python3 manage.py collectstatic --noinput && python3 -m gunicorn alhilal.wsgi --bind 0.0.0.0:8000 --workers 4"
+    volumes:
+      - ./backend:/app/backend
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/alhilal
+      REDIS_URL: redis://redis:6379/0
+      SECRET_KEY: django-insecure-local-dev-key-change-in-production
+      DEBUG: "False"
+      ALLOWED_HOSTS: localhost,127.0.0.1
+      CLOUDINARY_CLOUD_NAME: ${CLOUDINARY_CLOUD_NAME}
+      CLOUDINARY_API_KEY: ${CLOUDINARY_API_KEY}
+      CLOUDINARY_API_SECRET: ${CLOUDINARY_API_SECRET}
+      FIELD_ENCRYPTION_KEY: z1J66GkdlkYN2etHSUVOqDm4VLFVsBvpCqjebmFCaZk=
+      CORS_ALLOWED_ORIGINS: http://localhost:3000,http://localhost:3001
+      TIME_ZONE: Africa/Kampala
+      OTP_EXPIRY_SECONDS: 600
+      OTP_MAX_ATTEMPTS: 5
+      JWT_ACCESS_TOKEN_LIFETIME: 3600
+      JWT_REFRESH_TOKEN_LIFETIME: 86400
+      RATELIMIT_ENABLE: "True"
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  postgres_data:
+
