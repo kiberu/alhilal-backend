@@ -279,12 +279,83 @@ if DEBUG:
 
 # Spectacular (OpenAPI) settings
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Alhilal API',
-    'DESCRIPTION': 'API for Alhilal pilgrimage management system',
+    'TITLE': 'Alhilal Travels API',
+    'DESCRIPTION': """
+    # Alhilal Pilgrimage Management System API
+    
+    Complete API for managing pilgrimage trips, bookings, pilgrims, and travel documentation.
+    
+    ## Features
+    - 🕌 **Trip Management**: Create and manage pilgrimage trips
+    - 📦 **Package Management**: Handle travel packages with flexible pricing
+    - 👥 **Pilgrim Management**: Track pilgrim information and documents
+    - 📋 **Booking System**: Complete booking and payment tracking
+    - 📄 **Document Management**: Passport and visa handling with encryption
+    - 📚 **Content Management**: Duas, itineraries, and travel information
+    
+    ## Authentication
+    All endpoints require JWT authentication. Obtain tokens via `/api/v1/auth/login/`.
+    
+    ## Contact
+    - Website: https://alhilaltravels.com
+    - Email: info@alhilaltravels.com
+    """,
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'SCHEMA_PATH_PREFIX': r'/api/v1',
     'COMPONENT_SPLIT_REQUEST': True,
+    
+    # UI Configuration
+    'SWAGGER_UI_SETTINGS': {
+        'deepLinking': True,
+        'persistAuthorization': True,
+        'displayOperationId': True,
+        'filter': True,
+        'tryItOutEnabled': True,
+        'syntaxHighlight.theme': 'monokai',
+    },
+    
+    # Authentication schemes
+    'SECURITY': [
+        {
+            'bearerAuth': []
+        }
+    ],
+    'COMPONENTS': {
+        'securitySchemes': {
+            'bearerAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+            }
+        }
+    },
+    
+    # API Grouping
+    'TAGS': [
+        {'name': 'Authentication', 'description': 'User authentication and authorization'},
+        {'name': 'Profile', 'description': 'User profile management'},
+        {'name': 'Trips', 'description': 'Pilgrimage trip operations'},
+        {'name': 'Packages', 'description': 'Travel package management'},
+        {'name': 'Bookings', 'description': 'Booking and payment operations'},
+        {'name': 'Pilgrims', 'description': 'Pilgrim information management'},
+        {'name': 'Documents', 'description': 'Passport and visa management'},
+        {'name': 'Content', 'description': 'Duas, itineraries, and content'},
+        {'name': 'Admin', 'description': 'Administrative operations'},
+    ],
+    
+    # Schema generation
+    'SCHEMA_COERCE_PATH_PK_SUFFIX': True,
+    'PREPROCESSING_HOOKS': [],
+    'POSTPROCESSING_HOOKS': [],
+    
+    # API versioning
+    'SCHEMA_PATH_PREFIX_TRIM': True,
+    'SERVERS': [
+        {'url': 'https://api.alhilaltravels.com', 'description': 'Production server'},
+        {'url': 'https://alhilal-backend-production.up.railway.app', 'description': 'Railway server'},
+        {'url': 'http://localhost:8000', 'description': 'Local development server'},
+    ],
 }
 
 # Celery configuration
