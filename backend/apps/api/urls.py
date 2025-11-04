@@ -21,6 +21,7 @@ from .views.admin import (
     AdminChecklistItemViewSet, AdminEmergencyContactViewSet, AdminTripFAQViewSet,
     AdminUserListView, AdminUserDetailView, AdminUserChangePasswordView
 )
+from .views.admin.pilgrim_import import download_template, validate_import, import_pilgrims
 
 app_name = 'api'
 
@@ -76,6 +77,11 @@ urlpatterns = [
     path('users/', AdminUserListView.as_view(), name='admin-user-list'),
     path('users/<uuid:user_id>/', AdminUserDetailView.as_view(), name='admin-user-detail'),
     path('users/<uuid:user_id>/change-password/', AdminUserChangePasswordView.as_view(), name='admin-user-change-password'),
+    
+    # Admin Pilgrim Import (staff only)
+    path('pilgrims/import/template/', download_template, name='pilgrim-import-template'),
+    path('pilgrims/import/validate/', validate_import, name='pilgrim-import-validate'),
+    path('pilgrims/import/', import_pilgrims, name='pilgrim-import'),
     
     # Admin ViewSets (staff only) - registered via router
     path('', include(router.urls)),

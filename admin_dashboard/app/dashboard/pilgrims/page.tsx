@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -11,19 +11,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Users, Plus, Filter, Download, FileText, Plane } from "lucide-react"
+import { Users, Plus, Filter, Download, FileText, Plane, Upload, FileSpreadsheet } from "lucide-react"
 import { DataTable, SearchBar, StatusBadge, type Column } from "@/components/shared"
 import { PilgrimService } from "@/lib/api/services/pilgrims"
 import { useAuth } from "@/hooks/useAuth"
+import { toast } from "sonner"
 import type { PilgrimWithDetails } from "@/types/models"
 import { format } from "date-fns"
+import { ImportPreviewDialog } from "@/components/pilgrims/ImportPreviewDialog"
 
 export default function PilgrimsPage() {
   const router = useRouter()
   const { accessToken } = useAuth()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [pilgrims, setPilgrims] = useState<PilgrimWithDetails[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [validating, setValidating] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
+  const [validationResult, setValidationResult] = useState<any>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   
   // Filters
   const [searchQuery, setSearchQuery] = useState("")
@@ -95,6 +103,122 @@ export default function PilgrimsPage() {
     setNationalityFilter("all")
     setGenderFilter("all")
     setPage(1)
+  }
+
+  const handleDownloadTemplate = async () => {
+    try {
+      await PilgrimService.downloadTemplate(accessToken)
+      toast.success("Template Downloaded", {
+        description: "The import template has been downloaded successfully.",
+      })
+    } catch (err) {
+      console.error("Error downloading template:", err)
+      toast.error("Download Failed", {
+        description: "Failed to download the template. Please try again.",
+      })
+    }
+  }
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.name.endsWith('.xlsx')) {
+      toast.error("Invalid File", {
+        description: "Please upload an Excel file (.xlsx)",
+      })
+      return
+    }
+
+    // Phase 1: Validate the file
+    try {
+      setValidating(true)
+      const response = await PilgrimService.validateImport(file, accessToken)
+
+      if (response.success) {
+        // Store the file and validation results
+        setSelectedFile(file)
+        setValidationResult(response)
+        setShowPreview(true)
+      } else {
+        toast.error("Validation Failed", {
+          description: response.error || "Failed to validate file. Please try again.",
+        })
+      }
+    } catch (err) {
+      console.error("Error validating file:", err)
+      toast.error("Validation Failed", {
+        description: err instanceof Error ? err.message : "Failed to validate file. Please try again.",
+      })
+    } finally {
+      setValidating(false)
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  const confirmImport = async () => {
+    if (!selectedFile) return
+
+    // Phase 2: Actually import the pilgrims
+    try {
+      setImporting(true)
+      const response = await PilgrimService.importPilgrims(selectedFile, accessToken)
+
+      if (response.success) {
+        const imported = (response as any).imported || 0
+        const errors = (response as any).errors || []
+        const message = (response as any).message || ''
+
+        if (errors && errors.length > 0) {
+          const errorMessage = `${message}\n\nErrors:\n${errors.slice(0, 5).join('\n')}${errors.length > 5 ? `\n... and ${errors.length - 5} more errors` : ''}`
+          
+          if (imported > 0) {
+            toast.warning("Import Completed with Errors", {
+              description: errorMessage,
+            })
+          } else {
+            toast.error("Import Failed", {
+              description: errorMessage,
+            })
+          }
+        } else {
+          toast.success("Import Successful", {
+            description: message || `Successfully imported ${imported} pilgrim(s)`,
+          })
+        }
+
+        // Close preview and reload pilgrims list
+        setShowPreview(false)
+        setValidationResult(null)
+        setSelectedFile(null)
+        await loadPilgrims()
+      } else {
+        toast.error("Import Failed", {
+          description: response.error || "Failed to import pilgrims. Please try again.",
+        })
+      }
+    } catch (err) {
+      console.error("Error importing pilgrims:", err)
+      toast.error("Import Failed", {
+        description: err instanceof Error ? err.message : "Failed to import pilgrims. Please try again.",
+      })
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const handleClosePreview = () => {
+    setShowPreview(false)
+    setValidationResult(null)
+    setSelectedFile(null)
   }
 
   const columns: Column<PilgrimWithDetails>[] = [
@@ -253,14 +377,35 @@ export default function PilgrimsPage() {
           </div>
 
           <div className="mt-4 flex gap-2">
-            <Button variant="outline" size="sm">
-              <Download className="mr-2 h-4 w-4" />
-              Export CSV
+            <Button variant="outline" size="sm" onClick={handleDownloadTemplate}>
+              <FileSpreadsheet className="mr-2 h-4 w-4" />
+              Download Template
             </Button>
-            <Button variant="outline" size="sm">
-              <FileText className="mr-2 h-4 w-4" />
-              Import CSV
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleImportClick}
+              disabled={validating || importing}
+            >
+              {validating ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+                  Validating...
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Import Excel
+                </>
+              )}
             </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx"
+              onChange={handleFileChange}
+              className="hidden"
+            />
           </div>
         </CardContent>
       </Card>
@@ -358,6 +503,20 @@ export default function PilgrimsPage() {
           />
         </CardContent>
       </Card>
+
+      {/* Import Preview Dialog */}
+      {validationResult && (
+        <ImportPreviewDialog
+          open={showPreview}
+          onClose={handleClosePreview}
+          onConfirm={confirmImport}
+          summary={validationResult.summary}
+          validRows={validationResult.valid_rows || []}
+          duplicateRows={validationResult.duplicate_rows || []}
+          errorRows={validationResult.error_rows || []}
+          loading={importing}
+        />
+      )}
     </div>
   )
 }
