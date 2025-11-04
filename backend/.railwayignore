@@ -1,0 +1,58 @@
+# Railway Ignore File
+# Files and directories to exclude from Railway deployments
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+*.cover
+.tox/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Database
+*.sqlite3
+*.db
+
+# Media (using Cloudinary)
+media/
+
+# Documentation
+*.md
+TEST_STATUS.md
+
+# Development files
+requirements-dev.txt
+conftest.py
+test_*.py
+**/tests/
+
+# Logs
+*.log
+
