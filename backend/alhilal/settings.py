@@ -119,7 +119,17 @@ WSGI_APPLICATION = 'alhilal.wsgi.application'
 
 # Database
 # Railway provides DATABASE_URL automatically, use it if available
-if env('DATABASE_URL'):
+import sys
+
+# During collectstatic, we don't need a real database connection
+if 'collectstatic' in sys.argv:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': ':memory:',
+        }
+    }
+elif env('DATABASE_URL'):
     DATABASES = {
         'default': env.db('DATABASE_URL')
     }
