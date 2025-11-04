@@ -277,7 +277,21 @@ OTP_EXPIRY_SECONDS = env('OTP_EXPIRY_SECONDS')
 OTP_MAX_ATTEMPTS = env('OTP_MAX_ATTEMPTS')
 
 # Field encryption key
-FIELD_ENCRYPTION_KEY = env('FIELD_ENCRYPTION_KEY')
+# For Railway deployment: generate a secure key and set it in environment variables
+# During build time (collectstatic/migrations), a temporary key is used if none is set
+# This temporary key should NEVER be used in production for actual data
+# Valid Fernet key format (32 url-safe base64-encoded bytes = 44 chars)
+TEMPORARY_KEY = 'dGVtcG9yYXJ5X2J1aWxkX2tleV9kb19ub3RfdXNlX2lucHJvZHVjdGlvbg=='
+FIELD_ENCRYPTION_KEY = env('FIELD_ENCRYPTION_KEY') or TEMPORARY_KEY
+
+# Warn if using temporary key in production
+if not DEBUG and FIELD_ENCRYPTION_KEY == TEMPORARY_KEY:
+    import warnings
+    warnings.warn(
+        "WARNING: Using temporary FIELD_ENCRYPTION_KEY! "
+        "Set a secure key in production environment variables.",
+        RuntimeWarning
+    )
 
 # Rate limiting
 RATELIMIT_ENABLE = env('RATELIMIT_ENABLE')

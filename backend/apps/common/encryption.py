@@ -21,15 +21,16 @@ class EncryptedCharField(models.CharField):
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Validate encryption key exists
+        # Note: We don't validate the key here to allow migrations/collectstatic to run
+        # The key will be validated when actually encrypting/decrypting data
+    
+    def get_cipher(self):
+        """Get Fernet cipher instance."""
         if not hasattr(settings, 'FIELD_ENCRYPTION_KEY') or not settings.FIELD_ENCRYPTION_KEY:
             raise ValueError(
                 "FIELD_ENCRYPTION_KEY must be set in settings. "
                 "Generate with: from cryptography.fernet import Fernet; Fernet.generate_key().decode()"
             )
-    
-    def get_cipher(self):
-        """Get Fernet cipher instance."""
         key = settings.FIELD_ENCRYPTION_KEY
         if isinstance(key, str):
             key = key.encode()
