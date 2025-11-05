@@ -17,7 +17,8 @@ import { DataTable, SearchBar, type Column } from "@/components/shared"
 import { PassportService } from "@/lib/api/services/passports"
 import { useAuth } from "@/hooks/useAuth"
 import type { Passport } from "@/types/models"
-import { format, differenceInDays } from "date-fns"
+import { differenceInDays } from "date-fns"
+import { formatDate } from "@/lib/utils"
 
 export default function PassportsPage() {
   const router = useRouter()
@@ -145,7 +146,7 @@ export default function PassportsPage() {
         const status = getExpiryStatus(passport.expiryDate)
         return (
           <div className="space-y-1">
-            <p className="text-sm">{format(new Date(passport.expiryDate), "MMM dd, yyyy")}</p>
+            <p className="text-sm">{formatDate(passport.expiryDate)}</p>
             <p className="text-xs text-muted-foreground">
               {status.days > 0 ? `${status.days} days` : `${Math.abs(status.days)} days ago`}
             </p>

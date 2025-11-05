@@ -21,7 +21,7 @@ import { TripUpdateService } from "@/lib/api/services/trip-content"
 import { useAuth } from "@/hooks/useAuth"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
-import { format } from "date-fns"
+import { formatDate } from "@/lib/utils"
 
 interface TripUpdate {
   id: string
@@ -197,7 +197,7 @@ export default function TripUpdatesPage() {
                     <div className="flex items-center gap-3 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
                         <Clock className="h-3 w-3" />
-                        {format(new Date(update.publishAt), "MMM dd, yyyy 'at' HH:mm")}
+                        {formatDate(update.publishAt, "MMM dd, yyyy 'at' HH:mm")}
                       </div>
                       <Badge
                         variant="secondary"

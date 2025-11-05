@@ -17,7 +17,7 @@ import { PilgrimService } from "@/lib/api/services/pilgrims"
 import { useAuth } from "@/hooks/useAuth"
 import { toast } from "sonner"
 import type { PilgrimWithDetails } from "@/types/models"
-import { format } from "date-fns"
+import { formatDate } from "@/lib/utils"
 import { ImportPreviewDialog } from "@/components/pilgrims/ImportPreviewDialog"
 
 export default function PilgrimsPage() {
@@ -275,7 +275,7 @@ export default function PilgrimsPage() {
       header: "Joined",
       render: (pilgrim) => (
         <span className="text-sm text-muted-foreground">
-          {format(new Date(pilgrim.created_at), "MMM yyyy")}
+          {formatDate(pilgrim.created_at, "MMM yyyy")}
         </span>
       ),
     },

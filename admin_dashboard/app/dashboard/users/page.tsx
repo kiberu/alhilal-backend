@@ -16,7 +16,7 @@ import { DataTable, SearchBar, StatusBadge, type Column } from "@/components/sha
 import { UserService } from "@/lib/api/services/users"
 import { useAuth } from "@/hooks/useAuth"
 import type { User } from "@/types/models"
-import { format } from "date-fns"
+import { formatDate } from "@/lib/utils"
 
 export default function UsersPage() {
   const router = useRouter()
@@ -158,7 +158,7 @@ export default function UsersPage() {
       header: "Created",
       render: (user) => (
         <span className="text-sm text-muted-foreground">
-          {format(new Date(user.created_at), "MMM dd, yyyy")}
+          {formatDate(user.created_at)}
         </span>
       ),
     },

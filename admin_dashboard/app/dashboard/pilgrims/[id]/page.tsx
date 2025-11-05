@@ -25,7 +25,7 @@ import { PilgrimService } from "@/lib/api/services/pilgrims"
 import { useAuth } from "@/hooks/useAuth"
 import { StatusBadge } from "@/components/shared"
 import type { PilgrimWithDetails } from "@/types/models"
-import { format } from "date-fns"
+import { formatDate } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 
@@ -209,7 +209,7 @@ export default function PilgrimDetailsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Member Since</p>
                 <p className="text-lg font-medium">
-                  {format(new Date(pilgrim.created_at), "MMM yyyy")}
+                  {formatDate(pilgrim.created_at, "MMM yyyy")}
                 </p>
               </div>
             </div>
@@ -250,7 +250,7 @@ export default function PilgrimDetailsPage() {
                   <p className="text-sm text-muted-foreground">Date of Birth</p>
                   <p className="font-medium">
                     {pilgrim.dateOfBirth
-                      ? `${format(new Date(pilgrim.dateOfBirth), "PPP")} (${age} years)`
+                      ? `${formatDate(pilgrim.dateOfBirth, "PPP")} (${age} years)`
                       : "N/A"}
                   </p>
                 </div>
@@ -372,7 +372,7 @@ export default function PilgrimDetailsPage() {
                             {pilgrim.passport.number}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            Expires: {format(new Date(pilgrim.passport.expiryDate), "PPP")}
+                            Expires: {formatDate(pilgrim.passport.expiryDate, "PPP")}
                           </p>
                         </div>
                         <Badge

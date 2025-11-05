@@ -17,7 +17,7 @@ import { DataTable, SearchBar, StatusBadge, type Column } from "@/components/sha
 import { VisaService } from "@/lib/api/services/visas"
 import { useAuth } from "@/hooks/useAuth"
 import type { VisaWithDetails } from "@/types/models"
-import { format } from "date-fns"
+import { formatDate } from "@/lib/utils"
 
 export default function VisasPage() {
   const router = useRouter()
@@ -196,7 +196,7 @@ export default function VisasPage() {
       header: "Applied",
       render: (visa) => (
         <span className="text-sm text-muted-foreground">
-          {visa.applicationDate ? format(new Date(visa.applicationDate), "MMM dd, yyyy") : "N/A"}
+          {formatDate(visa.applicationDate)}
         </span>
       ),
     },
@@ -205,7 +205,7 @@ export default function VisasPage() {
       header: "Approved",
       render: (visa) => (
         <span className="text-sm text-muted-foreground">
-          {visa.approvalDate ? format(new Date(visa.approvalDate), "MMM dd, yyyy") : "-"}
+          {formatDate(visa.approvalDate, "MMM dd, yyyy", "-")}
         </span>
       ),
     },

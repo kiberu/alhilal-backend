@@ -19,6 +19,11 @@ export default auth((req) => {
     return NextResponse.redirect(new URL("/dashboard", nextUrl))
   }
 
+  // Redirect unauthenticated users from root to login
+  if (!isLoggedIn && isRootPath) {
+    return NextResponse.redirect(new URL("/login", nextUrl))
+  }
+
   // Redirect unauthenticated users from protected paths to login
   if (!isLoggedIn && !isLoginPath && !isRootPath && !isErrorPath) {
     return NextResponse.redirect(new URL("/login", nextUrl))

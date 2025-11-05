@@ -14,7 +14,7 @@ import {
 } from "lucide-react"
 import { DashboardService } from "@/lib/api/services/dashboard"
 import { useAuth } from "@/hooks/useAuth"
-import { format } from "date-fns"
+import { formatDate } from "@/lib/utils"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { StatusBadge } from "@/components/shared"
@@ -254,7 +254,7 @@ export default function DashboardPage() {
                       </div>
                       <p className="text-sm text-muted-foreground">{item.description}</p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(item.timestamp), "PPp")}
+                        {formatDate(item.timestamp, "PPp")}
                       </p>
                     </div>
                   </div>

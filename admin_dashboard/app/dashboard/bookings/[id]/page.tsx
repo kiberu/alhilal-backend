@@ -31,7 +31,7 @@ import { PaymentService } from "@/lib/api/services/payments"
 import { useAuth } from "@/hooks/useAuth"
 import { StatusBadge } from "@/components/shared"
 import type { BookingWithDetails, Payment, PaymentMethod } from "@/types/models"
-import { format } from "date-fns"
+import { formatDate } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 
@@ -289,7 +289,7 @@ export default function BookingDetailsPage() {
               <div>
                 <p className="text-sm text-muted-foreground">Booked On</p>
                 <p className="text-lg font-medium">
-                  {format(new Date(booking.created_at), "MMM dd, yyyy")}
+                  {formatDate(booking.created_at)}
                 </p>
               </div>
             </div>
@@ -362,11 +362,7 @@ export default function BookingDetailsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Travel Dates</p>
                   <p className="text-sm">
-                    {booking.packageDetails?.trip?.startDate && 
-                      format(new Date(booking.packageDetails.trip.startDate), "MMM dd, yyyy")
-                    } - {booking.packageDetails?.trip?.endDate && 
-                      format(new Date(booking.packageDetails.trip.endDate), "MMM dd, yyyy")
-                    }
+                    {formatDate(booking.packageDetails?.trip?.startDate)} - {formatDate(booking.packageDetails?.trip?.endDate)}
                   </p>
                 </div>
               </CardContent>
@@ -394,7 +390,7 @@ export default function BookingDetailsPage() {
                 <div className="flex items-center justify-between border-t pt-3">
                   <span className="text-sm font-medium">Created</span>
                   <span className="text-sm">
-                    {format(new Date(booking.created_at), "PPp")}
+                    {formatDate(booking.created_at, "PPp")}
                   </span>
                 </div>
               </CardContent>
@@ -620,7 +616,7 @@ export default function BookingDetailsPage() {
                       {payments.map((payment) => (
                         <TableRow key={payment.id}>
                           <TableCell>
-                            {format(new Date(payment.payment_date), "MMM dd, yyyy")}
+                            {formatDate(payment.payment_date)}
                           </TableCell>
                           <TableCell className="font-medium">
                             {formatCurrency(payment.amount_minor_units, payment.currency?.code || "USD")}

@@ -17,7 +17,7 @@ import { DataTable, SearchBar, StatusBadge, DateRangePicker, type Column } from 
 import { BookingService } from "@/lib/api/services/bookings"
 import { useAuth } from "@/hooks/useAuth"
 import type { BookingWithDetails } from "@/types/models"
-import { format } from "date-fns"
+import { formatDate } from "@/lib/utils"
 import { DateRange } from "react-day-picker"
 
 export default function BookingsPage() {
@@ -243,7 +243,7 @@ export default function BookingsPage() {
       header: "Created",
       render: (booking) => (
         <span className="text-sm text-muted-foreground">
-          {format(new Date(booking.created_at), "MMM dd, yyyy")}
+          {formatDate(booking.created_at)}
         </span>
       ),
     },

@@ -35,7 +35,7 @@ import { PackageService } from "@/lib/api/services/packages"
 import { useAuth } from "@/hooks/useAuth"
 import { StatusBadge } from "@/components/shared"
 import type { TripFullDetails } from "@/types/models"
-import { format } from "date-fns"
+import { formatDate } from "@/lib/utils"
 import { Skeleton } from "@/components/ui/skeleton"
 import { toast } from "sonner"
 
@@ -330,8 +330,7 @@ export default function TripDetailsPage() {
                   <div>
                     <p className="text-sm font-medium">Duration</p>
                     <p className="text-sm text-muted-foreground">
-                      {format(new Date(trip.startDate), "MMM dd, yyyy")} -{" "}
-                      {format(new Date(trip.endDate), "MMM dd, yyyy")}
+                      {formatDate(trip.startDate)} - {formatDate(trip.endDate)}
                     </p>
                   </div>
                 </div>
