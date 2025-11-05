@@ -623,7 +623,7 @@ export default function BookingDetailsPage() {
                             {format(new Date(payment.payment_date), "MMM dd, yyyy")}
                           </TableCell>
                           <TableCell className="font-medium">
-                            {formatCurrency(payment.amount_minor_units, payment.currency)}
+                            {formatCurrency(payment.amount_minor_units, payment.currency?.code || "USD")}
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">
