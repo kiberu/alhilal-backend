@@ -1,0 +1,87 @@
+14:14:09.986 Running build in Washington, D.C., USA (East) – iad1
+14:14:09.987 Build machine configuration: 2 cores, 8 GB
+14:14:10.117 Cloning github.com/kiberu/alhilal-backend (Branch: main, Commit: bc2ef2d)
+14:14:10.118 Previous build caches not available.
+14:14:10.441 Cloning completed: 324.000ms
+14:14:10.935 Running "vercel build"
+14:14:11.368 Vercel CLI 48.8.2
+14:14:11.707 Running "install" command: `npm install --legacy-peer-deps`...
+14:14:23.760 
+14:14:23.760 added 125 packages, and audited 126 packages in 12s
+14:14:23.761 
+14:14:23.761 26 packages are looking for funding
+14:14:23.761   run `npm fund` for details
+14:14:23.773 
+14:14:23.773 1 moderate severity vulnerability
+14:14:23.773 
+14:14:23.773 To address all issues, run:
+14:14:23.773   npm audit fix
+14:14:23.773 
+14:14:23.773 Run `npm audit` for details.
+14:14:23.841 Detected Next.js version: 15.5.6
+14:14:23.842 Running "npm run build"
+14:14:23.953 
+14:14:23.954 > web@0.1.0 build
+14:14:23.954 > next build
+14:14:23.954 
+14:14:24.577  ⚠ Installing TypeScript as it was not found while loading "next.config.ts".
+14:14:24.585 
+14:14:24.586 Installing devDependencies (npm):
+14:14:24.586 - typescript
+14:14:24.586 
+14:14:27.867 npm warn deprecated inflight@1.0.6: This module is not supported, and leaks memory. Do not use it. Check out lru-cache if you want a good and tested way to coalesce async requests by a key value, which is much more comprehensive and powerful.
+14:14:28.183 npm warn deprecated glob@7.2.3: Glob versions prior to v9 are no longer supported
+14:14:28.414 npm warn deprecated domexception@4.0.0: Use your platform's native DOMException instead
+14:14:28.747 npm warn deprecated abab@2.0.6: Use your platform's native atob() and btoa() methods instead
+14:14:31.377 
+14:14:31.377 added 612 packages, and audited 738 packages in 7s
+14:14:31.377 
+14:14:31.378 178 packages are looking for funding
+14:14:31.378   run `npm fund` for details
+14:14:31.391 
+14:14:31.392 1 moderate severity vulnerability
+14:14:31.392 
+14:14:31.392 To address all issues, run:
+14:14:31.392   npm audit fix
+14:14:31.392 
+14:14:31.393 Run `npm audit` for details.
+14:14:31.412 
+14:14:31.669 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+14:14:31.671 This information is used to shape Next.js' roadmap and prioritize features.
+14:14:31.671 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+14:14:31.671 https://nextjs.org/telemetry
+14:14:31.672 
+14:14:31.755    ▲ Next.js 15.5.6
+14:14:31.756    - Environments: .env.production
+14:14:31.756 
+14:14:31.830    Creating an optimized production build ...
+14:14:47.273 Failed to compile.
+14:14:47.274 
+14:14:47.274 ./app/dashboard/bookings/[id]/edit/page.tsx
+14:14:47.275 Module not found: Can't resolve '@/lib/api/services/bookings'
+14:14:47.275 
+14:14:47.275 https://nextjs.org/docs/messages/module-not-found
+14:14:47.275 
+14:14:47.275 ./app/dashboard/bookings/[id]/page.tsx
+14:14:47.276 Module not found: Can't resolve '@/lib/api/services/bookings'
+14:14:47.276 
+14:14:47.276 https://nextjs.org/docs/messages/module-not-found
+14:14:47.276 
+14:14:47.276 ./app/dashboard/bookings/[id]/page.tsx
+14:14:47.276 Module not found: Can't resolve '@/lib/api/services/payments'
+14:14:47.277 
+14:14:47.277 https://nextjs.org/docs/messages/module-not-found
+14:14:47.277 
+14:14:47.277 ./app/dashboard/bookings/new/page.tsx
+14:14:47.277 Module not found: Can't resolve '@/lib/api/services/bookings'
+14:14:47.277 
+14:14:47.278 https://nextjs.org/docs/messages/module-not-found
+14:14:47.278 
+14:14:47.278 ./app/dashboard/bookings/new/page.tsx
+14:14:47.278 Module not found: Can't resolve '@/lib/api/services/trips'
+14:14:47.280 
+14:14:47.280 https://nextjs.org/docs/messages/module-not-found
+14:14:47.281 
+14:14:47.283 
+14:14:47.284 > Build failed because of webpack errors
+14:14:47.319 Error: Command "npm run build" exited with 1

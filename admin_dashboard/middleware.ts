@@ -7,6 +7,7 @@ export default auth((req) => {
 
   const isLoginPath = nextUrl.pathname === "/login"
   const isRootPath = nextUrl.pathname === "/"
+  const isErrorPath = nextUrl.pathname === "/error"
 
   // Redirect authenticated users from login to dashboard
   if (isLoggedIn && isLoginPath) {
@@ -19,7 +20,7 @@ export default auth((req) => {
   }
 
   // Redirect unauthenticated users from protected paths to login
-  if (!isLoggedIn && !isLoginPath && !isRootPath) {
+  if (!isLoggedIn && !isLoginPath && !isRootPath && !isErrorPath) {
     return NextResponse.redirect(new URL("/login", nextUrl))
   }
 

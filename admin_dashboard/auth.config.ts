@@ -4,6 +4,7 @@ import type { Account, StaffProfile } from "@/types/models"
 export const authConfig = {
   pages: {
     signIn: "/login",
+    error: "/error", // Custom error page
   },
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
