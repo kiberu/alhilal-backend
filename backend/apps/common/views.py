@@ -4,6 +4,11 @@ Common views for the Alhilal application
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from .cloudinary import upload_file
 
 
 @csrf_exempt
@@ -17,6 +22,59 @@ def health_check(request):
         'service': 'alhilal-backend',
         'version': '1.0.0'
     })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_file_view(request):
+    """
+    Upload a file to Cloudinary
+    
+    Expected form data:
+    - file: The file to upload
+    - folder: Cloudinary folder (optional, default: 'uploads')
+    - resource_type: Type of resource ('image', 'raw', 'video', etc.) (optional, default: 'image')
+    
+    Returns:
+    - publicId: Cloudinary public ID
+    - secureUrl: Secure URL to access the file
+    - format: File format
+    - bytes: File size in bytes
+    """
+    try:
+        # Get the uploaded file
+        file = request.FILES.get('file')
+        if not file:
+            return Response(
+                {'error': 'No file provided'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Get optional parameters
+        folder = request.data.get('folder', 'uploads')
+        resource_type = request.data.get('resource_type', 'image')
+        
+        # Upload to Cloudinary
+        result = upload_file(
+            file=file,
+            folder=folder,
+            resource_type=resource_type
+        )
+        
+        # Return response matching frontend expectations
+        return Response({
+            'publicId': result['public_id'],
+            'secureUrl': result['secure_url'],
+            'format': result.get('format', ''),
+            'bytes': result.get('bytes', 0),
+            'resourceType': result.get('resource_type', resource_type)
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 
 @csrf_exempt
