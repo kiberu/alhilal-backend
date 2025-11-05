@@ -46,12 +46,10 @@ const nextConfig: NextConfig = {
       return [];
     }
     
-    return [
-      {
-        source: '/api/:path*',
-        destination: process.env.NEXT_PUBLIC_API_URL + ':path*',
-      },
-    ];
+    // Note: We intentionally do NOT proxy /api/auth/* because that's handled by NextAuth
+    // The rewrites below would only be useful if you wanted to proxy OTHER API paths
+    // Currently returning empty array since we use NEXT_PUBLIC_API_URL directly from client
+    return [];
   },
 
   // Headers for security
