@@ -4,7 +4,6 @@
   "devCommand": "npm run dev",
   "installCommand": "npm install --legacy-peer-deps",
   "framework": "nextjs",
-  "rootDirectory": "admin_dashboard",
   "rewrites": [
     {
       "source": "/api/:path*",
