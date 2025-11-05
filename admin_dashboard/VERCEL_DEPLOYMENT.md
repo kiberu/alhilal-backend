@@ -40,9 +40,8 @@ Add these in Vercel Dashboard → Project Settings → Environment Variables:
 # API Configuration
 NEXT_PUBLIC_API_URL=https://api.alhilaltravels.com/api/v1/
 
-# Authentication
-NEXTAUTH_SECRET=<generate-with-openssl-rand-base64-32>
-NEXTAUTH_URL=https://admin.alhilaltravels.com
+# Authentication (NextAuth v5)
+AUTH_SECRET=<generate-with-openssl-rand-base64-32>
 
 # Cloudinary
 NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME=your-cloud-name
@@ -51,6 +50,7 @@ NEXT_PUBLIC_CLOUDINARY_API_SECRET=your-api-secret
 NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET=your-upload-preset
 
 # Application
+NEXT_PUBLIC_APP_URL=https://admin.alhilaltravels.com
 NODE_ENV=production
 ```
 
@@ -67,10 +67,10 @@ NODE_ENV=production
 ### Generating Secrets
 
 ```bash
-# Generate NEXTAUTH_SECRET
+# Generate AUTH_SECRET (for NextAuth v5)
 openssl rand -base64 32
 
-# Copy the output and add it to Vercel
+# Copy the output and add it to Vercel as AUTH_SECRET
 ```
 
 ## Custom Domain Setup
@@ -209,9 +209,10 @@ git push
 - Ensure Railway backend is running
 
 **Authentication Issues**
-- Verify `NEXTAUTH_SECRET` is set
-- Check `NEXTAUTH_URL` matches your domain
+- Verify `AUTH_SECRET` is set (required for NextAuth v5)
+- Verify `NEXT_PUBLIC_APP_URL` matches your domain
 - Ensure cookies are allowed in browser
+- Check `/api/auth/session` endpoint returns 200 (not 404)
 
 **Image Upload Errors**
 - Verify Cloudinary environment variables
