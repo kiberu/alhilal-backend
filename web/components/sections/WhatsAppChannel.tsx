@@ -57,7 +57,7 @@ export default function WhatsAppChannel() {
 
             {/* CTA Button */}
             <a 
-              href="https://whatsapp.com/channel/0029VakK5Tx1Ujmq4Y6V2W2u"
+              href="https://whatsapp.com/channel/0029VbC6Ncr8KMqre9kVUh1Z"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-3 text-black font-semibold text-base px-8 py-4 rounded-lg transition-all shadow-lg hover:opacity-90 cursor-pointer"
