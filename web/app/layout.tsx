@@ -9,9 +9,14 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Al-Hilal | Ramadhan Umrah - Spiritual Journey to Makkah",
+  title: "Al-Hilal Hajj and Umrah Services | Ramadhan Umrah 2026 offer at special rates",
   description: "Join fellow believers for a spiritually fulfilling Umrah in the last 15 nights of Ramadhan. Grand Ramadhan Umrah packages at special rates.",
   keywords: ["Umrah", "Ramadhan", "Makkah", "Hajj", "Islamic Travel", "Al-Hilal"],
+  icons: {
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
+  },
 };
 
 export default function RootLayout({
