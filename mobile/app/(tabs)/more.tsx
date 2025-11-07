@@ -33,11 +33,11 @@ const menuItems = [
     color: '#F9A028',
   },
   {
-    id: 'visas',
+    id: 'documents',
     icon: 'document-text',
-    title: 'My Visas',
-    subtitle: 'Track visa processing',
-    route: '/visas',
+    title: 'My Documents',
+    subtitle: 'Manage travel paperwork',
+    route: '/documents',
     color: '#10B981',
   },
   {
@@ -47,14 +47,6 @@ const menuItems = [
     subtitle: 'Learn more about us',
     route: '/about',
     color: '#3B82F6',
-  },
-  {
-    id: 'contact',
-    icon: 'call',
-    title: 'Contact Us',
-    subtitle: 'Get in touch with our team',
-    action: 'contact',
-    color: '#8B5CF6',
   },
   {
     id: 'settings',
@@ -104,13 +96,8 @@ export default function MoreScreen() {
 
   const handleMenuPress = (item: typeof menuItems[0]) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (item.action === 'contact') {
-      // Show contact options
-      return;
-    }
     if (item.route) {
-      // TODO: Navigate when these screens are created
-      console.log('Navigate to:', item.route);
+      router.push(item.route as any);
     }
   };
 

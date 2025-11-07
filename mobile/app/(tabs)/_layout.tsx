@@ -80,12 +80,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="lessons"
+        name="trips"
         options={{
-          title: 'Learn',
+          title: 'Trips',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? 'book' : 'book-outline'}
+              name={focused ? 'calendar' : 'calendar-outline'}
               size={24}
               color={color}
             />
@@ -93,12 +93,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="trips"
+        name="lessons"
         options={{
-          title: 'Trips',
+          title: 'Learn',
           tabBarIcon: ({ color, focused }) => (
             <Ionicons
-              name={focused ? 'calendar' : 'calendar-outline'}
+              name={focused ? 'book' : 'book-outline'}
               size={24}
               color={color}
             />
