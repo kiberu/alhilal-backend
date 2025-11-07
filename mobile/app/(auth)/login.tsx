@@ -400,7 +400,7 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
   },
   logoContainer: {
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingVertical: Spacing.xxxl,
     paddingTop: Spacing.xxl,
   },
@@ -411,13 +411,13 @@ const styles = StyleSheet.create({
   pageTitle: {
     fontSize: Typography.fontSize['4xl'],
     fontWeight: Typography.fontWeight.black,
-    textAlign: 'center',
+    textAlign: 'left',
   },
   instructions: {
     fontSize: Typography.fontSize.sm,
     lineHeight: 22,
-    textAlign: 'center',
-    paddingHorizontal: Spacing.md,
+    textAlign: 'left',
+    // paddingHorizontal: Spacing.md,
   },
   loginCard: {
     padding: Spacing.xl,

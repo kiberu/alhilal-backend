@@ -11,11 +11,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Typography, BorderRadius, Shadow } from '@/constants/theme';
+import { AlHilalIcon } from '@/components/AlHilalIcon';
 import * as Haptics from 'expo-haptics';
+import { AlHilalLogo } from '@/components/AlHilalLogo';
 
 const { width } = Dimensions.get('window');
 const CARD_WIDTH = width - 80; // Show partial next card
@@ -33,22 +35,23 @@ const packages = [
   },
   {
     id: 2,
-    title: 'Rajab Umrah',
-    subtitle: 'Mid Rajab 1446',
-    price: '8,500,000',
-    currency: 'UGX',
+    title: 'December Umrah + Dubai',
+    subtitle: 'Umrah + 4 days in Dubai',
+    price: '2,650',
+    currency: 'USD',
+    // discount: '45% OFF',
     image: require('@/assets/alhilal-assets/about-image.jpg'),
-    featured: false,
+    featured: true,
   },
 ];
 
 const nextTrip = {
   id: 1,
-  title: 'Ramadhan Umrah',
-  price: '6,750,000',
-  currency: 'UGX',
-  dateFrom: 'Mar 15, 2026',
-  dateTo: 'Mar 30, 2026',
+  title: 'November Umrah',
+  price: '1,800',
+  currency: 'USD',
+  dateFrom: 'Nov 27, 2025',
+  dateTo: 'Dec 6, 2025',
   cities: ['Makkah', 'Madinah'],
   spotsLeft: 8,
   image: require('@/assets/alhilal-assets/Kaaba-hero1.jpg'),
@@ -79,6 +82,16 @@ export default function HomeScreen() {
     router.push('/(auth)/login');
   };
 
+  const handleNotificationsPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // TODO: Navigate to notifications screen when available
+  };
+
+  const handleProfilePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    handleLoginPress();
+  };
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <ScrollView
@@ -86,6 +99,47 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
+        <View
+          style={[
+            styles.header,
+            {
+              borderColor: colors.border,
+              backgroundColor: colors.background,
+            },
+          ]}
+        >
+          <AlHilalLogo width={180} height={32} />
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={handleNotificationsPress}
+              activeOpacity={0.8}
+              style={[styles.headerButton, { backgroundColor: colors.muted }]}
+            >
+              <FontAwesome name="bell-o" size={18} color={colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={handleProfilePress}
+              activeOpacity={0.8}
+              style={[styles.headerButton, { backgroundColor: colors.muted }]}
+            >
+              <FontAwesome name="user-o" size={18} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View
+          style={[
+            styles.welcomeSection,
+            Shadow.medium,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <View style={styles.welcomeHeader}>
+            <Text style={[styles.greeting, { color: colors.mutedForeground }]}>Welcome back, Guest!</Text>
+            <Text style={[styles.welcomeTitle, { color: colors.text }]}>For a Hussle-Free Pilgrimage </Text>
+          </View>
+        </View>
+        
         {/* Next Trip Card */}
         <View style={styles.section}>
           <TouchableOpacity
@@ -293,6 +347,27 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  welcomeSection: {
+    marginHorizontal: Spacing.md,
+    marginBottom: Spacing.xl,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+  },
+  welcomeHeader: {
+    gap: Spacing.xs,
+  },
+  greeting: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.medium,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  welcomeTitle: {
+    fontSize: Typography.fontSize['2xl'],
+    fontWeight: Typography.fontWeight.black,
+    lineHeight: 36,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -300,6 +375,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
     borderBottomWidth: 1,
+    marginBottom: Spacing.lg,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  headerButton: {
+    width: 44,
+    height: 44,
+    borderRadius: BorderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scrollView: {
     flex: 1,
@@ -309,14 +397,14 @@ const styles = StyleSheet.create({
     paddingBottom: Spacing.xxxl,
   },
   nextTripCard: {
-    height: 350,
+    // height: 350,
     borderRadius: BorderRadius.xl,
     overflow: 'hidden',
-    marginHorizontal: Spacing.lg,
+    marginHorizontal: Spacing.md,
   },
   nextTripGradient: {
     flex: 1,
-    justifyContent: 'flex-end',
+    justifyContent: 'flex-start',
     padding: Spacing.xl,
   },
   nextTripContent: {
