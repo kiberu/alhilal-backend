@@ -18,6 +18,9 @@ import {
   faCheckCircle
 } from "@fortawesome/free-solid-svg-icons"
 
+// Note: For client components, metadata should be added in parent layout or converted to server component
+// For now, we'll add a <head> tag with metadata in the component
+
 const services = [
   {
     title: "Umrah Packages",
