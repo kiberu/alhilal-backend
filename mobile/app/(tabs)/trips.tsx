@@ -30,7 +30,7 @@ const trips = [
     duration: '15 nights',
     featured: true,
     available: true,
-    gradient: ['#970246', '#A8024E'],
+    gradient: ['#970246', '#A8024E'] as const,
   },
   {
     id: 2,
@@ -44,7 +44,7 @@ const trips = [
     duration: '10 nights',
     featured: false,
     available: true,
-    gradient: ['#7C3AED', '#A78BFA'],
+    gradient: ['#7C3AED', '#A78BFA'] as const,
   },
   {
     id: 3,
@@ -58,7 +58,7 @@ const trips = [
     duration: '10 nights',
     featured: false,
     available: true,
-    gradient: ['#F59E0B', '#FBB040'],
+    gradient: ['#F59E0B', '#FBB040'] as const,
   },
 ];
 

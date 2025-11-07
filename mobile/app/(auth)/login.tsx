@@ -552,7 +552,7 @@ const styles = StyleSheet.create({
     fontWeight: Typography.fontWeight.medium,
   },
   countryDialCode: {
-    fontSize: Typography.fontSize.md,
+    fontSize: Typography.fontSize.base,
     marginRight: Spacing.sm,
   },
 });

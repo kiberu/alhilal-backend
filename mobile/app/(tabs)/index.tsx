@@ -15,7 +15,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Typography, BorderRadius, Shadow } from '@/constants/theme';
-import { AlHilalIcon } from '@/components/AlHilalIcon';
 import * as Haptics from 'expo-haptics';
 
 const { width } = Dimensions.get('window');
@@ -42,12 +41,6 @@ const packages = [
     featured: false,
   },
 ];
-
-// Mock user data - replace with actual auth state
-const mockUser = {
-  name: 'Guest',
-  isLoggedIn: false,
-};
 
 const nextTrip = {
   id: 1,
@@ -93,38 +86,6 @@ export default function HomeScreen() {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <View >
-          <View style={styles.headerLeft}>
-            <AlHilalIcon width={40} />
-            <View>
-              <Text style={[styles.greeting, { color: colors.mutedForeground }]}>
-                As-salamu alaykum
-              </Text>
-              <Text style={[styles.userName, { color: colors.text }]}>
-                {mockUser.isLoggedIn ? mockUser.name : 'Guest'}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.headerRight}>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-            >
-              <Ionicons name="notifications-outline" size={24} color={colors.text} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerButton}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push('/(auth)/login');
-              }}
-            >
-              <Ionicons name="person-circle-outline" size={28} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
         {/* Next Trip Card */}
         <View style={styles.section}>
           <TouchableOpacity
@@ -340,31 +301,6 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.md,
     borderBottomWidth: 1,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  headerIcon: {
-    width: 40,
-    height: 40,
-  },
-  greeting: {
-    fontSize: Typography.fontSize.xs,
-    marginBottom: 2,
-  },
-  userName: {
-    fontSize: Typography.fontSize.md,
-    fontWeight: Typography.fontWeight.bold,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  headerButton: {
-    padding: Spacing.xs,
-  },
   scrollView: {
     flex: 1,
   },
@@ -409,7 +345,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   nextTripText: {
-    fontSize: Typography.fontSize.sm,
+    fontSize: Typography.fontSize.base,
     color: '#FFFFFF',
     fontWeight: Typography.fontWeight.medium,
   },

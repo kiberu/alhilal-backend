@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
     fontWeight: Typography.fontWeight.bold,
   },
   description: {
-    fontSize: Typography.fontSize.md,
+    fontSize: Typography.fontSize.base,
     lineHeight: 24,
     marginTop: Spacing.md,
   },
@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     gap: Spacing.sm,
   },
   infoText: {
-    fontSize: Typography.fontSize.md,
+    fontSize: Typography.fontSize.base,
     fontWeight: Typography.fontWeight.medium,
   },
   footer: {
