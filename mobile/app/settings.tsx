@@ -6,17 +6,16 @@ import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 
 import { Colors, Spacing, Typography, BorderRadius, Shadow } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/hooks/use-color-scheme';
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const systemScheme = useColorScheme();
-  const colors = Colors[systemScheme ?? 'light'];
+  const theme = useTheme();
+  const colors = Colors[theme.colorScheme];
 
   const [settings, setSettings] = React.useState({
     pushNotifications: true,
     emailUpdates: false,
-    darkMode: systemScheme === 'dark',
   });
 
   const handleBack = () => {
@@ -27,15 +26,12 @@ export default function SettingsScreen() {
   const toggleSetting = (key: keyof typeof settings, value: boolean) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSettings((prev) => ({ ...prev, [key]: value }));
+  };
 
-    if (key === 'darkMode') {
-      Alert.alert(
-        'Theme preference saved',
-        value
-          ? 'Dark theme will be applied across the app in a future update.'
-          : 'Light theme preference saved. We will remember this for your next visit.',
-      );
-    }
+  const handleThemeChange = (value: boolean) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    theme.setTheme(value ? 'dark' : 'light');
+    Alert.alert('Theme updated', value ? 'Dark mode enabled for this session.' : 'Light mode enabled for this session.');
   };
 
   const handleSupportPress = (type: string) => {
@@ -93,13 +89,13 @@ export default function SettingsScreen() {
               <Text style={[styles.settingDescription, { color: colors.mutedForeground }]}>Preview the upcoming dark theme experience.</Text>
             </View>
             <Switch
-              value={settings.darkMode}
-              onValueChange={(value) => toggleSetting('darkMode', value)}
-              thumbColor={settings.darkMode ? colors.primary : colors.border}
+              value={theme.colorScheme === 'dark'}
+              onValueChange={handleThemeChange}
+              thumbColor={theme.colorScheme === 'dark' ? colors.primary : colors.border}
             />
           </View>
           <View style={[styles.themePreview, { backgroundColor: colors.muted }]}> 
-            <Ionicons name={settings.darkMode ? 'moon' : 'sunny'} size={24} color={colors.primary} />
+            <Ionicons name={theme.colorScheme === 'dark' ? 'moon' : 'sunny'} size={24} color={colors.primary} />
             <View style={styles.themePreviewText}>
               <Text style={[styles.themePreviewTitle, { color: colors.text }]}>Theme preview</Text>
               <Text style={[styles.themePreviewSubtitle, { color: colors.mutedForeground }]}>Interactive theme switching is coming soon.</Text>
