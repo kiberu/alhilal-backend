@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   ScrollView,
@@ -6,6 +6,7 @@ import {
   Text,
   TouchableOpacity,
   Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -13,15 +14,126 @@ import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Typography, BorderRadius, Shadow } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
+import { TripsService, TripDetail } from '@/lib/api/services';
 
 export default function TripDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-
-  // TODO: Fetch trip details from API based on id
-  const tripDetails = {
+  
+  // State
+  const [tripDetails, setTripDetails] = useState<TripDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Fetch trip details
+  useEffect(() => {
+    if (id && typeof id === 'string') {
+      loadTripDetails(id);
+    }
+  }, [id]);
+  
+  const loadTripDetails = async (tripId: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await TripsService.getPublicTripDetail(tripId);
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Failed to load trip details');
+      }
+      
+      setTripDetails(response.data);
+    } catch (err: any) {
+      console.error('Error loading trip details:', err);
+      setError(err.message || 'Failed to load trip details');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Helper functions
+  const formatDateRange = (startDate: string, endDate: string) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const startFormatted = start.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    const endFormatted = end.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+    return `${startFormatted} – ${endFormatted}`;
+  };
+  
+  const calculateDuration = (startDate: string, endDate: string) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const nights = days - 1;
+    return `${days} days / ${nights} nights`;
+  };
+  
+  const getDefaultTripImage = () => require('@/assets/alhilal-assets/Kaaba-hero1.jpg');
+  
+  // Loading state
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.back();
+            }}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Trip Details</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Loading trip details...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+  
+  // Error state
+  if (error || !tripDetails) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.header, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+          <TouchableOpacity
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              router.back();
+            }}
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={colors.text} />
+          </TouchableOpacity>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>Trip Details</Text>
+          <View style={{ width: 24 }} />
+        </View>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color={colors.destructive} />
+          <Text style={[styles.errorText, { color: colors.destructive }]}>{error || 'Trip not found'}</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              if (id && typeof id === 'string') {
+                loadTripDetails(id);
+              }
+            }}
+          >
+            <Text style={[styles.retryButtonText, { color: colors.primaryForeground }]}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+  
+  // Old mock data object (to be removed after full migration)
+  const oldTripDetails = {
     id: id,
     title: 'November Umrah',
     subtitle: '10-Day Spiritual Journey',

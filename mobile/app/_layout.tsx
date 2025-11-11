@@ -7,6 +7,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { ThemeProvider as AppThemeProvider } from '@/contexts/theme-context';
+import { AuthProvider } from '@/contexts/auth-context';
 import { Colors } from '@/constants/theme';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -18,9 +19,11 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   return (
-    <AppThemeProvider>
-      <RootLayoutNavigation />
-    </AppThemeProvider>
+    <AuthProvider>
+      <AppThemeProvider>
+        <RootLayoutNavigation />
+      </AppThemeProvider>
+    </AuthProvider>
   );
 }
 

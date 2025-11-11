@@ -6,57 +6,18 @@ import {
   Text,
   Linking,
   TouchableOpacity,
+  Switch,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useThemeContext } from '@/contexts/theme-context';
+import { useAuth } from '@/contexts/auth-context';
 import { Colors, Spacing, Typography, BorderRadius, Shadow } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
-
-const menuItems = [
-  {
-    id: 'profile',
-    icon: 'person',
-    title: 'My Profile',
-    subtitle: 'View and edit your information',
-    route: '/profile',
-    color: '#970246',
-  },
-  {
-    id: 'bookings',
-    icon: 'bookmark',
-    title: 'My Bookings',
-    subtitle: 'View your trip bookings',
-    route: '/bookings',
-    color: '#F9A028',
-  },
-  {
-    id: 'documents',
-    icon: 'document-text',
-    title: 'My Documents',
-    subtitle: 'Manage travel paperwork',
-    route: '/documents',
-    color: '#10B981',
-  },
-  {
-    id: 'about',
-    icon: 'information-circle',
-    title: 'About Al-Hilal',
-    subtitle: 'Learn more about us',
-    route: '/about',
-    color: '#3B82F6',
-  },
-  {
-    id: 'settings',
-    icon: 'settings',
-    title: 'Settings',
-    subtitle: 'App preferences',
-    route: '/settings',
-    color: '#6B7280',
-  },
-];
 
 const contactMethods = [
   {
@@ -93,11 +54,60 @@ export default function MoreScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
+  const theme = useThemeContext();
+  const { isAuthenticated, user, profile, logout } = useAuth();
 
-  const handleMenuPress = (item: typeof menuItems[0]) => {
+  const [settings, setSettings] = React.useState({
+    pushNotifications: true,
+    emailUpdates: false,
+  });
+
+  // Menu items for authenticated users
+  const authenticatedMenuItems = [
+    {
+      id: 'profile',
+      icon: 'person-outline',
+      title: 'My Profile',
+      subtitle: 'View and edit your information',
+      route: '/my-profile',
+      color: '#970246',
+    },
+    {
+      id: 'bookings',
+      icon: 'calendar-outline',
+      title: 'My Bookings',
+      subtitle: 'View your trip bookings',
+      route: '/my-bookings',
+      color: '#F9A028',
+    },
+    {
+      id: 'documents',
+      icon: 'document-text-outline',
+      title: 'My Documents',
+      subtitle: 'Manage travel paperwork',
+      route: '/my-documents',
+      color: '#10B981',
+    },
+  ];
+
+  // Menu items for all users
+  const generalMenuItems = [
+    {
+      id: 'about',
+      icon: 'information-circle-outline',
+      title: 'About Al-Hilal',
+      subtitle: 'Learn more about us',
+      route: '/about',
+      color: '#3B82F6',
+    },
+  ];
+
+  const handleMenuPress = (route: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (item.route) {
-      router.push(item.route as any);
+    if (isAuthenticated || route === '/about') {
+      router.push(route as any);
+    } else {
+      router.push('/(auth)/login');
     }
   };
 
@@ -109,6 +119,60 @@ export default function MoreScreen() {
   const handleLoginPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push('/(auth)/login');
+  };
+
+  const handleUserCardPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (isAuthenticated) {
+      router.push('/my-profile' as any);
+    } else {
+      router.push('/(auth)/login');
+    }
+  };
+
+  const toggleSetting = (key: keyof typeof settings, value: boolean) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSettings((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleThemeChange = (value: boolean) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    theme.setTheme(value ? 'dark' : 'light');
+    Alert.alert('Theme updated', value ? 'Dark mode enabled for this session.' : 'Light mode enabled for this session.');
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+          onPress: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light),
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            await logout();
+            router.replace('/(tabs)');
+          },
+        },
+      ]
+    );
+  };
+
+  const getUserName = () => {
+    if (profile?.full_name) return profile.full_name;
+    if (user?.name && user.name !== user?.phone) return user.name;
+    return 'Guest User';
+  };
+
+  const getUserSubtitle = () => {
+    if (isAuthenticated) return user?.phone || 'Verified Account';
+    return 'Tap to sign in';
   };
 
   return (
@@ -125,7 +189,7 @@ export default function MoreScreen() {
         {/* User Section / Login CTA */}
         <TouchableOpacity
           style={[styles.userCard, Shadow.large]}
-          onPress={handleLoginPress}
+          onPress={handleUserCardPress}
           activeOpacity={0.95}
         >
           <LinearGradient
@@ -133,23 +197,108 @@ export default function MoreScreen() {
             style={styles.userGradient}
           >
             <View style={styles.avatarContainer}>
-              <Ionicons name="person" size={48} color="#FFFFFF" />
+              {isAuthenticated ? (
+                <Text style={styles.avatarText}>
+                  {profile?.full_name?.charAt(0).toUpperCase() || user?.name?.charAt(0).toUpperCase() || 'U'}
+                </Text>
+              ) : (
+                <Ionicons name="person" size={48} color="#FFFFFF" />
+              )}
             </View>
             <View style={styles.userInfo}>
-              <Text style={styles.userName}>Guest User</Text>
-              <Text style={styles.userSubtitle}>Tap to sign in</Text>
+              <Text style={styles.userName}>{getUserName()}</Text>
+              <Text style={styles.userSubtitle}>{getUserSubtitle()}</Text>
             </View>
             <Ionicons name="arrow-forward" size={24} color="rgba(255,255,255,0.7)" />
           </LinearGradient>
         </TouchableOpacity>
 
-        {/* Menu Items */}
+        {/* Authenticated Menu Items */}
+        {isAuthenticated && (
+          <View style={styles.menuSection}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>My Account</Text>
+            {authenticatedMenuItems.map((item) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.menuItem, { backgroundColor: colors.card }, Shadow.small]}
+                onPress={() => handleMenuPress(item.route)}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.menuIconContainer, { backgroundColor: `${item.color}15` }]}>
+                  <Ionicons name={item.icon as any} size={24} color={item.color} />
+                </View>
+                <View style={styles.menuContent}>
+                  <Text style={[styles.menuTitle, { color: colors.text }]}>
+                    {item.title}
+                  </Text>
+                  <Text style={[styles.menuSubtitle, { color: colors.mutedForeground }]}>
+                    {item.subtitle}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Settings Section */}
+        <View style={[styles.settingsSection, { backgroundColor: colors.card }, Shadow.small]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Settings</Text>
+          
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextGroup}>
+              <Text style={[styles.settingLabel, { color: colors.text }]}>Push Notifications</Text>
+              <Text style={[styles.settingDescription, { color: colors.mutedForeground }]}>
+                Receive booking reminders and updates
+              </Text>
+            </View>
+            <Switch
+              value={settings.pushNotifications}
+              onValueChange={(value) => toggleSetting('pushNotifications', value)}
+              thumbColor={settings.pushNotifications ? colors.primary : colors.border}
+            />
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextGroup}>
+              <Text style={[styles.settingLabel, { color: colors.text }]}>Email Updates</Text>
+              <Text style={[styles.settingDescription, { color: colors.mutedForeground }]}>
+                Monthly highlights and travel tips
+              </Text>
+            </View>
+            <Switch
+              value={settings.emailUpdates}
+              onValueChange={(value) => toggleSetting('emailUpdates', value)}
+              thumbColor={settings.emailUpdates ? colors.primary : colors.border}
+            />
+          </View>
+
+          <View style={[styles.divider, { backgroundColor: colors.border }]} />
+
+          <View style={styles.settingRow}>
+            <View style={styles.settingTextGroup}>
+              <Text style={[styles.settingLabel, { color: colors.text }]}>Dark Mode</Text>
+              <Text style={[styles.settingDescription, { color: colors.mutedForeground }]}>
+                Preview the upcoming dark theme
+              </Text>
+            </View>
+            <Switch
+              value={theme.colorScheme === 'dark'}
+              onValueChange={handleThemeChange}
+              thumbColor={theme.colorScheme === 'dark' ? colors.primary : colors.border}
+            />
+          </View>
+        </View>
+
+        {/* General Menu Items */}
         <View style={styles.menuSection}>
-          {menuItems.map((item) => (
+          {generalMenuItems.map((item) => (
             <TouchableOpacity
               key={item.id}
               style={[styles.menuItem, { backgroundColor: colors.card }, Shadow.small]}
-              onPress={() => handleMenuPress(item)}
+              onPress={() => handleMenuPress(item.route)}
               activeOpacity={0.7}
             >
               <View style={[styles.menuIconContainer, { backgroundColor: `${item.color}15` }]}>
@@ -192,6 +341,18 @@ export default function MoreScreen() {
             ))}
           </View>
         </View>
+
+        {/* Logout Button (Authenticated Users Only) - Temporary for testing */}
+        {isAuthenticated && (
+          <TouchableOpacity
+            style={[styles.logoutButton, { backgroundColor: colors.card, borderColor: '#EF4444' }, Shadow.small]}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="log-out-outline" size={22} color="#EF4444" />
+            <Text style={styles.logoutText}>Logout (Dev Only)</Text>
+          </TouchableOpacity>
+        )}
 
         {/* App Info */}
         <View style={[styles.appInfo, { backgroundColor: colors.muted }]}>
@@ -247,6 +408,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  avatarText: {
+    fontSize: Typography.fontSize['3xl'],
+    fontWeight: Typography.fontWeight.bold,
+    color: '#FFFFFF',
+  },
   userInfo: {
     flex: 1,
   },
@@ -289,13 +455,40 @@ const styles = StyleSheet.create({
   menuSubtitle: {
     fontSize: Typography.fontSize.xs,
   },
-  contactSection: {
-    marginBottom: Spacing.xl,
-  },
   sectionTitle: {
     fontSize: Typography.fontSize.lg,
     fontWeight: Typography.fontWeight.bold,
     marginBottom: Spacing.md,
+  },
+  settingsSection: {
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    gap: Spacing.lg,
+    marginBottom: Spacing.xl,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: Spacing.md,
+  },
+  settingTextGroup: {
+    flex: 1,
+    gap: Spacing.xs,
+  },
+  settingLabel: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  settingDescription: {
+    fontSize: Typography.fontSize.sm,
+    lineHeight: 20,
+  },
+  divider: {
+    height: 1,
+  },
+  contactSection: {
+    marginBottom: Spacing.xl,
   },
   contactGrid: {
     flexDirection: 'row',
@@ -325,6 +518,21 @@ const styles = StyleSheet.create({
     fontWeight: Typography.fontWeight.semibold,
     textAlign: 'center',
   },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 2,
+    marginBottom: Spacing.xl,
+  },
+  logoutText: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    color: '#EF4444',
+  },
   appInfo: {
     padding: Spacing.xl,
     borderRadius: BorderRadius.lg,
@@ -336,4 +544,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-

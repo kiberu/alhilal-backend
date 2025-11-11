@@ -4,20 +4,30 @@
     "slug": "alhilal-travels",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/favicon.svg",
+    "icon": "./assets/images/icon.png",
     "scheme": "alhilal",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/favicon.svg",
-      "resizeMode": "contain",
-      "backgroundColor": "#970246"
+      "image": "./assets/images/LOGO-POTRAIT.png",
+      "backgroundColor": "#970246",
+      "resizeMode": "contain"
     },
     "ios": {
+      "splash": {
+           "image": "./assets/images/LOGO-POTRAIT.png",
+           "backgroundColor": "#970246",
+           "resizeMode": "contain"
+         },
       "supportsTablet": true,
       "bundleIdentifier": "com.alhilaltravels.app"
     },
     "android": {
+      "splash": {
+           "image": "./assets/images/LOGO-POTRAIT.png",
+           "backgroundColor": "#970246",
+           "resizeMode": "contain"
+         },
       "adaptiveIcon": {
         "backgroundColor": "#970246",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -30,7 +40,7 @@
     },
     "web": {
       "output": "static",
-      "favicon": "./assets/images/favicon.svg"
+      "favicon": "./assets/images/icon.png"
     },
     "plugins": [
       "expo-router",

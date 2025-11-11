@@ -5,4 +5,6 @@ export function useColorScheme() {
   return colorScheme;
 }
 
-export const useTheme = useThemeContext;
+export function useTheme() {
+  return useThemeContext();
+}
