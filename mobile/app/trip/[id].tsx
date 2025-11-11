@@ -132,99 +132,25 @@ export default function TripDetailsScreen() {
     );
   }
   
-  // Old mock data object (to be removed after full migration)
-  const oldTripDetails = {
-    id: id,
-    title: 'November Umrah',
-    subtitle: '10-Day Spiritual Journey',
-    price: '1,800',
-    currency: 'USD',
-    discount: 'Limited Slots',
-    image: require('@/assets/alhilal-assets/Kaaba-hero1.jpg'),
-    duration: '10 days / 9 nights',
-    spotsLeft: 12,
-    description:
-      'Join Al-Hilal for a guided Umrah experience tailored for comfort, spirituality, and ease. Our experienced team handles every detail from visa processing to accommodation so you can focus on worship.',
-    dateRange: '27 Nov – 6 Dec 2025',
-    groupSize: 'Up to 35 pilgrims',
-    spiritualGuide: 'Sheikh Abdul Karim',
-    itinerary: [
-      {
-        day: 'Day 1',
-        title: 'Arrival in Jeddah & Transfer to Makkah',
-        description:
-          'Meet our team on arrival, transfer to Swissôtel Makkah, rest and prepare for first Umrah guided by our team.',
-      },
-      {
-        day: 'Day 2-4',
-        title: 'Makkah Worship & Guided Sessions',
-        description:
-          'Daily prayers in the Haram, guided lectures on the rites of Umrah, and optional historical tours in Makkah.',
-      },
-      {
-        day: 'Day 5',
-        title: 'Journey to Madinah',
-        description:
-          'Private coach transfer to Madinah, check-in at Anwar Al Madinah Mövenpick, evening visit to Masjid An-Nabawi.',
-      },
-      {
-        day: 'Day 6-8',
-        title: 'Madinah Historical Tour & Worship',
-        description:
-          'Visits to Quba, Qiblatain, Uhud, and guided sessions on the Seerah. Plenty of free time for individual worship.',
-      },
-      {
-        day: 'Day 9-10',
-        title: 'Farewell & Departure',
-        description:
-          'Final ziyaraat, shopping, and transfer to the airport with assistance at check-in for departure flights.',
-      },
-    ],
-    accommodations: [
-      {
-        city: 'Makkah',
-        hotel: 'Swissôtel Makkah',
-        nights: 4,
-        rating: '4.7/5 guests',
-        distance: 'Adjacent to Haram',
-      },
-      {
-        city: 'Madinah',
-        hotel: 'Anwar Al Madinah Mövenpick',
-        nights: 5,
-        rating: '4.6/5 guests',
-        distance: '2 minutes to Masjid An-Nabawi',
-      },
-    ],
-    inclusions: [
-      'Return flights from Entebbe (economy class)',
-      '4★ & 5★ accommodation with daily buffet breakfast',
-      'Fully guided Umrah rituals with Al-Hilal scholars',
-      'Saudi visa processing & travel insurance',
-      'Ground transportation between cities',
-      'Complimentary Zamzam water allowance',
-    ],
-    extras: [
-      'Optional Dubai stopover packages',
-      'Private family room upgrades',
-      'Wheelchair assistance on request',
-    ],
-    documents: [
-      { label: 'Passport', status: 'Submitted', icon: 'checkmark-circle', color: '#10B981' },
-      { label: 'Vaccination Certificate', status: 'Pending upload', icon: 'alert-circle', color: '#F59E0B' },
-      { label: 'Payment Plan', status: 'Approved', icon: 'document-text', color: '#3B82F6' },
-    ],
-    faqs: [
-      {
-        question: 'What is the payment schedule?',
-        answer: 'Secure your seat with a $500 deposit. Remaining balance is split into two instalments due 60 and 30 days before departure.',
-      },
-      {
-        question: 'Can families travel together?',
-        answer: 'Yes. We arrange adjacent rooms for families and provide special assistance for elderly pilgrims travelling with relatives.',
-      },
-    ],
-  } as const;
+  // Helper to format price
+  const formatPrice = (minorUnits: number, currency: string) => {
+    const major = minorUnits / 100;
+    if (currency === 'UGX') {
+      return `${currency} ${major.toLocaleString('en-UG', { maximumFractionDigits: 0 })}`;
+    }
+    return `${currency} ${major.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+  
+  // Helper to calculate nights between dates
+  const calculateNights = (checkIn: string, checkOut: string) => {
+    const start = new Date(checkIn);
+    const end = new Date(checkOut);
+    const nights = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    return nights;
+  };
+  
+  // Get all unique hotels from all packages
+  const allHotels = tripDetails.packages.flatMap(pkg => pkg.hotels);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -249,171 +175,250 @@ export default function TripDetailsScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero Image */}
-        <Image source={tripDetails.image} style={styles.heroImage} />
+        {tripDetails.cover_image ? (
+          <Image source={{ uri: tripDetails.cover_image }} style={styles.heroImage} />
+        ) : (
+          <Image source={getDefaultTripImage()} style={styles.heroImage} />
+        )}
 
         {/* Content */}
         <View style={styles.content}>
           <View style={[styles.card, { backgroundColor: colors.card }, Shadow.medium]}>
             <View style={styles.sectionHeader}>
-              <Text style={[styles.title, { color: colors.text }]}>{tripDetails.title}</Text>
+              <Text style={[styles.title, { color: colors.text }]}>{tripDetails.name}</Text>
               <View style={[styles.badge, { backgroundColor: `${colors.primary}12` }]}>
                 <Ionicons name="calendar" size={16} color={colors.primary} />
-                <Text style={[styles.badgeText, { color: colors.primary }]}>{tripDetails.dateRange}</Text>
+                <Text style={[styles.badgeText, { color: colors.primary }]}>
+                  {formatDateRange(tripDetails.start_date, tripDetails.end_date)}
+                </Text>
               </View>
             </View>
 
-            <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>{tripDetails.subtitle}</Text>
-
-            <View style={styles.priceContainer}>
-              <Text style={[styles.price, { color: colors.primary }]}>
-                {tripDetails.currency} {tripDetails.price}
-              </Text>
-              {tripDetails.discount && (
-                <View style={[styles.discountBadge, { backgroundColor: colors.gold }]}>
-                  <Text style={[styles.discountText, { color: colors.goldForeground }]}>
-                    {tripDetails.discount}
-                  </Text>
-                </View>
-              )}
-            </View>
-
-            <Text style={[styles.description, { color: colors.mutedForeground }]}>
-              {tripDetails.description}
+            <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+              {tripDetails.cities.join(' • ')}
             </Text>
 
             <View style={styles.metaGrid}>
               <View style={[styles.metaItem, { backgroundColor: colors.muted }]}>
                 <Ionicons name="time-outline" size={18} color={colors.primary} />
                 <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Duration</Text>
-                <Text style={[styles.metaValue, { color: colors.text }]}>{tripDetails.duration}</Text>
+                <Text style={[styles.metaValue, { color: colors.text }]}>
+                  {calculateDuration(tripDetails.start_date, tripDetails.end_date)}
+                </Text>
               </View>
               <View style={[styles.metaItem, { backgroundColor: colors.muted }]}>
-                <Ionicons name="people-outline" size={18} color={colors.primary} />
-                <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Group Size</Text>
-                <Text style={[styles.metaValue, { color: colors.text }]}>{tripDetails.groupSize}</Text>
+                <Ionicons name="location-outline" size={18} color={colors.primary} />
+                <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Cities</Text>
+                <Text style={[styles.metaValue, { color: colors.text }]}>{tripDetails.cities.length} cities</Text>
               </View>
               <View style={[styles.metaItem, { backgroundColor: colors.muted }]}>
-                <Ionicons name="person-circle-outline" size={18} color={colors.primary} />
-                <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Guide</Text>
-                <Text style={[styles.metaValue, { color: colors.text }]}>{tripDetails.spiritualGuide}</Text>
+                <Ionicons name="briefcase-outline" size={18} color={colors.primary} />
+                <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Packages</Text>
+                <Text style={[styles.metaValue, { color: colors.text }]}>{tripDetails.packages.length} options</Text>
               </View>
               <View style={[styles.metaItem, { backgroundColor: colors.muted }]}>
-                <Ionicons name="checkmark-circle-outline" size={18} color={colors.primary} />
-                <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Availability</Text>
-                <Text style={[styles.metaValue, { color: colors.text }]}>{tripDetails.spotsLeft} seats left</Text>
+                <Ionicons name="bed-outline" size={18} color={colors.primary} />
+                <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Hotels</Text>
+                <Text style={[styles.metaValue, { color: colors.text }]}>{allHotels.length} properties</Text>
               </View>
             </View>
           </View>
+          
+          {/* Packages Section */}
+          {tripDetails.packages.length > 0 && (
+            <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Available Packages</Text>
+              <View style={styles.packagesList}>
+                {tripDetails.packages.map((pkg, index) => (
+                  <View key={pkg.id} style={[styles.packageItem, { borderColor: colors.border }]}>
+                    <View style={styles.packageHeader}>
+                      <Text style={[styles.packageName, { color: colors.text }]}>{pkg.name}</Text>
+                      <Text style={[styles.packagePrice, { color: colors.primary }]}>
+                        {formatPrice(pkg.price_minor_units, pkg.currency)}
+                      </Text>
+                    </View>
+                    {pkg.hotels.length > 0 && (
+                      <View style={styles.packageDetails}>
+                        <Ionicons name="bed-outline" size={16} color={colors.mutedForeground} />
+                        <Text style={[styles.packageDetailText, { color: colors.mutedForeground }]}>
+                          {pkg.hotels.length} {pkg.hotels.length === 1 ? 'hotel' : 'hotels'}
+                        </Text>
+                      </View>
+                    )}
+                    {pkg.flights.length > 0 && (
+                      <View style={styles.packageDetails}>
+                        <Ionicons name="airplane-outline" size={16} color={colors.mutedForeground} />
+                        <Text style={[styles.packageDetailText, { color: colors.mutedForeground }]}>
+                          {pkg.flights.length} {pkg.flights.length === 1 ? 'flight' : 'flights'}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
 
+          {/* Itinerary Section */}
           <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Itinerary Overview</Text>
-            <View style={styles.timeline}>
-              {tripDetails.itinerary.map((item, index) => (
-                <View key={index} style={styles.timelineItem}>
-                  <View style={[styles.timelineIndicator, { borderColor: colors.primary }]}>
-                    <View style={[styles.timelineDot, { backgroundColor: colors.primary }]} />
+            {tripDetails.has_itinerary ? (
+              <View style={styles.timeline}>
+                {tripDetails.itinerary.map((item, index) => (
+                  <View key={item.id} style={styles.timelineItem}>
+                    <View style={[styles.timelineIndicator, { borderColor: colors.primary }]}>
+                      <View style={[styles.timelineDot, { backgroundColor: colors.primary }]} />
+                    </View>
+                    <View style={styles.timelineContent}>
+                      <Text style={[styles.timelineDay, { color: colors.primary }]}>Day {item.day_index}</Text>
+                      <Text style={[styles.timelineTitle, { color: colors.text }]}>{item.title}</Text>
+                      {item.location && (
+                        <View style={styles.timelineLocationRow}>
+                          <Ionicons name="location-outline" size={14} color={colors.mutedForeground} />
+                          <Text style={[styles.timelineLocation, { color: colors.mutedForeground }]}>
+                            {item.location}
+                          </Text>
+                        </View>
+                      )}
+                      {item.notes && (
+                        <Text style={[styles.timelineDescription, { color: colors.mutedForeground }]}>
+                          {item.notes}
+                        </Text>
+                      )}
+                    </View>
                   </View>
-                  <View style={styles.timelineContent}>
-                    <Text style={[styles.timelineDay, { color: colors.primary }]}>{item.day}</Text>
-                    <Text style={[styles.timelineTitle, { color: colors.text }]}>{item.title}</Text>
-                    <Text style={[styles.timelineDescription, { color: colors.mutedForeground }]}>
-                      {item.description}
+                ))}
+              </View>
+            ) : (
+              <View style={styles.comingSoonContainer}>
+                <Ionicons name="time-outline" size={48} color={colors.mutedForeground} />
+                <Text style={[styles.comingSoonText, { color: colors.mutedForeground }]}>
+                  Itinerary Coming Soon
+                </Text>
+                <Text style={[styles.comingSoonSubtext, { color: colors.mutedForeground }]}>
+                  Detailed day-by-day itinerary will be available soon
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Accommodations Section */}
+          {allHotels.length > 0 && (
+            <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Accommodations</Text>
+                <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
+                  Premium stays throughout the journey
+                </Text>
+              </View>
+              <View style={styles.accommodationList}>
+                {allHotels.map((hotel, index) => (
+                  <View key={hotel.id} style={[styles.accommodationCard, { borderColor: colors.border }]}>
+                    <View style={styles.accommodationHeader}>
+                      <Text style={[styles.accommodationHotel, { color: colors.text }]}>{hotel.name}</Text>
+                      <Text style={[styles.accommodationNights, { color: colors.mutedForeground }]}>
+                        {calculateNights(hotel.check_in, hotel.check_out)} nights
+                      </Text>
+                    </View>
+                    {hotel.address && (
+                      <View style={styles.accommodationMeta}>
+                        <View style={styles.accommodationMetaItem}>
+                          <Ionicons name="location-outline" size={16} color={colors.primary} />
+                          <Text style={[styles.accommodationMetaText, { color: colors.mutedForeground }]}>
+                            {hotel.address}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                    {hotel.room_type && (
+                      <View style={styles.accommodationMeta}>
+                        <View style={styles.accommodationMetaItem}>
+                          <Ionicons name="bed-outline" size={16} color={colors.mutedForeground} />
+                          <Text style={[styles.accommodationMetaText, { color: colors.mutedForeground }]}>
+                            {hotel.room_type}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                    <View style={styles.accommodationDates}>
+                      <Text style={[styles.accommodationDateText, { color: colors.mutedForeground }]}>
+                        Check-in: {new Date(hotel.check_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </Text>
+                      <Text style={[styles.accommodationDateText, { color: colors.mutedForeground }]}>
+                        Check-out: {new Date(hotel.check_out).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Guide Sections / Services */}
+          {tripDetails.guide_sections.length > 0 && (
+            <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Travel Guide & Services</Text>
+              <View style={styles.guideList}>
+                {tripDetails.guide_sections.map((section) => (
+                  <View key={section.id} style={styles.guideItem}>
+                    <View style={styles.guideHeader}>
+                      <Ionicons name="information-circle" size={20} color={colors.primary} />
+                      <Text style={[styles.guideTitle, { color: colors.text }]}>{section.title}</Text>
+                    </View>
+                    <Text style={[styles.guideContent, { color: colors.mutedForeground }]}>
+                      {section.content_md}
                     </Text>
                   </View>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
-          </View>
+          )}
 
-          <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Accommodations</Text>
-              <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>Premium stays throughout the journey</Text>
-            </View>
-            <View style={styles.accommodationList}>
-              {tripDetails.accommodations.map((stay, index) => (
-                <View key={index} style={[styles.accommodationCard, { borderColor: colors.border }]}> 
-                  <View style={styles.accommodationHeader}>
-                    <Text style={[styles.accommodationCity, { color: colors.primary }]}>{stay.city}</Text>
-                    <Text style={[styles.accommodationNights, { color: colors.mutedForeground }]}>{stay.nights} nights</Text>
-                  </View>
-                  <Text style={[styles.accommodationHotel, { color: colors.text }]}>{stay.hotel}</Text>
-                  <View style={styles.accommodationMeta}>
-                    <View style={styles.accommodationMetaItem}>
-                      <Ionicons name="star" size={16} color={colors.gold} />
-                      <Text style={[styles.accommodationMetaText, { color: colors.mutedForeground }]}>
-                        {stay.rating}
-                      </Text>
+          {/* Emergency Contacts */}
+          {tripDetails.emergency_contacts.length > 0 && (
+            <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Emergency Contacts</Text>
+              <View style={styles.contactsList}>
+                {tripDetails.emergency_contacts.map((contact) => (
+                  <View key={contact.id} style={[styles.contactCard, { borderColor: colors.border }]}>
+                    <View style={styles.contactHeader}>
+                      <Ionicons name="call" size={20} color={colors.primary} />
+                      <Text style={[styles.contactLabel, { color: colors.text }]}>{contact.label}</Text>
                     </View>
-                    <View style={styles.accommodationMetaItem}>
-                      <Ionicons name="pin" size={16} color={colors.primary} />
-                      <Text style={[styles.accommodationMetaText, { color: colors.mutedForeground }]}>
-                        {stay.distance}
+                    <Text style={[styles.contactPhone, { color: colors.primary }]}>{contact.phone}</Text>
+                    {contact.hours && (
+                      <Text style={[styles.contactHours, { color: colors.mutedForeground }]}>
+                        Available: {contact.hours}
                       </Text>
+                    )}
+                    {contact.notes && (
+                      <Text style={[styles.contactNotes, { color: colors.mutedForeground }]}>
+                        {contact.notes}
+                      </Text>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* FAQs Section */}
+          {tripDetails.faqs.length > 0 && (
+            <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Frequently Asked Questions</Text>
+              <View style={styles.faqList}>
+                {tripDetails.faqs.map((faq) => (
+                  <View key={faq.id} style={styles.faqItem}>
+                    <View style={styles.faqHeader}>
+                      <Ionicons name="help-circle" size={20} color={colors.primary} />
+                      <Text style={[styles.faqQuestion, { color: colors.text }]}>{faq.question}</Text>
                     </View>
+                    <Text style={[styles.faqAnswer, { color: colors.mutedForeground }]}>{faq.answer}</Text>
                   </View>
-                </View>
-              ))}
+                ))}
+              </View>
             </View>
-          </View>
-
-          <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Package Inclusions</Text>
-            <View style={styles.listGrid}>
-              {tripDetails.inclusions.map((item, index) => (
-                <View key={index} style={styles.listItem}>
-                  <Ionicons name="checkmark-circle" size={20} color={colors.primary} />
-                  <Text style={[styles.listItemText, { color: colors.mutedForeground }]}>{item}</Text>
-                </View>
-              ))}
-            </View>
-            <View style={[styles.sectionDivider, { backgroundColor: colors.border }]} />
-            <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>Optional Add-ons</Text>
-            <View style={styles.listGrid}>
-              {tripDetails.extras.map((item, index) => (
-                <View key={index} style={styles.listItem}>
-                  <Ionicons name="add-circle" size={20} color={colors.primary} />
-                  <Text style={[styles.listItemText, { color: colors.mutedForeground }]}>{item}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Travel Documents</Text>
-              <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>Track the status of your submissions</Text>
-            </View>
-            <View style={styles.documentList}>
-              {tripDetails.documents.map((doc, index) => (
-                <View key={index} style={[styles.documentRow, { borderColor: colors.border }]}> 
-                  <View style={[styles.documentIcon, { backgroundColor: `${doc.color}15` }]}> 
-                    <Ionicons name={doc.icon as any} size={20} color={doc.color} />
-                  </View>
-                  <View style={styles.documentInfo}>
-                    <Text style={[styles.documentTitle, { color: colors.text }]}>{doc.label}</Text>
-                    <Text style={[styles.documentStatus, { color: colors.mutedForeground }]}>{doc.status}</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
-                </View>
-              ))}
-            </View>
-          </View>
-
-          <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>Frequently Asked Questions</Text>
-            <View style={styles.faqList}>
-              {tripDetails.faqs.map((faq, index) => (
-                <View key={index} style={styles.faqItem}>
-                  <View style={styles.faqHeader}>
-                    <Ionicons name="help-circle" size={20} color={colors.primary} />
-                    <Text style={[styles.faqQuestion, { color: colors.text }]}>{faq.question}</Text>
-                  </View>
-                  <Text style={[styles.faqAnswer, { color: colors.mutedForeground }]}>{faq.answer}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
+          )}
         </View>
       </ScrollView>
 
@@ -716,6 +721,148 @@ const styles = StyleSheet.create({
   bookButtonText: {
     fontSize: Typography.fontSize.lg,
     fontWeight: Typography.fontWeight.bold,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xxl,
+    gap: Spacing.md,
+  },
+  loadingText: {
+    fontSize: Typography.fontSize.base,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xxl,
+    gap: Spacing.md,
+  },
+  errorText: {
+    fontSize: Typography.fontSize.base,
+    textAlign: 'center',
+  },
+  retryButton: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    marginTop: Spacing.md,
+  },
+  retryButtonText: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  packagesList: {
+    gap: Spacing.md,
+  },
+  packageItem: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    gap: Spacing.sm,
+  },
+  packageHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  packageName: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.semibold,
+    flex: 1,
+  },
+  packagePrice: {
+    fontSize: Typography.fontSize.xl,
+    fontWeight: Typography.fontWeight.bold,
+  },
+  packageDetails: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginTop: Spacing.xs,
+  },
+  packageDetailText: {
+    fontSize: Typography.fontSize.sm,
+  },
+  comingSoonContainer: {
+    padding: Spacing.xxl,
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  comingSoonText: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  comingSoonSubtext: {
+    fontSize: Typography.fontSize.sm,
+    textAlign: 'center',
+  },
+  timelineLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    marginTop: 2,
+  },
+  timelineLocation: {
+    fontSize: Typography.fontSize.xs,
+  },
+  accommodationDates: {
+    marginTop: Spacing.sm,
+    gap: 2,
+  },
+  accommodationDateText: {
+    fontSize: Typography.fontSize.xs,
+  },
+  guideList: {
+    gap: Spacing.lg,
+  },
+  guideItem: {
+    gap: Spacing.sm,
+  },
+  guideHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  guideTitle: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    flex: 1,
+  },
+  guideContent: {
+    fontSize: Typography.fontSize.sm,
+    lineHeight: 20,
+  },
+  contactsList: {
+    gap: Spacing.md,
+  },
+  contactCard: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    gap: Spacing.sm,
+  },
+  contactHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  contactLabel: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  contactPhone: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+  },
+  contactHours: {
+    fontSize: Typography.fontSize.sm,
+  },
+  contactNotes: {
+    fontSize: Typography.fontSize.sm,
+    fontStyle: 'italic',
   },
 });
 

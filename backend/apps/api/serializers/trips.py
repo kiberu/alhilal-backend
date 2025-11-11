@@ -42,39 +42,6 @@ class TripDetailSerializer(serializers.ModelSerializer):
         return obj.packages.filter(visibility='PUBLIC').count()
 
 
-class PublicTripDetailSerializer(serializers.ModelSerializer):
-    """Comprehensive serializer for public trip details."""
-    
-    packages = serializers.SerializerMethodField()
-    itinerary = serializers.SerializerMethodField()
-    faqs = TripFAQSerializer(many=True, read_only=True)
-    guide_sections = GuideSectionSerializer(many=True, read_only=True)
-    emergency_contacts = EmergencyContactSerializer(many=True, read_only=True)
-    has_itinerary = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Trip
-        fields = [
-            'id', 'code', 'name', 'cities', 'start_date', 'end_date',
-            'cover_image', 'featured', 'packages', 'itinerary',
-            'has_itinerary', 'faqs', 'guide_sections', 'emergency_contacts'
-        ]
-    
-    def get_packages(self, obj):
-        """Get public packages with their details."""
-        packages = obj.packages.filter(visibility='PUBLIC')
-        return TripPackageSerializer(packages, many=True).data
-    
-    def get_itinerary(self, obj):
-        """Get itinerary items."""
-        items = obj.itinerary_items.all().order_by('day_index', 'start_time')
-        return ItineraryItemSerializer(items, many=True).data
-    
-    def get_has_itinerary(self, obj):
-        """Check if trip has itinerary."""
-        return obj.itinerary_items.exists()
-
-
 class FlightSerializer(serializers.ModelSerializer):
     """Serializer for package flights."""
     
@@ -221,4 +188,37 @@ class DuaSerializer(serializers.ModelSerializer):
             'id', 'category', 'text_ar', 'text_en',
             'transliteration', 'source'
         ]
+
+
+class PublicTripDetailSerializer(serializers.ModelSerializer):
+    """Comprehensive serializer for public trip details."""
+    
+    packages = serializers.SerializerMethodField()
+    itinerary = serializers.SerializerMethodField()
+    faqs = TripFAQSerializer(many=True, read_only=True)
+    guide_sections = GuideSectionSerializer(many=True, read_only=True)
+    emergency_contacts = EmergencyContactSerializer(many=True, read_only=True)
+    has_itinerary = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Trip
+        fields = [
+            'id', 'code', 'name', 'cities', 'start_date', 'end_date',
+            'cover_image', 'featured', 'packages', 'itinerary',
+            'has_itinerary', 'faqs', 'guide_sections', 'emergency_contacts'
+        ]
+    
+    def get_packages(self, obj):
+        """Get public packages with their details."""
+        packages = obj.packages.filter(visibility='PUBLIC')
+        return TripPackageSerializer(packages, many=True).data
+    
+    def get_itinerary(self, obj):
+        """Get itinerary items."""
+        items = obj.itinerary_items.all().order_by('day_index', 'start_time')
+        return ItineraryItemSerializer(items, many=True).data
+    
+    def get_has_itinerary(self, obj):
+        """Check if trip has itinerary."""
+        return obj.itinerary_items.exists()
 
