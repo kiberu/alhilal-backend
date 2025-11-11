@@ -9,6 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Form,
   FormControl,
@@ -40,6 +41,7 @@ const tripSchema = z.object({
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
   visibility: z.enum(["PUBLIC", "PRIVATE", "ARCHIVED"]),
+  featured: z.boolean().default(false),
   coverImage: z.string().optional(),
   operatorNotes: z.string().optional(),
 }).refine((data) => {
@@ -71,6 +73,7 @@ export default function EditTripPage() {
       startDate: "",
       endDate: "",
       visibility: "PUBLIC",
+      featured: false,
       coverImage: "",
       operatorNotes: "",
     },
@@ -105,6 +108,7 @@ export default function EditTripPage() {
           startDate: trip.startDate || "",
           endDate: trip.endDate || "",
           visibility: trip.visibility || "PUBLIC",
+          featured: Boolean(trip.featured),
           coverImage: trip.coverImage || "",
           operatorNotes: trip.operatorNotes || "",
         })
@@ -256,6 +260,29 @@ export default function EditTripPage() {
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="featured"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>
+                        Featured Trip
+                      </FormLabel>
+                      <FormDescription>
+                        Display this trip prominently on the app homepage
+                      </FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
 
               <FormField
                 control={form.control}

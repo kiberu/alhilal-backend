@@ -13,7 +13,7 @@ from datetime import timedelta
 from apps.accounts.models import Account, PilgrimProfile
 from apps.trips.models import Trip
 from apps.bookings.models import Booking
-from apps.pilgrims.models import Visa
+from apps.pilgrims.models import Document
 
 
 class DashboardStatsView(APIView):
@@ -50,9 +50,15 @@ class DashboardStatsView(APIView):
             # Pilgrim statistics
             total_pilgrims = PilgrimProfile.objects.count()
             
-            # Visa statistics
-            pending_visas = Visa.objects.filter(status='PENDING').count()
-            approved_visas = Visa.objects.filter(status='APPROVED').count()
+            # Document statistics (visas)
+            pending_visas = Document.objects.filter(
+                document_type='VISA',
+                status='PENDING'
+            ).count()
+            approved_visas = Document.objects.filter(
+                document_type='VISA',
+                status='VERIFIED'
+            ).count()
             
             # Revenue (in minor units)
             total_revenue = Booking.objects.filter(

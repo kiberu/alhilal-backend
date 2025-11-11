@@ -91,6 +91,13 @@ export interface PilgrimProfile {
     email?: string
     isActive: boolean
   }
+  userDetails?: {
+    id: string
+    name: string
+    phone: string
+    email?: string
+    isActive: boolean
+  }
   fullName: string
   passportNumber: string
   phone: string
@@ -106,6 +113,30 @@ export interface PilgrimProfile {
   medicalConditions?: string
   medicalInfo?: string // Deprecated: use medicalConditions
   bookingsCount?: number
+  bookings?: Array<{
+    id: string
+    status: string
+    referenceNumber: string
+    packageDetails?: {
+      trip?: {
+        id: string
+        name: string
+        code: string
+      }
+    }
+  }>
+  passport?: {
+    id: string
+    number: string
+    country: string
+    expiryDate: string
+  }
+  visas?: Array<{
+    id: string
+    status: string
+    visaType: string
+    number?: string
+  }>
   created_at: string
   updated_at: string
 }

@@ -4,7 +4,7 @@ Views for trips and related data.
 from django.utils import timezone
 from rest_framework import generics
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from apps.trips.models import Trip, ItineraryItem, TripUpdate
 from apps.bookings.models import Booking
@@ -12,6 +12,7 @@ from apps.common.permissions import IsPilgrim
 from apps.api.serializers.trips import (
     TripListSerializer,
     TripDetailSerializer,
+    PublicTripDetailSerializer,
     ItineraryItemSerializer,
     TripUpdateSerializer,
     TripEssentialsSerializer
@@ -209,4 +210,59 @@ class TripEssentialsView(generics.RetrieveAPIView):
             'contacts': contacts,
             'faqs': faqs
         }
+
+
+# ============================================================================
+# PUBLIC ENDPOINTS (No authentication required)
+# ============================================================================
+
+class PublicTripListView(generics.ListAPIView):
+    """
+    List public trips (accessible by guests).
+    
+    GET /api/v1/public/trips?featured=true
+    
+    Query parameters:
+    - featured: true/false (filter featured trips only)
+    
+    Returns public trips ordered by start date.
+    """
+    
+    permission_classes = [AllowAny]
+    serializer_class = TripListSerializer
+    
+    def get_queryset(self):
+        """Return public trips."""
+        queryset = Trip.objects.filter(visibility='PUBLIC')
+        
+        # Filter by featured if requested
+        featured = self.request.query_params.get('featured')
+        if featured and featured.lower() == 'true':
+            queryset = queryset.filter(featured=True)
+        
+        # Only show trips with at least one public package
+        from django.db.models import Count, Q
+        queryset = queryset.annotate(
+            public_packages_count=Count('packages', filter=Q(packages__visibility='PUBLIC'))
+        ).filter(public_packages_count__gt=0)
+        
+        return queryset.order_by('-featured', 'start_date')
+
+
+class PublicTripDetailView(generics.RetrieveAPIView):
+    """
+    Get public trip details (accessible by guests).
+    
+    GET /api/v1/public/trips/{id}
+    
+    Returns comprehensive trip details including packages, itinerary, FAQs, etc.
+    """
+    
+    permission_classes = [AllowAny]
+    serializer_class = PublicTripDetailSerializer
+    lookup_field = 'id'
+    
+    def get_queryset(self):
+        """Return public trips only."""
+        return Trip.objects.filter(visibility='PUBLIC')
 

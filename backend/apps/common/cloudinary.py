@@ -9,24 +9,65 @@ from typing import Optional
 import time
 
 
-def signed_delivery(public_id: str, expires_in: int = 600, resource_type: str = 'raw') -> str:
+def signed_delivery(public_id: str, expires_in: int = 600, resource_type: str = None, file_format: str = None) -> str:
     """
     Generate a signed URL for private Cloudinary resources.
     
     Args:
         public_id: The Cloudinary public_id of the resource
         expires_in: Expiration time in seconds (default: 10 minutes)
-        resource_type: Type of resource ('raw', 'image', 'video', etc.)
+        resource_type: Type of resource ('raw', 'image', 'video', etc.). If None, auto-detects.
+        file_format: File format/extension (jpg, pdf, png, etc.). Used for detection if provided.
         
     Returns:
         Signed URL that expires after the specified time
         
     Example:
-        >>> url = signed_delivery('passports/abc123', expires_in=600)
-        >>> # Returns a URL valid for 10 minutes
+        >>> url = signed_delivery('passports/abc123', file_format='pdf')
+        >>> # Returns a URL valid for 10 minutes with correct resource type
     """
     if not public_id:
         return ''
+    
+    # Auto-detect resource type if not provided
+    if resource_type is None:
+        # First, try using the provided file_format
+        if file_format:
+            format_lower = file_format.lower().lstrip('.')
+            
+            image_formats = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'tiff', 'tif', 'ico']
+            video_formats = ['mp4', 'mov', 'avi', 'wmv', 'flv', 'webm', 'mkv']
+            document_formats = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt']
+            
+            if format_lower in image_formats:
+                resource_type = 'image'
+            elif format_lower in video_formats:
+                resource_type = 'video'
+            elif format_lower in document_formats:
+                resource_type = 'raw'
+        
+        # Fallback: Check file extension in public_id
+        if resource_type is None:
+            public_id_lower = public_id.lower()
+            
+            image_extensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg', '.tiff', '.ico']
+            video_extensions = ['.mp4', '.mov', '.avi', '.wmv', '.flv', '.webm', '.mkv']
+            document_extensions = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt']
+            
+            if any(public_id_lower.endswith(ext) for ext in image_extensions):
+                resource_type = 'image'
+            elif any(public_id_lower.endswith(ext) for ext in video_extensions):
+                resource_type = 'video'
+            elif any(public_id_lower.endswith(ext) for ext in document_extensions):
+                resource_type = 'raw'
+            else:
+                # No extension detected - use folder-based heuristic for legacy uploads
+                # Document folders often contain images (scanned docs without extensions)
+                document_folders = ['passports', 'visas', 'documents', 'vaccinations', 'id_cards', 'birth_certificates']
+                if any(public_id_lower.startswith(folder) for folder in document_folders):
+                    resource_type = 'image'
+                else:
+                    resource_type = 'raw'
     
     # Calculate expiration timestamp
     expiration = int(time.time()) + expires_in

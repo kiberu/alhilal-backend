@@ -210,6 +210,11 @@ export default function TripDetailsPage() {
             <div className="flex items-center gap-3">
               <h1 className="text-3xl font-bold tracking-tight">{trip.name}</h1>
               <StatusBadge status={trip.visibility} />
+              {trip.featured && (
+                <Badge variant="default" className="bg-amber-500 hover:bg-amber-600">
+                  ⭐ Featured
+                </Badge>
+              )}
             </div>
             <p className="text-muted-foreground">
               <span className="font-mono text-sm">{trip.code}</span>

@@ -9,7 +9,6 @@ from apps.trips.models import (
 )
 from apps.bookings.models import Booking, Payment
 from apps.accounts.models import Account, PilgrimProfile, StaffProfile
-from apps.pilgrims.models import Passport, Visa
 from apps.content.models import Dua
 from apps.common.models import Currency
 
@@ -363,31 +362,37 @@ class AdminPilgrimDetailSerializer(serializers.ModelSerializer):
         return AdminBookingListSerializer(bookings, many=True).data
     
     def get_passport(self, obj):
-        """Get passport for this pilgrim."""
-        from apps.pilgrims.models import Passport
+        """Get passport document for this pilgrim."""
+        from apps.pilgrims.models import Document
         try:
-            passport = Passport.objects.filter(pilgrim=obj).first()
+            passport = Document.objects.filter(
+                pilgrim=obj,
+                document_type='PASSPORT'
+            ).first()
             if passport:
                 return {
                     'id': str(passport.id),
-                    'number': passport.passport_no,
+                    'number': passport.document_number or '',
                     'expiryDate': str(passport.expiry_date) if passport.expiry_date else None,
-                    'country': passport.issue_country or None,
+                    'country': passport.issuing_country or None,
                 }
         except:
             pass
         return None
     
     def get_visas(self, obj):
-        """Get visas for this pilgrim."""
-        from apps.pilgrims.models import Visa
-        visas = Visa.objects.filter(pilgrim=obj)
+        """Get visa documents for this pilgrim."""
+        from apps.pilgrims.models import Document
+        visas = Document.objects.filter(
+            pilgrim=obj,
+            document_type='VISA'
+        )
         visa_list = []
         for visa in visas:
             visa_list.append({
                 'id': str(visa.id),
-                'number': visa.visa_no,
-                'visaType': visa.status,  # Note: The model has 'status' field for visa type
+                'number': visa.document_number or '',
+                'visaType': visa.document_type,
                 'status': visa.status,
                 'expiryDate': str(visa.expiry_date) if visa.expiry_date else None,
             })
@@ -505,110 +510,6 @@ class AdminDuaSerializer(serializers.ModelSerializer):
 
 
 # ============================================================================
-# PASSPORT & VISA SERIALIZERS (Admin)
-# ============================================================================
-
-class AdminPassportSerializer(serializers.ModelSerializer):
-    """Serializer for passport CRUD (admin)."""
-    
-    class Meta:
-        model = Passport
-        fields = [
-            'id', 'pilgrim', 'passport_no', 'issue_date', 'expiry_date',
-            'issue_country', 'scanned_copy_public_id', 'created_at', 'updated_at'
-        ]
-        extra_kwargs = {
-            'id': {'read_only': True},
-            'created_at': {'read_only': True},
-            'updated_at': {'read_only': True},
-        }
-    
-    def to_representation(self, instance):
-        """Convert to frontend format (camelCase)."""
-        data = super().to_representation(instance)
-        return {
-            'id': str(data['id']),
-            'pilgrim': str(data['pilgrim']),
-            'passportNumber': data.get('passport_no'),
-            'issueDate': data.get('issue_date'),
-            'expiryDate': data.get('expiry_date'),
-            'issueCountry': data.get('issue_country'),
-            'scannedCopyPublicId': data.get('scanned_copy_public_id'),
-            'documentPublicId': data.get('scanned_copy_public_id'),  # Alias
-            'createdAt': data['created_at'],
-            'updatedAt': data['updated_at'],
-        }
-    
-    def to_internal_value(self, data):
-        """Convert from frontend format (camelCase) to Django format (snake_case)."""
-        mapped_data = {}
-        field_mapping = {
-            'passportNumber': 'passport_no',
-            'issueDate': 'issue_date',
-            'expiryDate': 'expiry_date',
-            'issueCountry': 'issue_country',
-            'scannedCopyPublicId': 'scanned_copy_public_id',
-            'documentPublicId': 'scanned_copy_public_id',
-        }
-        
-        for key, value in data.items():
-            mapped_key = field_mapping.get(key, key)
-            mapped_data[mapped_key] = value
-        
-        return super().to_internal_value(mapped_data)
-
-
-class AdminVisaSerializer(serializers.ModelSerializer):
-    """Serializer for visa CRUD (admin)."""
-    
-    class Meta:
-        model = Visa
-        fields = [
-            'id', 'pilgrim', 'trip', 'status', 'visa_no', 'issue_date',
-            'expiry_date', 'scanned_copy_public_id', 'created_at', 'updated_at'
-        ]
-        extra_kwargs = {
-            'id': {'read_only': True},
-            'created_at': {'read_only': True},
-            'updated_at': {'read_only': True},
-        }
-    
-    def to_representation(self, instance):
-        """Convert to frontend format (camelCase)."""
-        data = super().to_representation(instance)
-        return {
-            'id': str(data['id']),
-            'pilgrim': str(data['pilgrim']),
-            'trip': str(data['trip']),
-            'status': data['status'],
-            'visaNumber': data.get('visa_no'),
-            'issueDate': data.get('issue_date'),
-            'expiryDate': data.get('expiry_date'),
-            'scannedCopyPublicId': data.get('scanned_copy_public_id'),
-            'documentPublicId': data.get('scanned_copy_public_id'),  # Alias
-            'createdAt': data['created_at'],
-            'updatedAt': data['updated_at'],
-        }
-    
-    def to_internal_value(self, data):
-        """Convert from frontend format (camelCase) to Django format (snake_case)."""
-        mapped_data = {}
-        field_mapping = {
-            'visaNumber': 'visa_no',
-            'issueDate': 'issue_date',
-            'expiryDate': 'expiry_date',
-            'scannedCopyPublicId': 'scanned_copy_public_id',
-            'documentPublicId': 'scanned_copy_public_id',
-        }
-        
-        for key, value in data.items():
-            mapped_key = field_mapping.get(key, key)
-            mapped_data[mapped_key] = value
-        
-        return super().to_internal_value(mapped_data)
-
-
-# ============================================================================
 # PACKAGE SERIALIZERS (Admin)
 # ============================================================================
 
@@ -645,6 +546,10 @@ class AdminPackageFlightSerializer(serializers.ModelSerializer):
 
 class AdminPackageHotelSerializer(serializers.ModelSerializer):
     """Serializer for package hotel CRUD (admin)."""
+    
+    address = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    room_type = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    group_confirmation_no = serializers.CharField(required=False, allow_blank=True, allow_null=True)
     
     class Meta:
         model = PackageHotel

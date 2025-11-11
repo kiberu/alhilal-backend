@@ -5,8 +5,16 @@ import { useRouter, useParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   ArrowLeft,
   Edit,
@@ -20,8 +28,10 @@ import {
   Mail,
   Calendar,
   MapPin,
+  ExternalLink,
 } from "lucide-react"
 import { PilgrimService } from "@/lib/api/services/pilgrims"
+import { DocumentService, type Document as DocumentType } from "@/lib/api/services/documents"
 import { useAuth } from "@/hooks/useAuth"
 import { StatusBadge } from "@/components/shared"
 import type { PilgrimWithDetails } from "@/types/models"
@@ -36,8 +46,16 @@ export default function PilgrimDetailsPage() {
   const pilgrimId = params.id as string
 
   const [pilgrim, setPilgrim] = useState<PilgrimWithDetails | null>(null)
+  const [documents, setDocuments] = useState<DocumentType[]>([])
   const [loading, setLoading] = useState(true)
+  const [documentsLoading, setDocumentsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // Delete dialog states
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deleteType, setDeleteType] = useState<'document' | null>(null)
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (pilgrimId) {
@@ -55,6 +73,8 @@ export default function PilgrimDetailsPage() {
 
       if (response.success && response.data) {
         setPilgrim(response.data)
+        // Load documents for this pilgrim
+        loadDocuments()
       } else {
         const errorMessage = response.error || "Failed to load pilgrim details"
         setError(errorMessage)
@@ -67,6 +87,22 @@ export default function PilgrimDetailsPage() {
       toast.error(errorMessage)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadDocuments = async () => {
+    try {
+      setDocumentsLoading(true)
+      const response = await DocumentService.list({ pilgrim: pilgrimId }, accessToken)
+      
+      if (response.success && response.data) {
+        const docs = Array.isArray(response.data) ? response.data : response.data.results || []
+        setDocuments(docs)
+      }
+    } catch (err) {
+      console.error("Error loading documents:", err)
+    } finally {
+      setDocumentsLoading(false)
     }
   }
 
@@ -86,6 +122,47 @@ export default function PilgrimDetailsPage() {
       console.error("Error deleting pilgrim:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to delete pilgrim"
       toast.error(errorMessage)
+    }
+  }
+
+  const handleViewDocument = (documentUrl: string | undefined) => {
+    if (documentUrl) {
+      window.open(documentUrl, '_blank')
+    } else {
+      toast.error('Document file not available')
+    }
+  }
+
+  const handleDeleteDocument = (id: string) => {
+    setDeleteType('document')
+    setDeleteId(id)
+    setDeleteDialogOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!deleteId) return
+
+    try {
+      setDeleting(true)
+
+      const response = await DocumentService.delete(deleteId, accessToken)
+
+      if (response.success) {
+        toast.success('Document deleted successfully')
+        // Reload documents to refresh the list
+        await loadDocuments()
+      } else {
+        throw new Error(response.error || 'Failed to delete document')
+      }
+    } catch (err) {
+      console.error('Error deleting document:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete document'
+      toast.error(errorMessage)
+    } finally {
+      setDeleting(false)
+      setDeleteDialogOpen(false)
+      setDeleteId(null)
+      setDeleteType(null)
     }
   }
 
@@ -361,62 +438,118 @@ export default function PilgrimDetailsPage() {
               <CardDescription>Passport, visa, and other documents</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {pilgrim.passport ? (
-                  <div key={pilgrim.passport.id}>
-                    <div className="rounded-lg border p-4">
+              {documentsLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-20 w-full" />
+                  <Skeleton className="h-20 w-full" />
+                </div>
+              ) : documents.length > 0 ? (
+                <div className="space-y-3">
+                  {documents.map((doc) => (
+                    <div key={doc.id} className="rounded-lg border p-4">
                       <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium">Passport</p>
-                          <p className="text-sm text-muted-foreground">
-                            {pilgrim.passport.number}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            Expires: {formatDate(pilgrim.passport.expiryDate, "PPP")}
-                          </p>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <p className="font-medium">{doc.title}</p>
+                            <Badge variant="outline" className="text-xs">
+                              {doc.document_type}
+                            </Badge>
+                          </div>
+                          {doc.document_number && (
+                            <p className="text-sm text-muted-foreground">
+                              #{doc.document_number}
+                            </p>
+                          )}
+                          {doc.expiry_date && (
+                            <p className="text-xs text-muted-foreground">
+                              Expires: {formatDate(doc.expiry_date, "PPP")}
+                            </p>
+                          )}
+                          {doc.trip_name && (
+                            <p className="text-xs text-muted-foreground">
+                              Trip: {doc.trip_name}
+                            </p>
+                          )}
                         </div>
-                        <Badge
-                          variant={
-                            new Date(pilgrim.passport.expiryDate) > new Date()
-                              ? "default"
-                              : "destructive"
-                          }
-                        >
-                          {new Date(pilgrim.passport.expiryDate) > new Date() ? "Valid" : "Expired"}
-                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <StatusBadge status={doc.status} />
+                          {doc.expiry_date && (
+                            <Badge
+                              variant={
+                                new Date(doc.expiry_date) > new Date()
+                                  ? "default"
+                                  : "destructive"
+                              }
+                            >
+                              {new Date(doc.expiry_date) > new Date() ? "Valid" : "Expired"}
+                            </Badge>
+                          )}
+                          {doc.file_url && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleViewDocument(doc.file_url)}
+                              title="View document"
+                            >
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => router.push(`/dashboard/documents/${doc.id}`)}
+                            title="Edit document"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteDocument(doc.id)}
+                            title="Delete document"
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground">No passport on record</p>
-                )}
-
-                {pilgrim.visas && pilgrim.visas.length > 0 && (
-                  <div className="mt-6">
-                    <h4 className="mb-3 font-medium">Visas</h4>
-                    {pilgrim.visas.map((visa) => (
-                      <div key={visa.id} className="rounded-lg border p-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium">{visa.visaType} Visa</p>
-                            <p className="text-sm text-muted-foreground">
-                              {visa.number || "N/A"}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              Status: {visa.status}
-                            </p>
-                          </div>
-                          <StatusBadge status={visa.status} />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No documents on record</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Document?</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this document? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleting}
+            >
+              {deleting ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

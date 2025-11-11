@@ -26,12 +26,6 @@ import { toast } from "sonner"
 
 const bookingSchema = z.object({
   status: z.enum(["EOI", "BOOKED", "CONFIRMED", "CANCELLED"]),
-  payment_status: z.enum(["PENDING", "PARTIAL", "PAID", "REFUNDED"]),
-  amount_paid: z.string().refine((val) => !isNaN(parseFloat(val)) && parseFloat(val) >= 0, {
-    message: "Amount must be a valid positive number",
-  }),
-  currency: z.string().min(3).max(3, "Currency must be 3 characters"),
-  paymentNote: z.string().optional(),
   ticketNumber: z.string().optional(),
   roomAssignment: z.string().optional(),
   specialNeeds: z.string().optional(),
@@ -61,7 +55,6 @@ export default function EditBookingPage() {
   })
 
   const selectedStatus = watch("status")
-  const selectedPaymentStatus = watch("payment_status")
 
   useEffect(() => {
     if (bookingId) {
@@ -81,10 +74,6 @@ export default function EditBookingPage() {
         const booking = response.data
         reset({
           status: booking.status,
-          payment_status: booking.payment_status,
-          amount_paid: (booking.amount_paid_minor_units / 100).toFixed(2),
-          currency: booking.currency || "USD",
-          paymentNote: booking.paymentNote || "",
           ticketNumber: booking.ticketNumber || "",
           roomAssignment: booking.roomAssignment || "",
           specialNeeds: booking.specialNeeds || "",
@@ -109,14 +98,8 @@ export default function EditBookingPage() {
       setIsSubmitting(true)
       setError(null)
 
-      const amountPaidMinorUnits = Math.round(parseFloat(data.amount_paid) * 100)
-
       const updateData = {
         status: data.status,
-        payment_status: data.payment_status,
-        amount_paid_minor_units: amountPaidMinorUnits,
-        currency: data.currency,
-        payment_note: data.paymentNote || "",
         ticket_number: data.ticketNumber || "",
         room_assignment: data.roomAssignment || "",
         special_needs: data.specialNeeds || "",
@@ -181,122 +164,41 @@ export default function EditBookingPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+        {/* Status */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Status</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="status">
+                Booking Status <span className="text-red-500">*</span>
+              </Label>
+              <Select
+                value={selectedStatus}
+                onValueChange={(value) => setValue("status", value as "EOI" | "BOOKED" | "CONFIRMED" | "CANCELLED")}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="EOI">Expression of Interest</SelectItem>
+                  <SelectItem value="BOOKED">Booked</SelectItem>
+                  <SelectItem value="CONFIRMED">Confirmed</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+              {errors.status && (
+                <p className="text-sm text-red-500">{errors.status.message}</p>
+              )}
+            </div>
+
+          </CardContent>
+        </Card>
+
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Status */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Status</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="status">
-                  Booking Status <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={selectedStatus}
-                  onValueChange={(value) => setValue("status", value as "EOI" | "BOOKED" | "CONFIRMED" | "CANCELLED")}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="EOI">Expression of Interest</SelectItem>
-                    <SelectItem value="BOOKED">Booked</SelectItem>
-                    <SelectItem value="CONFIRMED">Confirmed</SelectItem>
-                    <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.status && (
-                  <p className="text-sm text-red-500">{errors.status.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="payment_status">
-                  Payment Status <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={selectedPaymentStatus}
-                  onValueChange={(value) => setValue("payment_status", value as "PENDING" | "PARTIAL" | "PAID" | "REFUNDED")}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="PENDING">Pending</SelectItem>
-                    <SelectItem value="PARTIAL">Partial</SelectItem>
-                    <SelectItem value="PAID">Paid</SelectItem>
-                    <SelectItem value="REFUNDED">Refunded</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.payment_status && (
-                  <p className="text-sm text-red-500">{errors.payment_status.message}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Payment */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Payment Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="amountPaid">
-                  Amount Paid <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  id="amountPaid"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  {...register("amountPaid")}
-                  placeholder="0.00"
-                />
-                {errors.amountPaid && (
-                  <p className="text-sm text-red-500">{errors.amountPaid.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="currency">
-                  Currency <span className="text-red-500">*</span>
-                </Label>
-                <Select
-                  value={watch("currency")}
-                  onValueChange={(value) => setValue("currency", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="USD">USD - US Dollar</SelectItem>
-                    <SelectItem value="UGX">UGX - Ugandan Shilling</SelectItem>
-                  </SelectContent>
-                </Select>
-                {errors.currency && (
-                  <p className="text-sm text-red-500">{errors.currency.message}</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="paymentNote">Payment Note</Label>
-                <Textarea
-                  id="paymentNote"
-                  {...register("paymentNote")}
-                  placeholder="Add payment details or notes..."
-                  rows={3}
-                />
-                {errors.paymentNote && (
-                  <p className="text-sm text-red-500">{errors.paymentNote.message}</p>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Booking Details */}
-          <Card className="md:col-span-2">
+          <Card>
             <CardHeader>
               <CardTitle>Booking Details</CardTitle>
             </CardHeader>
@@ -328,7 +230,7 @@ export default function EditBookingPage() {
           </Card>
 
           {/* Special Needs */}
-          <Card className="md:col-span-2">
+          <Card>
             <CardHeader>
               <CardTitle>Special Needs & Requirements</CardTitle>
             </CardHeader>

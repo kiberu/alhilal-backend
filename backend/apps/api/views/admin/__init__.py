@@ -5,8 +5,6 @@ from .trips import AdminTripViewSet
 from .bookings import AdminBookingViewSet
 from .pilgrims import AdminPilgrimViewSet
 from .duas import AdminDuaViewSet
-from .passports import AdminPassportViewSet
-from .visas import AdminVisaViewSet
 from .packages import (
     AdminPackageViewSet,
     AdminPackageFlightViewSet,
@@ -31,8 +29,6 @@ __all__ = [
     'AdminBookingViewSet',
     'AdminPilgrimViewSet',
     'AdminDuaViewSet',
-    'AdminPassportViewSet',
-    'AdminVisaViewSet',
     'AdminPackageViewSet',
     'AdminPackageFlightViewSet',
     'AdminPackageHotelViewSet',

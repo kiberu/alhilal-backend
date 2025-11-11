@@ -1,0 +1,70 @@
+{
+  "expo": {
+    "name": "Al-Hilal Travels",
+    "slug": "alhilal-travels",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "alhilal",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/LOGO-POTRAIT.png",
+      "backgroundColor": "#970246",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "splash": {
+           "image": "./assets/images/LOGO-POTRAIT.png",
+           "backgroundColor": "#970246",
+           "resizeMode": "contain"
+         },
+      "supportsTablet": true,
+      "bundleIdentifier": "com.alhilaltravels.app"
+    },
+    "android": {
+      "splash": {
+           "image": "./assets/images/LOGO-POTRAIT.png",
+           "backgroundColor": "#970246",
+           "resizeMode": "contain"
+         },
+      "adaptiveIcon": {
+        "backgroundColor": "#970246",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "backgroundImage": "./assets/images/android-icon-background.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+      },
+      "package": "com.alhilaltravels.app",
+      "edgeToEdgeEnabled": true,
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "imageWidth": 200,
+          "resizeMode": "contain",
+          "backgroundColor": "#970246",
+          "dark": {
+            "backgroundColor": "#1A1A1A"
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      }
+    }
+  }
+}

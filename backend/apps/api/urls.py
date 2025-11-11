@@ -1,10 +1,11 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views.profile import MeView, MyVisasView, MyBookingsView
+from .views.profile import MeView, MyBookingsView, MyBookingDetailView, UpdateProfileView, CreateBookingView
 from .views.trips import (
     TripListView, TripDetailView, TripItineraryView,
-    TripUpdatesView, TripEssentialsView
+    TripUpdatesView, TripEssentialsView,
+    PublicTripListView, PublicTripDetailView
 )
 from .views.packages import (
     PackageDetailView, PackageFlightsView, PackageHotelsView
@@ -15,12 +16,13 @@ from .views.dashboard import (
 )
 from .views.admin import (
     AdminTripViewSet, AdminBookingViewSet, AdminPilgrimViewSet,
-    AdminDuaViewSet, AdminPassportViewSet, AdminVisaViewSet,
+    AdminDuaViewSet,
     AdminPackageViewSet, AdminPackageFlightViewSet, AdminPackageHotelViewSet,
     AdminItineraryItemViewSet, AdminTripUpdateViewSet, AdminTripGuideSectionViewSet,
     AdminChecklistItemViewSet, AdminEmergencyContactViewSet, AdminTripFAQViewSet,
     AdminUserListView, AdminUserDetailView, AdminUserChangePasswordView
 )
+from .views.documents import DocumentViewSet, MyDocumentsListView, MyDocumentDetailView
 from .views.admin.pilgrim_import import download_template, validate_import, import_pilgrims
 
 app_name = 'api'
@@ -31,8 +33,7 @@ router.register(r'trips', AdminTripViewSet, basename='admin-trip')
 router.register(r'bookings', AdminBookingViewSet, basename='admin-booking')
 router.register(r'pilgrims', AdminPilgrimViewSet, basename='admin-pilgrim')
 router.register(r'duas', AdminDuaViewSet, basename='admin-dua')
-router.register(r'passports', AdminPassportViewSet, basename='admin-passport')
-router.register(r'visas', AdminVisaViewSet, basename='admin-visa')
+router.register(r'documents', DocumentViewSet, basename='admin-document')
 router.register(r'packages', AdminPackageViewSet, basename='admin-package')
 router.register(r'flights', AdminPackageFlightViewSet, basename='admin-flight')
 router.register(r'hotels', AdminPackageHotelViewSet, basename='admin-hotel')
@@ -50,6 +51,10 @@ urlpatterns = [
     # Common utilities
     path('common/', include('apps.common.urls')),
     
+    # Public endpoints (no authentication required)
+    path('public/trips/', PublicTripListView.as_view(), name='public-trips'),
+    path('public/trips/<uuid:id>/', PublicTripDetailView.as_view(), name='public-trip-detail'),
+    
     # Dashboard endpoints (staff only)
     path('dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
     path('dashboard/activity/', DashboardActivityView.as_view(), name='dashboard-activity'),
@@ -57,8 +62,12 @@ urlpatterns = [
     
     # Profile endpoints (pilgrim-facing)
     path('me/', MeView.as_view(), name='me'),
-    path('me/visas/', MyVisasView.as_view(), name='my-visas'),
     path('me/bookings/', MyBookingsView.as_view(), name='my-bookings'),
+    path('me/bookings/<uuid:id>/', MyBookingDetailView.as_view(), name='my-booking-detail'),
+    path('me/documents/', MyDocumentsListView.as_view(), name='my-documents'),
+    path('me/documents/<uuid:id>/', MyDocumentDetailView.as_view(), name='my-document-detail'),
+    path('bookings/create/', CreateBookingView.as_view(), name='create-booking'),
+    path('profile/update/', UpdateProfileView.as_view(), name='profile-update'),
     path('me/trips/', TripListView.as_view(), name='my-trips'),
     path('me/trips/<uuid:pk>/', TripDetailView.as_view(), name='my-trip-detail'),
     path('me/trips/<uuid:trip_id>/itinerary/', TripItineraryView.as_view(), name='my-trip-itinerary'),
