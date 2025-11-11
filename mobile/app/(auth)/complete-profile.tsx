@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/auth-context';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthService } from '@/lib/api';
 import { Colors, Spacing, BorderRadius, Typography, Shadow } from '@/constants/theme';
 
@@ -38,6 +39,7 @@ const COUNTRIES = [
 export default function CompleteProfileScreen() {
   const router = useRouter();
   const { accessToken, updateProfile } = useAuth();
+  const colorScheme = useColorScheme();
 
   const [formData, setFormData] = useState({
     full_name: '',
@@ -130,9 +132,11 @@ export default function CompleteProfileScreen() {
     });
   };
 
+  const colors = Colors[colorScheme];
+
   return (
     <KeyboardAvoidingView
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
       <ScrollView
@@ -141,14 +145,14 @@ export default function CompleteProfileScreen() {
       >
         {/* Icon */}
         <View style={styles.iconContainer}>
-          <View style={styles.iconCircle}>
-            <Ionicons name="person" size={48} color={Colors.light.primary} />
+          <View style={[styles.iconCircle, { backgroundColor: colors.muted }]}>
+            <Ionicons name="person" size={48} color={colors.primary} />
           </View>
         </View>
 
         <View style={styles.header}>
-          <Text style={styles.title}>Complete Your Profile</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: colors.primary }]}>Complete Your Profile</Text>
+          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
             We need a few more details to set up your account
           </Text>
         </View>
@@ -156,12 +160,17 @@ export default function CompleteProfileScreen() {
         <View style={styles.form}>
           {/* Full Name */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>
-              Full Name <Text style={styles.required}>*</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              Full Name <Text style={[styles.required, { color: colors.primary }]}>*</Text>
             </Text>
             <TextInput
-              style={[styles.input, errors.full_name && styles.inputError]}
+              style={[
+                styles.input,
+                { borderColor: colors.border, backgroundColor: colors.muted, color: colors.text },
+                errors.full_name && { borderColor: colors.error }
+              ]}
               placeholder="As per passport"
+              placeholderTextColor={colors.mutedForeground}
               value={formData.full_name}
               onChangeText={(text) => {
                 setFormData({ ...formData, full_name: text });
@@ -170,20 +179,20 @@ export default function CompleteProfileScreen() {
               autoCapitalize="words"
             />
             {errors.full_name ? (
-              <Text style={styles.errorText}>{errors.full_name}</Text>
+              <Text style={[styles.errorText, { color: colors.error }]}>{errors.full_name}</Text>
             ) : null}
           </View>
 
           {/* Date of Birth */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>
-              Date of Birth <Text style={styles.required}>*</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              Date of Birth <Text style={[styles.required, { color: colors.primary }]}>*</Text>
             </Text>
             <TouchableOpacity
-              style={styles.dateButton}
+              style={[styles.dateButton, { borderColor: colors.border, backgroundColor: colors.muted }]}
               onPress={() => setShowDatePicker(true)}
             >
-              <Text style={styles.dateText}>{formatDate(formData.dob)}</Text>
+              <Text style={[styles.dateText, { color: colors.text }]}>{formatDate(formData.dob)}</Text>
             </TouchableOpacity>
             {showDatePicker && (
               <DateTimePicker
@@ -204,8 +213,8 @@ export default function CompleteProfileScreen() {
 
           {/* Gender */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>
-              Gender <Text style={styles.required}>*</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              Gender <Text style={[styles.required, { color: colors.primary }]}>*</Text>
             </Text>
             <View style={styles.radioGroup}>
               {GENDERS.map((gender) => (
@@ -213,7 +222,11 @@ export default function CompleteProfileScreen() {
                   key={gender.value}
                   style={[
                     styles.radioButton,
-                    formData.gender === gender.value && styles.radioButtonActive,
+                    { borderColor: colors.border, backgroundColor: colors.muted },
+                    formData.gender === gender.value && { 
+                      borderColor: colors.primary,
+                      backgroundColor: `${colors.primary}10` 
+                    },
                   ]}
                   onPress={() => {
                     setFormData({ ...formData, gender: gender.value as any });
@@ -223,7 +236,8 @@ export default function CompleteProfileScreen() {
                   <Text
                     style={[
                       styles.radioText,
-                      formData.gender === gender.value && styles.radioTextActive,
+                      { color: colors.mutedForeground },
+                      formData.gender === gender.value && { color: colors.primary },
                     ]}
                   >
                     {gender.label}
@@ -232,14 +246,14 @@ export default function CompleteProfileScreen() {
               ))}
             </View>
             {errors.gender ? (
-              <Text style={styles.errorText}>{errors.gender}</Text>
+              <Text style={[styles.errorText, { color: colors.error }]}>{errors.gender}</Text>
             ) : null}
           </View>
 
           {/* Nationality */}
           <View style={styles.fieldContainer}>
-            <Text style={styles.label}>
-              Nationality <Text style={styles.required}>*</Text>
+            <Text style={[styles.label, { color: colors.text }]}>
+              Nationality <Text style={[styles.required, { color: colors.primary }]}>*</Text>
             </Text>
             <View style={styles.selectContainer}>
               <ScrollView
@@ -253,7 +267,11 @@ export default function CompleteProfileScreen() {
                     key={country.code}
                     style={[
                       styles.countryChip,
-                      formData.nationality === country.code && styles.countryChipActive,
+                      { borderColor: colors.border, backgroundColor: colors.muted },
+                      formData.nationality === country.code && { 
+                        borderColor: colors.primary,
+                        backgroundColor: colors.primary 
+                      },
                     ]}
                     onPress={() => {
                       setFormData({ ...formData, nationality: country.code });
@@ -263,6 +281,7 @@ export default function CompleteProfileScreen() {
                     <Text
                       style={[
                         styles.countryChipText,
+                        { color: colors.mutedForeground },
                         formData.nationality === country.code && styles.countryChipTextActive,
                       ]}
                     >
@@ -273,20 +292,20 @@ export default function CompleteProfileScreen() {
               </ScrollView>
             </View>
             {errors.nationality ? (
-              <Text style={styles.errorText}>{errors.nationality}</Text>
+              <Text style={[styles.errorText, { color: colors.error }]}>{errors.nationality}</Text>
             ) : null}
           </View>
 
           {/* Has Passport Toggle */}
           <View style={styles.fieldContainer}>
             <View style={styles.switchContainer}>
-              <Text style={styles.label}>I have a passport</Text>
+              <Text style={[styles.label, { color: colors.text }]}>I have a passport</Text>
               <Switch
                 value={formData.has_passport}
                 onValueChange={(value) =>
                   setFormData({ ...formData, has_passport: value })
                 }
-                trackColor={{ false: '#E0E0E0', true: Colors.primary }}
+                trackColor={{ false: '#E0E0E0', true: colors.primary }}
                 thumbColor="#FFF"
               />
             </View>
@@ -295,12 +314,17 @@ export default function CompleteProfileScreen() {
           {/* Passport Number (conditional) */}
           {formData.has_passport && (
             <View style={styles.fieldContainer}>
-              <Text style={styles.label}>
-                Passport Number <Text style={styles.required}>*</Text>
+              <Text style={[styles.label, { color: colors.text }]}>
+                Passport Number <Text style={[styles.required, { color: colors.primary }]}>*</Text>
               </Text>
               <TextInput
-                style={[styles.input, errors.passport_number && styles.inputError]}
+                style={[
+                  styles.input,
+                  { borderColor: colors.border, backgroundColor: colors.muted, color: colors.text },
+                  errors.passport_number && { borderColor: colors.error }
+                ]}
                 placeholder="Enter passport number"
+                placeholderTextColor={colors.mutedForeground}
                 value={formData.passport_number}
                 onChangeText={(text) => {
                   setFormData({ ...formData, passport_number: text });
@@ -309,19 +333,22 @@ export default function CompleteProfileScreen() {
                 autoCapitalize="characters"
               />
               {errors.passport_number ? (
-                <Text style={styles.errorText}>{errors.passport_number}</Text>
+                <Text style={[styles.errorText, { color: colors.error }]}>{errors.passport_number}</Text>
               ) : null}
             </View>
           )}
 
           {error ? (
-            <View style={styles.errorContainer}>
-              <Text style={styles.errorMessage}>{error}</Text>
+            <View style={[styles.errorContainer, {
+              backgroundColor: colorScheme === 'dark' ? '#4C1D1D' : '#FEE2E2',
+              borderLeftColor: colors.error
+            }]}>
+              <Text style={[styles.errorMessage, { color: colors.error }]}>{error}</Text>
             </View>
           ) : null}
 
           <TouchableOpacity
-            style={[styles.button, isLoading && styles.buttonDisabled]}
+            style={[styles.button, { backgroundColor: colors.primary }, isLoading && styles.buttonDisabled]}
             onPress={handleSubmit}
             disabled={isLoading}
           >
@@ -340,7 +367,6 @@ export default function CompleteProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.light.background,
   },
   scrollContent: {
     flexGrow: 1,
@@ -356,7 +382,6 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: BorderRadius.full,
-    backgroundColor: Colors.light.muted,
     justifyContent: 'center',
     alignItems: 'center',
     ...Shadow.medium,
@@ -368,13 +393,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: Typography.fontSize['3xl'],
     fontWeight: Typography.fontWeight.bold,
-    color: Colors.light.primary,
     marginBottom: Spacing.sm,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: Typography.fontSize.base,
-    color: Colors.light.mutedForeground,
     textAlign: 'center',
     lineHeight: 24,
     paddingHorizontal: Spacing.md,
@@ -388,42 +411,30 @@ const styles = StyleSheet.create({
   label: {
     fontSize: Typography.fontSize.sm,
     fontWeight: Typography.fontWeight.semibold,
-    color: Colors.light.text,
     marginBottom: Spacing.xs,
   },
-  required: {
-    color: Colors.light.primary,
-  },
+  required: {},
   input: {
     height: 56,
     borderWidth: 1,
-    borderColor: Colors.light.border,
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md,
     fontSize: Typography.fontSize.base,
-    backgroundColor: Colors.light.muted,
-    color: Colors.light.text,
   },
-  inputError: {
-    borderColor: Colors.light.error,
-  },
+  inputError: {},
   errorText: {
     fontSize: Typography.fontSize.xs,
-    color: Colors.light.error,
     marginTop: Spacing.xs,
   },
   dateButton: {
     height: 56,
     borderWidth: 1,
-    borderColor: Colors.light.border,
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md,
     justifyContent: 'center',
-    backgroundColor: Colors.light.muted,
   },
   dateText: {
     fontSize: Typography.fontSize.base,
-    color: Colors.light.text,
   },
   radioGroup: {
     flexDirection: 'row',
@@ -433,24 +444,16 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 48,
     borderWidth: 2,
-    borderColor: Colors.light.border,
     borderRadius: BorderRadius.md,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: Colors.light.muted,
   },
-  radioButtonActive: {
-    borderColor: Colors.light.primary,
-    backgroundColor: `${Colors.light.primary}10`,
-  },
+  radioButtonActive: {},
   radioText: {
     fontSize: Typography.fontSize.sm,
     fontWeight: Typography.fontWeight.semibold,
-    color: Colors.light.mutedForeground,
   },
-  radioTextActive: {
-    color: Colors.light.primary,
-  },
+  radioTextActive: {},
   selectContainer: {
     height: 56,
   },
@@ -466,18 +469,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.sm,
     borderRadius: BorderRadius.full,
     borderWidth: 2,
-    borderColor: Colors.light.border,
-    backgroundColor: Colors.light.muted,
     justifyContent: 'center',
   },
-  countryChipActive: {
-    borderColor: Colors.light.primary,
-    backgroundColor: Colors.light.primary,
-  },
+  countryChipActive: {},
   countryChipText: {
     fontSize: Typography.fontSize.sm,
     fontWeight: Typography.fontWeight.semibold,
-    color: Colors.light.mutedForeground,
   },
   countryChipTextActive: {
     color: '#FFFFFF',
@@ -489,20 +486,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   errorContainer: {
-    backgroundColor: '#FEE2E2',
     padding: Spacing.md,
     borderRadius: BorderRadius.sm,
     marginBottom: Spacing.md,
     borderLeftWidth: 4,
-    borderLeftColor: Colors.light.error,
   },
   errorMessage: {
-    color: Colors.light.error,
     fontSize: Typography.fontSize.sm,
     fontWeight: Typography.fontWeight.medium,
   },
   button: {
-    backgroundColor: Colors.light.primary,
     height: 56,
     borderRadius: BorderRadius.md,
     justifyContent: 'center',
