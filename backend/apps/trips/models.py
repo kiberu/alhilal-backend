@@ -19,6 +19,7 @@ class Trip(models.Model):
     end_date = models.DateField()
     cover_image = models.URLField(max_length=500, null=True, blank=True, help_text='URL to cover image (Cloudinary)')
     visibility = models.CharField(max_length=7, choices=VISIBILITY_CHOICES, default='PUBLIC')
+    featured = models.BooleanField(default=False, help_text='Display trip prominently on app homepage')
     operator_notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

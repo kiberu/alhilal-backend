@@ -32,6 +32,10 @@ env = environ.Env(
     JWT_ACCESS_TOKEN_LIFETIME=(int, 3600),
     JWT_REFRESH_TOKEN_LIFETIME=(int, 86400),
     RATELIMIT_ENABLE=(bool, True),
+    AFRICASTALKING_USERNAME=(str, 'sandbox'),
+    AFRICASTALKING_API_KEY=(str, ''),
+    AFRICASTALKING_SENDER_ID=(str, 'ALHILAL'),
+    SMS_ENABLED=(bool, False),
 )
 
 # Read .env file
@@ -391,6 +395,24 @@ if not DEBUG and FIELD_ENCRYPTION_KEY == TEMPORARY_KEY:
 
 # Rate limiting
 RATELIMIT_ENABLE = env('RATELIMIT_ENABLE')
+
+# Africa's Talking SMS Configuration
+AFRICASTALKING_USERNAME = env('AFRICASTALKING_USERNAME')
+AFRICASTALKING_API_KEY = env('AFRICASTALKING_API_KEY')
+AFRICASTALKING_SENDER_ID = env('AFRICASTALKING_SENDER_ID')
+SMS_ENABLED = env('SMS_ENABLED')
+
+# Initialize Africa's Talking if credentials are provided
+if AFRICASTALKING_API_KEY and AFRICASTALKING_API_KEY != '':
+    try:
+        import africastalking
+        africastalking.initialize(
+            username=AFRICASTALKING_USERNAME,
+            api_key=AFRICASTALKING_API_KEY
+        )
+    except Exception as e:
+        import warnings
+        warnings.warn(f"Failed to initialize Africa's Talking: {e}", RuntimeWarning)
 
 # Security settings for production
 if not DEBUG:

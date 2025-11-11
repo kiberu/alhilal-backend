@@ -19,7 +19,9 @@ class PackageFlightInline(admin.TabularInline):
 class PackageHotelInline(admin.TabularInline):
     model = PackageHotel
     extra = 1
-    fields = ['name', 'check_in', 'check_out', 'room_type', 'group_confirmation_no']
+    fields = ['name', 'address', 'room_type', 'check_in', 'check_out', 'group_confirmation_no']
+    verbose_name = 'Hotel/Accommodation'
+    verbose_name_plural = 'Hotels/Accommodations'
 
 
 class TripPackageInline(admin.TabularInline):
@@ -68,8 +70,8 @@ class TripFAQInline(admin.StackedInline):
 class TripAdmin(admin.ModelAdmin):
     """Admin for Trip model."""
     
-    list_display = ['code', 'name', 'start_date', 'end_date', 'visibility', 'created_at']
-    list_filter = ['visibility', 'start_date']
+    list_display = ['code', 'name', 'start_date', 'end_date', 'visibility', 'featured', 'created_at']
+    list_filter = ['visibility', 'featured', 'start_date']
     search_fields = ['code', 'name']
     readonly_fields = ['created_at', 'updated_at']
     actions = [
@@ -91,7 +93,7 @@ class TripAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('code', 'name', 'cities', 'visibility')
+            'fields': ('code', 'name', 'cities', 'visibility', 'featured', 'cover_image')
         }),
         ('Dates', {
             'fields': ('start_date', 'end_date')
@@ -133,10 +135,34 @@ class PackageFlightAdmin(admin.ModelAdmin):
 class PackageHotelAdmin(admin.ModelAdmin):
     """Admin for PackageHotel model."""
     
-    list_display = ['package', 'name', 'check_in', 'check_out', 'room_type']
-    list_filter = ['package__trip']
-    search_fields = ['name', 'package__trip__code']
-    readonly_fields = ['created_at', 'updated_at']
+    list_display = ['name', 'package', 'check_in', 'check_out', 'room_type', 'nights']
+    list_filter = ['package__trip', 'check_in']
+    search_fields = ['name', 'address', 'package__trip__code', 'package__name']
+    readonly_fields = ['created_at', 'updated_at', 'nights']
+    
+    fieldsets = (
+        ('Hotel Information', {
+            'fields': ('package', 'name', 'address', 'room_type')
+        }),
+        ('Stay Dates', {
+            'fields': ('check_in', 'check_out', 'nights')
+        }),
+        ('Booking Details', {
+            'fields': ('group_confirmation_no',)
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    def nights(self, obj):
+        """Calculate number of nights."""
+        if obj.check_in and obj.check_out:
+            delta = obj.check_out - obj.check_in
+            return f"{delta.days} nights"
+        return '-'
+    nights.short_description = 'Duration'
 
 
 @admin.register(ItineraryItem)

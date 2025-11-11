@@ -4,9 +4,11 @@ Tests for API authentication (OTP + JWT).
 import pytest
 from rest_framework import status
 from django.contrib.auth import get_user_model
-from apps.accounts.models import OTPCode
 from django.utils import timezone
 from datetime import timedelta
+from unittest.mock import patch, MagicMock
+
+from apps.accounts.models import OTPCode
 
 Account = get_user_model()
 
@@ -51,6 +53,94 @@ class TestOTPRequest:
             'phone': '+256700000001'
         })
         assert response2.status_code == status.HTTP_429_TOO_MANY_REQUESTS
+    
+    @patch('africastalking.SMS.send')
+    def test_sms_enabled_success(self, mock_sms_send, api_client, settings):
+        """Test OTP request with SMS enabled - successful send."""
+        settings.SMS_ENABLED = True
+        
+        # Mock successful SMS response
+        mock_sms_send.return_value = {
+            'SMSMessageData': {
+                'Recipients': [
+                    {'status': 'Success', 'number': '+256712345678'}
+                ]
+            }
+        }
+        
+        response = api_client.post('/api/v1/auth/request-otp/', {
+            'phone': '+256712345678'
+        })
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['sent'] is True
+        assert 'otp' not in response.data  # OTP should not be in response in production
+        assert mock_sms_send.called
+    
+    @patch('africastalking.SMS.send')
+    def test_sms_enabled_failure(self, mock_sms_send, api_client, settings):
+        """Test OTP request with SMS enabled - failed send."""
+        settings.SMS_ENABLED = True
+        
+        # Mock failed SMS response
+        mock_sms_send.return_value = {
+            'SMSMessageData': {
+                'Recipients': [
+                    {'status': 'Failed', 'number': '+256712345678'}
+                ]
+            }
+        }
+        
+        response = api_client.post('/api/v1/auth/request-otp/', {
+            'phone': '+256712345678'
+        })
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['sent'] is True  # OTP still created in DB
+        assert 'sms_warning' in response.data  # Warning about SMS failure
+        
+        # OTP should still be in database
+        otp = OTPCode.objects.filter(phone='+256712345678').first()
+        assert otp is not None
+    
+    @patch('africastalking.SMS.send')
+    def test_sms_enabled_exception(self, mock_sms_send, api_client, settings):
+        """Test OTP request with SMS enabled - exception during send."""
+        settings.SMS_ENABLED = True
+        
+        # Mock exception
+        mock_sms_send.side_effect = Exception("Network error")
+        
+        response = api_client.post('/api/v1/auth/request-otp/', {
+            'phone': '+256712345678'
+        })
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['sent'] is True  # OTP still created in DB
+        assert 'sms_warning' in response.data
+        
+        # OTP should still be in database
+        otp = OTPCode.objects.filter(phone='+256712345678').first()
+        assert otp is not None
+    
+    def test_sms_disabled_development(self, api_client, settings):
+        """Test OTP request with SMS disabled (development mode)."""
+        settings.SMS_ENABLED = False
+        settings.DEBUG = True
+        
+        response = api_client.post('/api/v1/auth/request-otp/', {
+            'phone': '+256712345678'
+        })
+        
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['sent'] is True
+        assert 'otp' in response.data  # OTP included for development
+        assert 'dev_note' in response.data
+        
+        # Verify OTP is valid
+        otp_code = response.data['otp']
+        assert len(otp_code) == 6
+        assert otp_code.isdigit()
 
 
 @pytest.mark.django_db
@@ -61,7 +151,7 @@ class TestOTPVerify:
         """Test successful OTP verification."""
         response = api_client.post('/api/v1/auth/verify-otp/', {
             'phone': '+256712345678',
-            'code': '123456'
+            'otp': '123456'
         })
         
         assert response.status_code == status.HTTP_200_OK
@@ -82,7 +172,7 @@ class TestOTPVerify:
         """Test that OTP verification creates pilgrim profile."""
         response = api_client.post('/api/v1/auth/verify-otp/', {
             'phone': '+256712345678',
-            'code': '123456'
+            'otp': '123456'
         })
         
         assert response.status_code == status.HTTP_200_OK
@@ -94,7 +184,7 @@ class TestOTPVerify:
         """Test OTP verification with wrong code."""
         response = api_client.post('/api/v1/auth/verify-otp/', {
             'phone': '+256712345678',
-            'code': '999999'  # Wrong code
+            'otp': '999999'  # Wrong code
         })
         
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -116,7 +206,7 @@ class TestOTPVerify:
         
         response = api_client.post('/api/v1/auth/verify-otp/', {
             'phone': '+256700000002',
-            'code': '111111'
+            'otp': '111111'
         })
         
         assert response.status_code == status.HTTP_400_BAD_REQUEST
@@ -129,11 +219,11 @@ class TestOTPVerify:
         
         response = api_client.post('/api/v1/auth/verify-otp/', {
             'phone': '+256712345678',
-            'code': '123456'
+            'otp': '123456'
         })
         
         assert response.status_code == status.HTTP_400_BAD_REQUEST
-        assert 'MAX_ATTEMPTS' in response.data['error']['code']
+        assert 'Maximum' in response.data['error']
     
     def test_verify_otp_existing_user(self, api_client, pilgrim_user):
         """Test OTP verification for existing user."""
@@ -147,7 +237,7 @@ class TestOTPVerify:
         
         response = api_client.post('/api/v1/auth/verify-otp/', {
             'phone': pilgrim_user.phone,
-            'code': '654321'
+            'otp': '654321'
         })
         
         assert response.status_code == status.HTTP_200_OK

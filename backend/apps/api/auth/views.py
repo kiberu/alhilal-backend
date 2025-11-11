@@ -5,13 +5,16 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import get_user_model
 from django.utils import timezone
+from django.conf import settings
 from datetime import timedelta
 import random
+import logging
 
 from apps.accounts.models import Account, OTPCode
 from .serializers import StaffLoginSerializer
 
 User = get_user_model()
+logger = logging.getLogger(__name__)
 
 
 class RequestOTPView(APIView):
@@ -63,14 +66,57 @@ class RequestOTPView(APIView):
                 attempts=0
             )
             
-            # TODO: Send OTP via SMS in production
-            # For development, the OTP is stored in database
+            # Send OTP via SMS if enabled
+            sms_sent = False
+            sms_error = None
             
-            return Response({
+            if settings.SMS_ENABLED:
+                try:
+                    import africastalking
+                    sms = africastalking.SMS
+                    
+                    message = f"Your Al-Hilal verification code is: {otp_code}. Valid for 10 minutes. Do not share this code."
+                    
+                    response = sms.send(
+                        message=message,
+                        recipients=[phone],
+                        sender_id=settings.AFRICASTALKING_SENDER_ID
+                    )
+                    
+                    # Log the response
+                    logger.info(f"SMS sent to {phone}: {response}")
+                    
+                    # Check if SMS was sent successfully
+                    if response['SMSMessageData']['Recipients']:
+                        recipient_status = response['SMSMessageData']['Recipients'][0]['status']
+                        if recipient_status.lower() == 'success':
+                            sms_sent = True
+                        else:
+                            sms_error = f"SMS delivery failed: {recipient_status}"
+                            logger.error(f"SMS delivery failed for {phone}: {recipient_status}")
+                    
+                except Exception as e:
+                    sms_error = str(e)
+                    logger.error(f"Failed to send SMS to {phone}: {e}")
+            else:
+                logger.info(f"SMS disabled. OTP for {phone}: {otp_code}")
+            
+            # Prepare response
+            response_data = {
                 'sent': True,
                 'expires_in': 600,  # 10 minutes in seconds
-                'message': 'OTP sent successfully',
-            })
+                'message': 'OTP sent successfully' if sms_sent else 'OTP generated. Check console in development mode.',
+            }
+            
+            # In development mode, include OTP in response (REMOVE IN PRODUCTION)
+            if settings.DEBUG and not settings.SMS_ENABLED:
+                response_data['otp'] = otp_code  # Only for development testing
+                response_data['dev_note'] = 'OTP included for development only'
+            
+            if sms_error:
+                response_data['sms_warning'] = sms_error
+            
+            return Response(response_data)
 
         except Exception as e:
             return Response(
@@ -139,10 +185,24 @@ class VerifyOTPView(APIView):
                 defaults={'role': 'PILGRIM', 'name': phone}
             )
 
-            # Create pilgrim profile if new user
+            # Create pilgrim profile if new user or if profile doesn't exist
+            from apps.accounts.models import PilgrimProfile
             if created:
-                from apps.accounts.models import PilgrimProfile
-                PilgrimProfile.objects.create(user=user)
+                try:
+                    profile = PilgrimProfile.objects.create(user=user, phone=phone)
+                    logger.info(f"Created pilgrim profile for {phone}: {profile}")
+                except Exception as e:
+                    logger.error(f"Failed to create pilgrim profile for {phone}: {e}")
+                    raise
+            else:
+                # Ensure profile exists for existing users
+                if not hasattr(user, 'pilgrim_profile') or not PilgrimProfile.objects.filter(user=user).exists():
+                    try:
+                        profile = PilgrimProfile.objects.create(user=user, phone=phone)
+                        logger.info(f"Created missing pilgrim profile for existing user {phone}: {profile}")
+                    except Exception as e:
+                        logger.error(f"Failed to create pilgrim profile for existing user {phone}: {e}")
+                        raise
 
             # Generate tokens
             refresh = RefreshToken.for_user(user)
@@ -150,11 +210,8 @@ class VerifyOTPView(APIView):
             # Get profile data
             profile_data = None
             if hasattr(user, 'pilgrim_profile'):
-                profile_data = {
-                    'id': str(user.pilgrim_profile.id),
-                    'dob': str(user.pilgrim_profile.dob) if user.pilgrim_profile.dob else None,
-                    'nationality': user.pilgrim_profile.nationality,
-                }
+                from apps.api.serializers.profile import PilgrimProfileSerializer
+                profile_data = PilgrimProfileSerializer(user.pilgrim_profile).data
 
             return Response({
                 'access': str(refresh.access_token),

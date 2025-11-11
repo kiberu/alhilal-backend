@@ -53,3 +53,6 @@ pytz==2024.1
 # Excel file handling
 openpyxl==3.1.5
 
+# SMS Gateway (Africa's Talking)
+africastalking==1.2.7
+

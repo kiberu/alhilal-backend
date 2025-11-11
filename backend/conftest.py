@@ -202,6 +202,13 @@ def otp_code(db):
 
 
 @pytest.fixture
+def settings():
+    """Provide access to Django settings for test mocking."""
+    from django.conf import settings
+    return settings
+
+
+@pytest.fixture
 def flight(trip_package):
     """Create a test flight."""
     from apps.trips.models import PackageFlight

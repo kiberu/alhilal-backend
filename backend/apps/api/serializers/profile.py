@@ -98,13 +98,16 @@ class PilgrimProfileSerializer(serializers.ModelSerializer):
     phone = serializers.CharField(source='user.phone', read_only=True)
     email = serializers.CharField(source='user.email', read_only=True)
     passport = serializers.SerializerMethodField()
+    emergency_contact = serializers.SerializerMethodField()
     
     class Meta:
         model = PilgrimProfile
         fields = [
             'name', 'phone', 'email',
-            'dob', 'nationality',
-            'emergency_name', 'emergency_phone',
+            'full_name', 'dob', 'gender', 'nationality',
+            'passport_number', 'address',
+            'emergency_name', 'emergency_phone', 'emergency_relationship',
+            'emergency_contact',
             'passport'
         ]
     
@@ -113,5 +116,15 @@ class PilgrimProfileSerializer(serializers.ModelSerializer):
         passport = obj.passports.first()
         if passport:
             return PassportSerializer(passport).data
+        return None
+    
+    def get_emergency_contact(self, obj):
+        """Get emergency contact as a dict."""
+        if obj.emergency_name or obj.emergency_phone:
+            return {
+                'name': obj.emergency_name,
+                'phone': obj.emergency_phone,
+                'relationship': obj.emergency_relationship,
+            }
         return None
 
