@@ -77,11 +77,15 @@ class RequestOTPView(APIView):
                     
                     message = f"Your Al-Hilal verification code is: {otp_code}. Valid for 10 minutes. Do not share this code."
                     
-                    response = sms.send(
-                        message=message,
-                        recipients=[phone],
-                        sender_id=settings.AFRICASTALKING_SENDER_ID
-                    )
+                    # Only include sender_id if it's configured
+                    send_params = {
+                        'message': message,
+                        'recipients': [phone]
+                    }
+                    if settings.AFRICASTALKING_SENDER_ID:
+                        send_params['sender_id'] = settings.AFRICASTALKING_SENDER_ID
+                    
+                    response = sms.send(**send_params)
                     
                     # Log the response
                     logger.info(f"SMS sent to {phone}: {response}")

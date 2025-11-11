@@ -350,7 +350,7 @@ export default function MoreScreen() {
             activeOpacity={0.8}
           >
             <Ionicons name="log-out-outline" size={22} color="#EF4444" />
-            <Text style={styles.logoutText}>Logout (Dev Only)</Text>
+            <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
         )}
 

@@ -34,7 +34,7 @@ env = environ.Env(
     RATELIMIT_ENABLE=(bool, True),
     AFRICASTALKING_USERNAME=(str, 'sandbox'),
     AFRICASTALKING_API_KEY=(str, ''),
-    AFRICASTALKING_SENDER_ID=(str, 'ALHILAL'),
+    AFRICASTALKING_SENDER_ID=(str, ''),
     SMS_ENABLED=(bool, False),
 )
 
