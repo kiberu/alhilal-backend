@@ -20,10 +20,10 @@ import { useAuth } from '@/contexts/auth-context';
 import { BookingsService, type Booking } from '@/lib/api';
 
 const STATUS_CONFIG = {
-  PENDING: { label: 'Pending', color: '#F59E0B', icon: 'time-outline' as const },
+  EOI: { label: 'Pending', color: '#F59E0B', icon: 'time-outline' as const },
+  BOOKED: { label: 'Booked', color: '#3B82F6', icon: 'calendar-outline' as const },
   CONFIRMED: { label: 'Confirmed', color: '#10B981', icon: 'checkmark-circle-outline' as const },
   CANCELLED: { label: 'Cancelled', color: '#EF4444', icon: 'close-circle-outline' as const },
-  COMPLETED: { label: 'Completed', color: '#6B7280', icon: 'checkmark-done-outline' as const },
 };
 
 export default function MyBookingsScreen() {
@@ -35,7 +35,7 @@ export default function MyBookingsScreen() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -55,11 +55,15 @@ export default function MyBookingsScreen() {
       } else {
         setIsLoading(true);
       }
-      setError('');
+      setError(null);
 
       const response = await BookingsService.getMyBookings(accessToken);
+      
+      console.log('Bookings API response:', JSON.stringify(response, null, 2));
 
       if (response.success && response.data) {
+        console.log('Bookings data type:', typeof response.data, 'Is array:', Array.isArray(response.data));
+        console.log('Bookings count:', Array.isArray(response.data) ? response.data.length : 'Not an array');
         setBookings(response.data);
       } else {
         throw new Error(response.error || 'Failed to fetch bookings');
@@ -85,8 +89,7 @@ export default function MyBookingsScreen() {
 
   const handleBookingPress = (bookingId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // TODO: Navigate to booking detail screen
-    console.log('View booking:', bookingId);
+    router.push(`/booking/${bookingId}`);
   };
 
   const handleBrowseTrips = () => {
@@ -105,6 +108,15 @@ export default function MyBookingsScreen() {
       day: 'numeric',
       year: 'numeric',
     });
+    
+    // Format currency
+    const formatPrice = (minorUnits: number, currency: string) => {
+      const major = minorUnits / 100;
+      if (currency === 'UGX') {
+        return `UGX ${major.toLocaleString('en-UG', { maximumFractionDigits: 0 })}`;
+      }
+      return `$${major.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    };
 
     return (
       <TouchableOpacity
@@ -127,11 +139,12 @@ export default function MyBookingsScreen() {
         {/* Trip Info */}
         <View style={styles.bookingHeader}>
           <Text style={[styles.tripName, { color: colors.text }]}>{booking.trip_name}</Text>
-          {booking.package_name && (
             <Text style={[styles.packageName, { color: colors.mutedForeground }]}>
               {booking.package_name}
             </Text>
-          )}
+          <Text style={[styles.referenceNumber, { color: colors.mutedForeground }]}>
+            Ref: {booking.reference_number}
+          </Text>
         </View>
 
         {/* Trip Date */}
@@ -145,13 +158,13 @@ export default function MyBookingsScreen() {
           <View style={styles.paymentRow}>
             <Text style={[styles.paymentLabel, { color: colors.mutedForeground }]}>Paid:</Text>
             <Text style={[styles.paymentValue, { color: colors.primary }]}>
-              {booking.amount_paid} UGX
+              {formatPrice(booking.amount_paid_minor_units, booking.currency_code)}
             </Text>
           </View>
           <View style={styles.paymentRow}>
             <Text style={[styles.paymentLabel, { color: colors.mutedForeground }]}>Total:</Text>
             <Text style={[styles.paymentValue, { color: colors.text }]}>
-              {booking.total_amount} UGX
+              {formatPrice(booking.package_price, booking.currency_code)}
             </Text>
           </View>
         </View>
@@ -177,7 +190,19 @@ export default function MyBookingsScreen() {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: colors.text }]}>My Bookings</Text>
-        <View style={{ width: 24 }} />
+        <TouchableOpacity 
+          onPress={handleRefresh} 
+          style={styles.refreshButton} 
+          activeOpacity={0.8}
+          disabled={isRefreshing || isLoading}
+        >
+          <Ionicons 
+            name="refresh" 
+            size={24} 
+            color={isRefreshing ? colors.mutedForeground : colors.text} 
+            style={isRefreshing ? { transform: [{ rotate: '180deg' }] } : undefined}
+          />
+        </TouchableOpacity>
       </View>
 
       {isLoading ? (
@@ -247,20 +272,20 @@ export default function MyBookingsScreen() {
               style={styles.statsGradient}
             >
               <View style={styles.statItem}>
-                <Text style={styles.statValue}>{bookings.length}</Text>
+                <Text style={styles.statValue}>{Array.isArray(bookings) ? bookings.length : 0}</Text>
                 <Text style={styles.statLabel}>Total Bookings</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>
-                  {bookings.filter((b) => b.status === 'CONFIRMED').length}
+                  {Array.isArray(bookings) ? bookings.filter((b) => b.status === 'CONFIRMED').length : 0}
                 </Text>
                 <Text style={styles.statLabel}>Confirmed</Text>
               </View>
               <View style={styles.statDivider} />
               <View style={styles.statItem}>
                 <Text style={styles.statValue}>
-                  {bookings.filter((b) => b.status === 'PENDING').length}
+                  {Array.isArray(bookings) ? bookings.filter((b) => b.status === 'EOI').length : 0}
                 </Text>
                 <Text style={styles.statLabel}>Pending</Text>
               </View>
@@ -269,7 +294,7 @@ export default function MyBookingsScreen() {
 
           {/* Bookings List */}
           <View style={styles.bookingsList}>
-            {bookings.map((booking) => renderBookingCard(booking))}
+            {Array.isArray(bookings) && bookings.map((booking) => renderBookingCard(booking))}
           </View>
 
           <View style={{ height: 100 }} />
@@ -292,6 +317,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   backButton: {
+    padding: Spacing.xs,
+  },
+  refreshButton: {
     padding: Spacing.xs,
   },
   headerTitle: {
@@ -424,6 +452,10 @@ const styles = StyleSheet.create({
   },
   packageName: {
     fontSize: Typography.fontSize.sm,
+  },
+  referenceNumber: {
+    fontSize: Typography.fontSize.xs,
+    fontStyle: 'italic',
   },
   bookingRow: {
     flexDirection: 'row',

@@ -7,6 +7,7 @@ from apps.trips.models import (
     ItineraryItem, TripUpdate, TripGuideSection,
     ChecklistItem, EmergencyContact, TripFAQ
 )
+from apps.bookings.models import Booking
 from apps.content.models import Dua
 
 
@@ -70,6 +71,7 @@ class TripPackageSerializer(serializers.ModelSerializer):
     
     flights = FlightSerializer(many=True, read_only=True)
     hotels = HotelSerializer(many=True, read_only=True)
+    currency = serializers.CharField(source='currency.code', read_only=True)
     
     class Meta:
         model = TripPackage
@@ -221,4 +223,99 @@ class PublicTripDetailSerializer(serializers.ModelSerializer):
     def get_has_itinerary(self, obj):
         """Check if trip has itinerary."""
         return obj.itinerary_items.exists()
+
+
+# ==================== Booking Serializers ====================
+
+class PilgrimBookingCreateSerializer(serializers.ModelSerializer):
+    """Serializer for pilgrims to create bookings."""
+    
+    class Meta:
+        model = Booking
+        fields = ['id', 'package', 'special_needs']
+        read_only_fields = ['id']
+    
+    def validate_package(self, value):
+        """Validate package exists and is public."""
+        if value.visibility != 'PUBLIC':
+            raise serializers.ValidationError("This package is not available for booking.")
+        
+        # Check if package has capacity and is full
+        if value.capacity:
+            booked_count = Booking.objects.filter(
+                package=value,
+                status__in=['EOI', 'BOOKED', 'CONFIRMED']
+            ).count()
+            
+            if booked_count >= value.capacity:
+                raise serializers.ValidationError("This package is fully booked.")
+        
+        return value
+    
+    def create(self, validated_data):
+        """Create booking with EOI status for authenticated user."""
+        request = self.context.get('request')
+        user = request.user
+        
+        # Get or create pilgrim profile
+        from apps.accounts.models import PilgrimProfile
+        pilgrim = PilgrimProfile.objects.filter(user=user).first()
+        
+        if not pilgrim:
+            if user.role == 'STAFF':
+                raise serializers.ValidationError(
+                    "Staff users need a pilgrim profile to create bookings. "
+                    "Please complete your profile or use the admin dashboard to create bookings."
+                )
+            else:
+                raise serializers.ValidationError("You must complete your profile before booking.")
+        
+        # Check for duplicate booking (same pilgrim, same package, not cancelled)
+        existing = Booking.objects.filter(
+            pilgrim=pilgrim,
+            package=validated_data['package'],
+        ).exclude(status='CANCELLED').first()
+        
+        if existing:
+            raise serializers.ValidationError(
+                f"You already have a booking for this package (Reference: {existing.reference_number})."
+            )
+        
+        # Create booking with EOI status
+        booking = Booking.objects.create(
+            pilgrim=pilgrim,
+            status='EOI',  # Expression of Interest
+            **validated_data
+        )
+        
+        return booking
+
+
+class PilgrimBookingDetailSerializer(serializers.ModelSerializer):
+    """Serializer for viewing booking details by pilgrims."""
+    
+    package_id = serializers.CharField(source='package.id', read_only=True)
+    trip_name = serializers.CharField(source='package.trip.name', read_only=True)
+    trip_code = serializers.CharField(source='package.trip.code', read_only=True)
+    trip_date = serializers.DateField(source='package.trip.start_date', read_only=True)
+    package_name = serializers.CharField(source='package.name', read_only=True)
+    package_price = serializers.IntegerField(source='package.price_minor_units', read_only=True)
+    currency_code = serializers.CharField(source='currency.code', read_only=True)
+    balance_due = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Booking
+        fields = [
+            'id', 'reference_number', 'package_id', 'trip_name', 'trip_code', 'trip_date',
+            'package_name', 'package_price', 'currency_code', 'status',
+            'payment_status', 'amount_paid_minor_units', 'balance_due',
+            'special_needs', 'ticket_number', 'room_assignment',
+            'created_at', 'updated_at'
+        ]
+    
+    def get_balance_due(self, obj):
+        """Calculate balance due."""
+        package_price = obj.package.price_minor_units or 0
+        amount_paid = obj.amount_paid_minor_units or 0
+        return max(0, package_price - amount_paid)
 

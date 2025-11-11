@@ -7,6 +7,9 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  Modal,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -14,25 +17,140 @@ import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Typography, BorderRadius, Shadow } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
-import { TripsService, TripDetail } from '@/lib/api/services';
+import { TripsService, TripDetail, BookingsService } from '@/lib/api/services';
+import { useAuth } from '@/contexts/auth-context';
+
+// Generic services offered (from website)
+const GENERIC_SERVICES = [
+  {
+    id: 1,
+    title: 'Umrah Packages',
+    icon: 'moon' as const,
+    features: ['Visa processing', 'Return flights', 'Hotel near Haram', 'Ground transfers', 'Guided Ziyarah', 'On-ground support']
+  },
+  {
+    id: 2,
+    title: 'Hajj Packages',
+    icon: 'moon-outline' as const,
+    features: ['Visa processing', 'Return flights', 'Mina/Arafat logistics', 'Makkah/Madinah hotels', 'Internal transport', 'Guided Ziyarah']
+      },
+      {
+    id: 3,
+    title: 'Ziyarah Tours',
+    icon: 'map' as const,
+    features: ['Historic Islamic sites', 'Expert scholar guidance', 'Context and history', 'Spiritual insights', 'Group or private tours', 'Flexible scheduling']
+      },
+      {
+    id: 4,
+    title: 'Group & Community Bookings',
+    icon: 'people' as const,
+    features: ['Discounted group rates', 'Dedicated coordinator', 'Customized schedules', 'Group transportation', 'Private sessions', 'Community bonding']
+      },
+      {
+    id: 5,
+    title: 'VIP & Concierge Services',
+    icon: 'star' as const,
+    features: ['Private airport transfers', 'Premium accommodations', 'Bespoke itineraries', 'On-call liaison', 'VIP lounge access', 'Priority services']
+      },
+      {
+    id: 6,
+    title: 'Travel Facilitation',
+    icon: 'airplane' as const,
+    features: ['Visa advisory & processing', 'Flight booking & optimization', 'Hotel reservations', 'Travel insurance guidance', 'Documentation assistance', '24/7 support']
+  }
+];
+
+// Generic FAQs (from website)
+const GENERIC_FAQS = [
+  {
+    id: 1,
+    question: 'How far in advance should I book?',
+    answer: 'We recommend booking at least 2-3 months in advance, especially for Ramadan and Hajj packages. This ensures visa processing time and better accommodation availability.'
+  },
+  {
+    id: 2,
+        question: 'What is the payment schedule?',
+    answer: 'Typically, a 30-50% deposit secures your booking, with the balance due 30 days before departure. Specific terms are outlined on your invoice.'
+  },
+  {
+    id: 3,
+    question: 'Can I make changes after booking?',
+    answer: 'Changes are possible subject to availability and may incur fees. Contact us as soon as possible if you need to modify your booking.'
+  },
+  {
+    id: 4,
+    question: 'What if my visa is rejected?',
+    answer: 'In the rare case of visa rejection, we\'ll work with you on options. Refund terms depend on the circumstances and are outlined in your contract.'
+  },
+  {
+    id: 5,
+    question: 'Are payment plans available?',
+    answer: 'Yes, we offer flexible payment plans for most packages. Contact us to discuss options that work for your budget.'
+  },
+  {
+    id: 6,
+    question: 'What\'s included in the package price?',
+    answer: 'Packages typically include flights, visa processing, accommodation, transfers, and guided tours. Specific inclusions vary by package—full details provided at booking.'
+  }
+];
+
+// How to book steps (from website)
+const BOOKING_STEPS = [
+  {
+    step: 1,
+    icon: 'call' as const,
+    title: 'Enquire',
+    description: 'Reach out to us with your preferred dates, party size, and budget.',
+    details: ['Call or WhatsApp: +256 700 773535', 'Email: info@alhilaltravels.com', 'Visit our office in Kampala', 'Or sign in to book directly through the app']
+  },
+  {
+    step: 2,
+    icon: 'document-text' as const,
+    title: 'Confirm',
+    description: 'Review your tailored itinerary and package details.',
+    details: ['Receive customized quote & itinerary', 'Review package inclusions & exclusions', 'Ask questions and clarify details', 'Approve package and submit documents']
+  },
+  {
+    step: 3,
+    icon: 'card' as const,
+    title: 'Secure',
+    description: 'Complete payment and finalize your booking.',
+    details: ['Pay deposit to reserve your seats', 'Complete balance as per schedule', 'Receive booking confirmation', 'Get visa, tickets, hotel vouchers & briefing pack']
+  }
+];
 
 export default function TripDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { isAuthenticated, accessToken } = useAuth();
   
   // State
   const [tripDetails, setTripDetails] = useState<TripDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userBookings, setUserBookings] = useState<string[]>([]); // Package IDs user has booked
   
-  // Fetch trip details
+  // Booking modal state
+  const [bookingModalVisible, setBookingModalVisible] = useState(false);
+  const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+  const [specialNeeds, setSpecialNeeds] = useState('');
+  const [submittingBooking, setSubmittingBooking] = useState(false);
+  
+  // Success modal state
+  const [successModalVisible, setSuccessModalVisible] = useState(false);
+  const [bookingReference, setBookingReference] = useState<string>('');
+  
+  // Fetch trip details and user bookings
   useEffect(() => {
     if (id && typeof id === 'string') {
       loadTripDetails(id);
     }
-  }, [id]);
+    if (isAuthenticated && accessToken) {
+      loadUserBookings();
+    }
+  }, [id, isAuthenticated, accessToken]);
   
   const loadTripDetails = async (tripId: string) => {
     try {
@@ -50,6 +168,96 @@ export default function TripDetailsScreen() {
       setError(err.message || 'Failed to load trip details');
     } finally {
       setLoading(false);
+    }
+  };
+  
+  const loadUserBookings = async () => {
+    if (!accessToken) return;
+    
+    try {
+      const response = await BookingsService.getMyBookings(accessToken);
+      if (response.success && response.data) {
+        // Extract package IDs from bookings (excluding cancelled)
+        const bookedPackageIds = Array.isArray(response.data)
+          ? response.data
+              .filter(b => b.status !== 'CANCELLED')
+              .map(b => b.package_id)
+          : [];
+        setUserBookings(bookedPackageIds);
+      }
+    } catch (err) {
+      console.error('Error loading user bookings:', err);
+    }
+  };
+  
+  const isPackageBooked = (packageId: string) => {
+    return userBookings.includes(packageId);
+  };
+  
+  const handleBookPackage = (packageId: string) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (!isAuthenticated) {
+      router.push('/(auth)/phone-login');
+      return;
+    }
+    setSelectedPackageId(packageId);
+    setBookingModalVisible(true);
+  };
+  
+  const handleSubmitBooking = async () => {
+    if (!selectedPackageId || !accessToken) return;
+    
+    try {
+      setSubmittingBooking(true);
+      const response = await BookingsService.createBooking(
+        {
+          package: selectedPackageId,
+          special_needs: specialNeeds || undefined,
+        },
+        accessToken
+      );
+      
+      console.log('Booking response:', JSON.stringify(response, null, 2));
+      
+      if (response.success && response.data) {
+        // Close booking modal and show success modal
+        setBookingModalVisible(false);
+        setBookingReference(response.data.reference_number);
+        setSuccessModalVisible(true);
+        setSpecialNeeds('');
+        setSelectedPackageId(null);
+        
+        // Reload user bookings to update the UI
+        loadUserBookings();
+      } else {
+        // Handle different error formats from API
+        let errorMessage = 'Failed to create booking';
+        if (response.error) {
+          if (typeof response.error === 'string') {
+            errorMessage = response.error;
+          } else if (typeof response.error === 'object') {
+            // Handle field-specific errors
+            const errors = Object.entries(response.error)
+              .map(([field, msgs]) => {
+                const messages = Array.isArray(msgs) ? msgs : [msgs];
+                return `${field}: ${messages.join(', ')}`;
+              })
+              .join('\n');
+            errorMessage = errors || 'Failed to create booking';
+          }
+        }
+        throw new Error(errorMessage);
+      }
+    } catch (err: any) {
+      console.error('Error creating booking:', err);
+      const errorMessage = err?.message || err?.toString?.() || 'Failed to submit booking. Please try again.';
+      Alert.alert(
+        'Booking Failed',
+        errorMessage,
+        [{ text: 'OK' }]
+      );
+    } finally {
+      setSubmittingBooking(false);
     }
   };
   
@@ -136,9 +344,10 @@ export default function TripDetailsScreen() {
   const formatPrice = (minorUnits: number, currency: string) => {
     const major = minorUnits / 100;
     if (currency === 'UGX') {
-      return `${currency} ${major.toLocaleString('en-UG', { maximumFractionDigits: 0 })}`;
+      return `UGX ${major.toLocaleString('en-UG', { maximumFractionDigits: 0 })}`;
     }
-    return `${currency} ${major.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    // For USD and other currencies
+    return `$${major.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
   
   // Helper to calculate nights between dates
@@ -184,19 +393,18 @@ export default function TripDetailsScreen() {
         {/* Content */}
         <View style={styles.content}>
           <View style={[styles.card, { backgroundColor: colors.card }, Shadow.medium]}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.title, { color: colors.text }]}>{tripDetails.name}</Text>
-              <View style={[styles.badge, { backgroundColor: `${colors.primary}12` }]}>
-                <Ionicons name="calendar" size={16} color={colors.primary} />
-                <Text style={[styles.badgeText, { color: colors.primary }]}>
-                  {formatDateRange(tripDetails.start_date, tripDetails.end_date)}
-                </Text>
-              </View>
-            </View>
-
+            <Text style={[styles.title, { color: colors.text }]}>{tripDetails.name}</Text>
+            
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
               {tripDetails.cities.join(' • ')}
             </Text>
+            
+              <View style={[styles.badge, { backgroundColor: `${colors.primary}12` }]}>
+                <Ionicons name="calendar" size={16} color={colors.primary} />
+              <Text style={[styles.badgeText, { color: colors.primary }]}>
+                {formatDateRange(tripDetails.start_date, tripDetails.end_date)}
+              </Text>
+            </View>
 
             <View style={styles.metaGrid}>
               <View style={[styles.metaItem, { backgroundColor: colors.muted }]}>
@@ -216,46 +424,100 @@ export default function TripDetailsScreen() {
                 <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Packages</Text>
                 <Text style={[styles.metaValue, { color: colors.text }]}>{tripDetails.packages.length} options</Text>
               </View>
-              <View style={[styles.metaItem, { backgroundColor: colors.muted }]}>
-                <Ionicons name="bed-outline" size={18} color={colors.primary} />
-                <Text style={[styles.metaLabel, { color: colors.mutedForeground }]}>Hotels</Text>
-                <Text style={[styles.metaValue, { color: colors.text }]}>{allHotels.length} properties</Text>
               </View>
             </View>
-          </View>
-          
+
           {/* Packages Section */}
           {tripDetails.packages.length > 0 && (
             <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Available Packages</Text>
               <View style={styles.packagesList}>
                 {tripDetails.packages.map((pkg, index) => (
-                  <View key={pkg.id} style={[styles.packageItem, { borderColor: colors.border }]}>
-                    <View style={styles.packageHeader}>
-                      <Text style={[styles.packageName, { color: colors.text }]}>{pkg.name}</Text>
-                      <Text style={[styles.packagePrice, { color: colors.primary }]}>
+                  <View key={pkg.id} style={[styles.packageCard, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+                    {/* Package Header */}
+                    <View style={styles.packageCardHeader}>
+                      <Text style={[styles.packageCardName, { color: colors.text }]}>
+                        {pkg.name}
+              </Text>
+                      <Text style={[styles.packageCardPrice, { color: colors.primary }]}>
                         {formatPrice(pkg.price_minor_units, pkg.currency)}
-                      </Text>
-                    </View>
+                  </Text>
+                </View>
+
+                    {/* Hotels List */}
                     {pkg.hotels.length > 0 && (
-                      <View style={styles.packageDetails}>
-                        <Ionicons name="bed-outline" size={16} color={colors.mutedForeground} />
-                        <Text style={[styles.packageDetailText, { color: colors.mutedForeground }]}>
-                          {pkg.hotels.length} {pkg.hotels.length === 1 ? 'hotel' : 'hotels'}
-                        </Text>
+                      <View style={styles.packageSection}>
+                        <View style={styles.packageSectionHeader}>
+                          <Ionicons name="bed" size={16} color={colors.primary} />
+                          <Text style={[styles.packageSectionTitle, { color: colors.text }]}>Accommodations</Text>
+                        </View>
+                        {pkg.hotels.map((hotel, hotelIndex) => (
+                          <View key={hotel.id} style={styles.hotelItem}>
+                            <Text style={[styles.hotelName, { color: colors.text }]} numberOfLines={1}>
+                              • {hotel.name}
+                            </Text>
+                            <Text style={[styles.hotelDetails, { color: colors.mutedForeground }]}>
+                              {new Date(hotel.check_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(hotel.check_out).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ({calculateNights(hotel.check_in, hotel.check_out)} nights)
+                            </Text>
+                            {hotel.room_type && (
+                              <Text style={[styles.hotelRoomType, { color: colors.mutedForeground }]}>
+                                {hotel.room_type}
+                              </Text>
+              )}
+            </View>
+                        ))}
                       </View>
                     )}
+
+                    {/* Flights List */}
                     {pkg.flights.length > 0 && (
-                      <View style={styles.packageDetails}>
-                        <Ionicons name="airplane-outline" size={16} color={colors.mutedForeground} />
-                        <Text style={[styles.packageDetailText, { color: colors.mutedForeground }]}>
-                          {pkg.flights.length} {pkg.flights.length === 1 ? 'flight' : 'flights'}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                ))}
+                      <View style={styles.packageSection}>
+                        <View style={styles.packageSectionHeader}>
+                          <Ionicons name="airplane" size={16} color={colors.primary} />
+                          <Text style={[styles.packageSectionTitle, { color: colors.text }]}>Flights</Text>
+                        </View>
+                        {pkg.flights.map((flight, flightIndex) => (
+                          <View key={flight.id} style={styles.flightItem}>
+                            <View style={styles.flightHeader}>
+                              <Text style={[styles.flightCarrier, { color: colors.text }]}>
+                                {flight.carrier} {flight.flight_no}
+            </Text>
+                              <Text style={[styles.flightLeg, { color: colors.mutedForeground }]}>
+                                {flight.leg}
+                              </Text>
               </View>
+                            <Text style={[styles.flightRoute, { color: colors.mutedForeground }]}>
+                              {flight.dep_airport} → {flight.arr_airport}
+                            </Text>
+                            <Text style={[styles.flightTime, { color: colors.mutedForeground }]}>
+                              {new Date(flight.dep_dt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                            </Text>
+              </View>
+                        ))}
+              </View>
+                    )}
+
+                    {/* Book Package Button */}
+                    {isAuthenticated && (
+                      isPackageBooked(pkg.id) ? (
+                        <View style={[styles.bookPackageButton, { backgroundColor: colors.muted, borderWidth: 1, borderColor: colors.border }]}>
+                          <Ionicons name="checkmark-circle" size={18} color={colors.primary} />
+                          <Text style={[styles.bookPackageButtonText, { color: colors.text }]}>Already Booked</Text>
+              </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={[styles.bookPackageButton, { backgroundColor: colors.primary }]}
+                          onPress={() => handleBookPackage(pkg.id)}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={styles.bookPackageButtonText}>Book This Package</Text>
+                          <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
+                        </TouchableOpacity>
+                      )
+                    )}
+            </View>
+                ))}
+          </View>
             </View>
           )}
 
@@ -263,15 +525,15 @@ export default function TripDetailsScreen() {
           <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
             <Text style={[styles.sectionTitle, { color: colors.text }]}>Itinerary Overview</Text>
             {tripDetails.has_itinerary ? (
-              <View style={styles.timeline}>
-                {tripDetails.itinerary.map((item, index) => (
+            <View style={styles.timeline}>
+              {tripDetails.itinerary.map((item, index) => (
                   <View key={item.id} style={styles.timelineItem}>
-                    <View style={[styles.timelineIndicator, { borderColor: colors.primary }]}>
-                      <View style={[styles.timelineDot, { backgroundColor: colors.primary }]} />
-                    </View>
-                    <View style={styles.timelineContent}>
+                  <View style={[styles.timelineIndicator, { borderColor: colors.primary }]}>
+                    <View style={[styles.timelineDot, { backgroundColor: colors.primary }]} />
+                  </View>
+                  <View style={styles.timelineContent}>
                       <Text style={[styles.timelineDay, { color: colors.primary }]}>Day {item.day_index}</Text>
-                      <Text style={[styles.timelineTitle, { color: colors.text }]}>{item.title}</Text>
+                    <Text style={[styles.timelineTitle, { color: colors.text }]}>{item.title}</Text>
                       {item.location && (
                         <View style={styles.timelineLocationRow}>
                           <Ionicons name="location-outline" size={14} color={colors.mutedForeground} />
@@ -281,14 +543,14 @@ export default function TripDetailsScreen() {
                         </View>
                       )}
                       {item.notes && (
-                        <Text style={[styles.timelineDescription, { color: colors.mutedForeground }]}>
+                    <Text style={[styles.timelineDescription, { color: colors.mutedForeground }]}>
                           {item.notes}
-                        </Text>
+                    </Text>
                       )}
-                    </View>
                   </View>
-                ))}
-              </View>
+                </View>
+              ))}
+            </View>
             ) : (
               <View style={styles.comingSoonContainer}>
                 <Ionicons name="time-outline" size={48} color={colors.mutedForeground} />
@@ -302,61 +564,10 @@ export default function TripDetailsScreen() {
             )}
           </View>
 
-          {/* Accommodations Section */}
-          {allHotels.length > 0 && (
-            <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
-              <View style={styles.sectionHeader}>
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Accommodations</Text>
-                <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
-                  Premium stays throughout the journey
-                </Text>
-              </View>
-              <View style={styles.accommodationList}>
-                {allHotels.map((hotel, index) => (
-                  <View key={hotel.id} style={[styles.accommodationCard, { borderColor: colors.border }]}>
-                    <View style={styles.accommodationHeader}>
-                      <Text style={[styles.accommodationHotel, { color: colors.text }]}>{hotel.name}</Text>
-                      <Text style={[styles.accommodationNights, { color: colors.mutedForeground }]}>
-                        {calculateNights(hotel.check_in, hotel.check_out)} nights
-                      </Text>
-                    </View>
-                    {hotel.address && (
-                      <View style={styles.accommodationMeta}>
-                        <View style={styles.accommodationMetaItem}>
-                          <Ionicons name="location-outline" size={16} color={colors.primary} />
-                          <Text style={[styles.accommodationMetaText, { color: colors.mutedForeground }]}>
-                            {hotel.address}
-                          </Text>
-                        </View>
-                      </View>
-                    )}
-                    {hotel.room_type && (
-                      <View style={styles.accommodationMeta}>
-                        <View style={styles.accommodationMetaItem}>
-                          <Ionicons name="bed-outline" size={16} color={colors.mutedForeground} />
-                          <Text style={[styles.accommodationMetaText, { color: colors.mutedForeground }]}>
-                            {hotel.room_type}
-                          </Text>
-                        </View>
-                      </View>
-                    )}
-                    <View style={styles.accommodationDates}>
-                      <Text style={[styles.accommodationDateText, { color: colors.mutedForeground }]}>
-                        Check-in: {new Date(hotel.check_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </Text>
-                      <Text style={[styles.accommodationDateText, { color: colors.mutedForeground }]}>
-                        Check-out: {new Date(hotel.check_out).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </View>
-          )}
 
           {/* Guide Sections / Services */}
           {tripDetails.guide_sections.length > 0 && (
-            <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
+          <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Travel Guide & Services</Text>
               <View style={styles.guideList}>
                 {tripDetails.guide_sections.map((section) => (
@@ -364,14 +575,14 @@ export default function TripDetailsScreen() {
                     <View style={styles.guideHeader}>
                       <Ionicons name="information-circle" size={20} color={colors.primary} />
                       <Text style={[styles.guideTitle, { color: colors.text }]}>{section.title}</Text>
-                    </View>
+            </View>
                     <Text style={[styles.guideContent, { color: colors.mutedForeground }]}>
                       {section.content_md}
-                    </Text>
-                  </View>
+                      </Text>
+                    </View>
                 ))}
-              </View>
-            </View>
+                    </View>
+                  </View>
           )}
 
           {/* Emergency Contacts */}
@@ -396,15 +607,15 @@ export default function TripDetailsScreen() {
                         {contact.notes}
                       </Text>
                     )}
-                  </View>
-                ))}
-              </View>
+                </View>
+              ))}
             </View>
+          </View>
           )}
 
           {/* FAQs Section */}
           {tripDetails.faqs.length > 0 && (
-            <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
+          <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
               <Text style={[styles.sectionTitle, { color: colors.text }]}>Frequently Asked Questions</Text>
               <View style={styles.faqList}>
                 {tripDetails.faqs.map((faq) => (
@@ -412,32 +623,287 @@ export default function TripDetailsScreen() {
                     <View style={styles.faqHeader}>
                       <Ionicons name="help-circle" size={20} color={colors.primary} />
                       <Text style={[styles.faqQuestion, { color: colors.text }]}>{faq.question}</Text>
-                    </View>
+                </View>
                     <Text style={[styles.faqAnswer, { color: colors.mutedForeground }]}>{faq.answer}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+          )}
+
+          {/* Generic Services Section */}
+          <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Our Services</Text>
+            <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
+              Complete pilgrimage solutions for every traveler
+            </Text>
+            <View style={styles.servicesList}>
+              {GENERIC_SERVICES.map((service) => (
+                <View key={service.id} style={[styles.serviceCard, { backgroundColor: colors.muted }]}>
+                  <View style={styles.serviceHeader}>
+                    <View style={[styles.serviceIconContainer, { backgroundColor: colors.primary }]}>
+                      <Ionicons name={service.icon} size={20} color="#FFFFFF" />
+            </View>
+                    <Text style={[styles.serviceTitle, { color: colors.text }]}>{service.title}</Text>
+                  </View>
+                  <View style={styles.serviceFeatures}>
+                    {service.features.map((feature, idx) => (
+                      <View key={idx} style={styles.serviceFeatureRow}>
+                        <View style={[styles.serviceBullet, { backgroundColor: colors.primary }]} />
+                        <Text style={[styles.serviceFeatureText, { color: colors.mutedForeground }]}>
+                          {feature}
+                        </Text>
+                  </View>
+                    ))}
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Generic FAQ Section */}
+          <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>Booking FAQs</Text>
+            <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
+              Common questions about our booking process
+            </Text>
+            <View style={styles.faqList}>
+              {GENERIC_FAQS.map((faq) => (
+                <View key={faq.id} style={styles.faqItem}>
+                  <View style={styles.faqHeader}>
+                    <Ionicons name="help-circle" size={20} color={colors.primary} />
+                    <Text style={[styles.faqQuestion, { color: colors.text }]}>{faq.question}</Text>
+                  </View>
+                  <Text style={[styles.faqAnswer, { color: colors.mutedForeground }]}>{faq.answer}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* How to Book / Sign In Section */}
+          {!isAuthenticated && (
+            <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.small]}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>How to Book</Text>
+              <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
+                Three easy steps to secure your spiritual journey
+              </Text>
+              
+              {/* Sign In Prompt */}
+              <View style={[styles.signInPrompt, { backgroundColor: colors.primary + '15', borderColor: colors.primary }]}>
+                <Ionicons name="information-circle" size={24} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.signInPromptTitle, { color: colors.text }]}>
+                    Sign in to book instantly
+                  </Text>
+                  <Text style={[styles.signInPromptText, { color: colors.mutedForeground }]}>
+                    Create an account or sign in to book this trip directly through the app
+                  </Text>
+        </View>
+                <TouchableOpacity
+                  style={[styles.signInButton, { backgroundColor: colors.primary }]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    router.push('/(auth)/phone-login');
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.signInButtonText}>Sign In</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Booking Steps */}
+              <View style={styles.bookingStepsList}>
+                {BOOKING_STEPS.map((step, index) => (
+                  <View key={step.step} style={styles.bookingStepItem}>
+                    <View style={styles.bookingStepHeader}>
+                      <View style={[styles.bookingStepNumber, { backgroundColor: colors.primary }]}>
+                        <Text style={styles.bookingStepNumberText}>{step.step}</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[styles.bookingStepTitle, { color: colors.text }]}>{step.title}</Text>
+                        <Text style={[styles.bookingStepDescription, { color: colors.mutedForeground }]}>
+                          {step.description}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.bookingStepDetails}>
+                      {step.details.map((detail, idx) => (
+                        <View key={idx} style={styles.bookingStepDetailRow}>
+                          <Ionicons name="checkmark-circle" size={16} color={colors.primary} />
+                          <Text style={[styles.bookingStepDetailText, { color: colors.mutedForeground }]}>
+                            {detail}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
                   </View>
                 ))}
+              </View>
+
+              {/* Contact Options */}
+              <View style={styles.contactOptions}>
+        <TouchableOpacity
+                  style={[styles.contactButton, { backgroundColor: colors.primary }]}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    // TODO: Open phone dialer
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="call" size={20} color="#FFFFFF" />
+                  <Text style={styles.contactButtonText}>Call Us</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.contactButton, { backgroundColor: '#25D366' }]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    // TODO: Open WhatsApp
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="logo-whatsapp" size={20} color="#FFFFFF" />
+                  <Text style={styles.contactButtonText}>WhatsApp</Text>
+                </TouchableOpacity>
               </View>
             </View>
           )}
         </View>
       </ScrollView>
 
-      {/* Book Now Button */}
-      <View style={[styles.footer, { backgroundColor: colors.background, borderTopColor: colors.border }]}>
-        <TouchableOpacity
-          style={[styles.bookButton, { backgroundColor: colors.primary }]}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            // TODO: Navigate to booking screen
-            console.log('Book trip:', id);
-          }}
-        >
-          <Text style={[styles.bookButtonText, { color: colors.primaryForeground }]}>
-            Book Now
+      {/* Booking Modal */}
+      <Modal
+        visible={bookingModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setBookingModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Book Package</Text>
+              <TouchableOpacity
+                onPress={() => setBookingModalVisible(false)}
+                style={styles.modalCloseButton}
+              >
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Modal Body */}
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              <View style={[styles.modalInfoCard, { backgroundColor: colors.muted }]}>
+                <Ionicons name="information-circle" size={24} color={colors.primary} />
+                <Text style={[styles.modalInfoText, { color: colors.mutedForeground }]}>
+                  Your booking will be submitted as an "Expression of Interest". Our team will review and confirm your booking shortly.
           </Text>
-          <Ionicons name="arrow-forward" size={20} color={colors.primaryForeground} />
+              </View>
+
+              <View style={styles.modalFormGroup}>
+                <Text style={[styles.modalLabel, { color: colors.text }]}>Special Needs (Optional)</Text>
+                <Text style={[styles.modalHelpText, { color: colors.mutedForeground }]}>
+                  Let us know if you have any dietary requirements, mobility needs, or other special requests.
+                </Text>
+                <TextInput
+                  style={[
+                    styles.modalTextArea,
+                    { 
+                      backgroundColor: colors.muted,
+                      color: colors.text,
+                      borderColor: colors.border
+                    }
+                  ]}
+                  placeholder="Enter any special needs or requirements..."
+                  placeholderTextColor={colors.mutedForeground}
+                  value={specialNeeds}
+                  onChangeText={setSpecialNeeds}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+            </ScrollView>
+
+            {/* Modal Footer */}
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={[styles.modalCancelButton, { borderColor: colors.border }]}
+                onPress={() => setBookingModalVisible(false)}
+                disabled={submittingBooking}
+              >
+                <Text style={[styles.modalCancelButtonText, { color: colors.text }]}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalSubmitButton, { backgroundColor: colors.primary }]}
+                onPress={handleSubmitBooking}
+                disabled={submittingBooking}
+                activeOpacity={0.8}
+              >
+                {submittingBooking ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <>
+                    <Text style={styles.modalSubmitButtonText}>Submit Booking</Text>
+                    <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                  </>
+                )}
         </TouchableOpacity>
       </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal
+        visible={successModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSuccessModalVisible(false)}
+      >
+        <View style={styles.successOverlay}>
+          <View style={[styles.successContent, { backgroundColor: colors.card }]}>
+            <View style={[styles.successIconContainer, { backgroundColor: colors.primary + '15' }]}>
+              <Ionicons name="checkmark-circle" size={64} color={colors.primary} />
+            </View>
+            
+            <Text style={[styles.successTitle, { color: colors.text }]}>Booking Submitted!</Text>
+            
+            <View style={[styles.successReferenceCard, { backgroundColor: colors.muted }]}>
+              <Text style={[styles.successReferenceLabel, { color: colors.mutedForeground }]}>
+                Reference Number
+              </Text>
+              <Text style={[styles.successReferenceNumber, { color: colors.primary }]}>
+                {bookingReference}
+              </Text>
+            </View>
+            
+            <Text style={[styles.successMessage, { color: colors.mutedForeground }]}>
+              Your booking has been submitted successfully. Our team will review and confirm your booking shortly.
+            </Text>
+            
+            <View style={styles.successButtonsRow}>
+              <TouchableOpacity
+                style={[styles.successButton, styles.successButtonPrimary, { backgroundColor: colors.primary }]}
+                onPress={() => {
+                  setSuccessModalVisible(false);
+                  router.push('/my-bookings');
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.successButtonTextPrimary}>View My Bookings</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                style={[styles.successButton, styles.successButtonSecondary, { borderColor: colors.border }]}
+                onPress={() => setSuccessModalVisible(false)}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.successButtonTextSecondary, { color: colors.text }]}>Continue Browsing</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -600,46 +1066,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
     lineHeight: 20,
   },
-  accommodationList: {
-    gap: Spacing.md,
-  },
-  accommodationCard: {
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    gap: Spacing.sm,
-  },
-  accommodationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  accommodationCity: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
-    textTransform: 'uppercase',
-  },
-  accommodationNights: {
-    fontSize: Typography.fontSize.xs,
-    textTransform: 'uppercase',
-  },
-  accommodationHotel: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-  },
-  accommodationMeta: {
-    flexDirection: 'row',
-    gap: Spacing.md,
-    marginTop: Spacing.xs,
-  },
-  accommodationMetaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.xs,
-  },
-  accommodationMetaText: {
-    fontSize: Typography.fontSize.xs,
-  },
   listGrid: {
     gap: Spacing.md,
   },
@@ -756,35 +1182,80 @@ const styles = StyleSheet.create({
   packagesList: {
     gap: Spacing.md,
   },
-  packageItem: {
+  packageCard: {
     padding: Spacing.lg,
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
-    gap: Spacing.sm,
+    gap: Spacing.md,
+    marginBottom: Spacing.md,
   },
-  packageHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: Spacing.xs,
+  packageCardHeader: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+    paddingBottom: Spacing.sm,
+    gap: Spacing.xs,
   },
-  packageName: {
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.semibold,
-    flex: 1,
-  },
-  packagePrice: {
+  packageCardName: {
     fontSize: Typography.fontSize.xl,
     fontWeight: Typography.fontWeight.bold,
   },
-  packageDetails: {
+  packageCardPrice: {
+    fontSize: Typography.fontSize.xl,
+    fontWeight: Typography.fontWeight.bold,
+  },
+  packageSection: {
+    gap: Spacing.xs,
+  },
+  packageSectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.xs,
-    marginTop: Spacing.xs,
+    marginBottom: Spacing.xs,
   },
-  packageDetailText: {
+  packageSectionTitle: {
     fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  hotelItem: {
+    marginLeft: Spacing.md,
+    marginBottom: Spacing.sm,
+    gap: 2,
+  },
+  hotelName: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  hotelDetails: {
+    fontSize: Typography.fontSize.sm,
+  },
+  hotelRoomType: {
+    fontSize: Typography.fontSize.xs,
+  },
+  flightItem: {
+    marginLeft: Spacing.md,
+    marginBottom: Spacing.sm,
+    gap: 2,
+  },
+  flightHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  flightCarrier: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  flightLeg: {
+    fontSize: Typography.fontSize.xs,
+    textTransform: 'uppercase',
+  },
+  flightRoute: {
+    fontSize: Typography.fontSize.sm,
+  },
+  flightTime: {
+    fontSize: Typography.fontSize.xs,
   },
   comingSoonContainer: {
     padding: Spacing.xxl,
@@ -806,13 +1277,6 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   timelineLocation: {
-    fontSize: Typography.fontSize.xs,
-  },
-  accommodationDates: {
-    marginTop: Spacing.sm,
-    gap: 2,
-  },
-  accommodationDateText: {
     fontSize: Typography.fontSize.xs,
   },
   guideList: {
@@ -863,6 +1327,335 @@ const styles = StyleSheet.create({
   contactNotes: {
     fontSize: Typography.fontSize.sm,
     fontStyle: 'italic',
+  },
+  // Services Section
+  servicesList: {
+    gap: Spacing.md,
+  },
+  serviceCard: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    gap: Spacing.md,
+  },
+  serviceHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.md,
+  },
+  serviceIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  serviceTitle: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.bold,
+    flex: 1,
+  },
+  serviceFeatures: {
+    gap: Spacing.xs,
+  },
+  serviceFeatureRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+  },
+  serviceBullet: {
+    width: 6,
+    height: 6,
+    borderRadius: BorderRadius.full,
+    marginTop: 6,
+  },
+  serviceFeatureText: {
+    fontSize: Typography.fontSize.sm,
+    flex: 1,
+    lineHeight: 20,
+  },
+  // Sign In Prompt
+  signInPrompt: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    gap: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  signInPromptTitle: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+    marginBottom: Spacing.xs,
+  },
+  signInPromptText: {
+    fontSize: Typography.fontSize.sm,
+    lineHeight: 20,
+  },
+  signInButton: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: BorderRadius.md,
+  },
+  signInButtonText: {
+    color: '#FFFFFF',
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  // Booking Steps
+  bookingStepsList: {
+    gap: Spacing.lg,
+    marginTop: Spacing.lg,
+  },
+  bookingStepItem: {
+    gap: Spacing.md,
+  },
+  bookingStepHeader: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    alignItems: 'flex-start',
+  },
+  bookingStepNumber: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bookingStepNumberText: {
+    color: '#FFFFFF',
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+  },
+  bookingStepTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.bold,
+  },
+  bookingStepDescription: {
+    fontSize: Typography.fontSize.sm,
+    lineHeight: 20,
+    marginTop: Spacing.xs,
+  },
+  bookingStepDetails: {
+    paddingLeft: 48,
+    gap: Spacing.xs,
+  },
+  bookingStepDetailRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+  },
+  bookingStepDetailText: {
+    fontSize: Typography.fontSize.sm,
+    flex: 1,
+    lineHeight: 20,
+  },
+  // Contact Options
+  contactOptions: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    marginTop: Spacing.lg,
+  },
+  contactButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+  },
+  contactButtonText: {
+    color: '#FFFFFF',
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  // Book Package Button
+  bookPackageButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginTop: Spacing.md,
+  },
+  bookPackageButtonText: {
+    color: '#FFFFFF',
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  // Booking Modal
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  modalTitle: {
+    fontSize: Typography.fontSize.xl,
+    fontWeight: Typography.fontWeight.bold,
+  },
+  modalCloseButton: {
+    padding: Spacing.xs,
+  },
+  modalBody: {
+    padding: Spacing.lg,
+    maxHeight: 400,
+  },
+  modalInfoCard: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.lg,
+  },
+  modalInfoText: {
+    fontSize: Typography.fontSize.sm,
+    flex: 1,
+    lineHeight: 20,
+  },
+  modalFormGroup: {
+    gap: Spacing.sm,
+  },
+  modalLabel: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  modalHelpText: {
+    fontSize: Typography.fontSize.sm,
+    lineHeight: 18,
+  },
+  modalTextArea: {
+    borderWidth: 1,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    fontSize: Typography.fontSize.base,
+    minHeight: 100,
+  },
+  modalFooter: {
+    flexDirection: 'row',
+    gap: Spacing.md,
+    padding: Spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  modalCancelButton: {
+    flex: 1,
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelButtonText: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  modalSubmitButton: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.sm,
+  },
+  modalSubmitButtonText: {
+    color: '#FFFFFF',
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  // Success Modal
+  successOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xl,
+  },
+  successContent: {
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xxl,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    gap: Spacing.lg,
+  },
+  successIconContainer: {
+    width: 100,
+    height: 100,
+    borderRadius: BorderRadius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: Spacing.sm,
+  },
+  successTitle: {
+    fontSize: Typography.fontSize['2xl'],
+    fontWeight: Typography.fontWeight.bold,
+    textAlign: 'center',
+  },
+  successReferenceCard: {
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    width: '100%',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  successReferenceLabel: {
+    fontSize: Typography.fontSize.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  successReferenceNumber: {
+    fontSize: Typography.fontSize.xl,
+    fontWeight: Typography.fontWeight.bold,
+    letterSpacing: 1,
+  },
+  successMessage: {
+    fontSize: Typography.fontSize.base,
+    textAlign: 'center',
+    lineHeight: 24,
+  },
+  successButtonsRow: {
+    width: '100%',
+    gap: Spacing.md,
+    marginTop: Spacing.md,
+  },
+  successButton: {
+    paddingVertical: Spacing.md,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+  },
+  successButtonPrimary: {
+    // backgroundColor set dynamically
+  },
+  successButtonSecondary: {
+    borderWidth: 1,
+    backgroundColor: 'transparent',
+  },
+  successButtonTextPrimary: {
+    color: '#FFFFFF',
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  successButtonTextSecondary: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
   },
 });
 

@@ -1,34 +1,54 @@
 from django.contrib import admin
-from .models import Passport, Visa
-from .admin_actions import (
-    mark_visa_submitted, approve_visas, reject_visas,
-    export_visa_status_csv, export_passports_csv
-)
+from .models import Document
 
 
-@admin.register(Passport)
-class PassportAdmin(admin.ModelAdmin):
-    """Admin for Passport model."""
+@admin.register(Document)
+class DocumentAdmin(admin.ModelAdmin):
+    """Admin for unified Document model."""
     
-    list_display = ['pilgrim', 'country', 'expiry_date', 'created_at']
-    list_filter = ['country', 'expiry_date']
-    search_fields = ['pilgrim__user__name', 'pilgrim__user__phone']
-    readonly_fields = ['created_at', 'updated_at']
-    actions = [export_passports_csv]
-
-
-@admin.register(Visa)
-class VisaAdmin(admin.ModelAdmin):
-    """Admin for Visa model."""
+    list_display = ['pilgrim', 'document_type', 'title', 'status', 'expiry_date', 'trip', 'created_at']
+    list_filter = ['document_type', 'status', 'trip', 'issuing_country']
+    search_fields = ['pilgrim__user__name', 'pilgrim__user__phone', 'title', 'document_number']
+    readonly_fields = ['id', 'created_at', 'updated_at', 'uploaded_by']
+    autocomplete_fields = ['pilgrim', 'trip', 'booking']
     
-    list_display = ['pilgrim', 'trip', 'status', 'issue_date', 'expiry_date']
-    list_filter = ['status', 'trip']
-    search_fields = ['pilgrim__user__name', 'ref_no']
-    readonly_fields = ['created_at', 'updated_at']
-    actions = [
-        mark_visa_submitted,
-        approve_visas,
-        reject_visas,
-        export_visa_status_csv
-    ]
+    fieldsets = (
+        ('Document Information', {
+            'fields': ('pilgrim', 'document_type', 'title', 'document_number', 'issuing_country')
+        }),
+        ('Relationships', {
+            'fields': ('trip', 'booking'),
+            'description': 'Optional: Link this document to a specific trip or booking'
+        }),
+        ('File', {
+            'fields': ('file_public_id', 'file_url')
+        }),
+        ('Dates', {
+            'fields': ('issue_date', 'expiry_date')
+        }),
+        ('Status & Review', {
+            'fields': ('status', 'rejection_reason', 'notes')
+        }),
+        ('Audit', {
+            'fields': ('id', 'uploaded_by', 'created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+    
+    actions = ['mark_as_verified', 'mark_as_pending', 'mark_as_rejected']
+    
+    def mark_as_verified(self, request, queryset):
+        updated = queryset.update(status='VERIFIED')
+        self.message_user(request, f'{updated} document(s) marked as verified.')
+    mark_as_verified.short_description = 'Mark selected documents as verified'
+    
+    def mark_as_pending(self, request, queryset):
+        updated = queryset.update(status='PENDING')
+        self.message_user(request, f'{updated} document(s) marked as pending.')
+    mark_as_pending.short_description = 'Mark selected documents as pending'
+    
+    def mark_as_rejected(self, request, queryset):
+        updated = queryset.update(status='REJECTED')
+        self.message_user(request, f'{updated} document(s) marked as rejected.')
+    mark_as_rejected.short_description = 'Mark selected documents as rejected'
 

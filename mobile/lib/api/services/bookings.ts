@@ -3,13 +3,23 @@ import { API_ENDPOINTS } from '../config';
 
 export interface Booking {
   id: string;
+  reference_number: string;
+  package_id: string;
   trip_name: string;
+  trip_code: string;
   trip_date: string;
-  status: 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';
-  amount_paid: string;
-  total_amount: string;
+  package_name: string;
+  package_price: number;
+  currency_code: string;
+  status: 'EOI' | 'BOOKED' | 'CONFIRMED' | 'CANCELLED';
+  payment_status: 'PENDING' | 'PARTIAL' | 'PAID' | 'REFUNDED';
+  amount_paid_minor_units: number;
+  balance_due: number;
+  special_needs?: string;
+  ticket_number?: string;
+  room_assignment?: string;
   created_at: string;
-  package_name?: string;
+  updated_at: string;
 }
 
 export interface BookingDetail extends Booking {
@@ -25,6 +35,11 @@ export interface BookingDetail extends Booking {
     date: string;
     method: string;
   }>;
+}
+
+export interface CreateBookingData {
+  package: string;  // Package UUID
+  special_needs?: string;
 }
 
 export class BookingsService {
@@ -44,6 +59,13 @@ export class BookingsService {
       undefined,
       token
     );
+  }
+
+  /**
+   * Create a new booking
+   */
+  static createBooking(data: CreateBookingData, token: string): Promise<ApiResponse<Booking>> {
+    return apiClient.post<Booking>(API_ENDPOINTS.BOOKINGS.CREATE, data, undefined, token);
   }
 }
 

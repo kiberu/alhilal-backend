@@ -3,54 +3,7 @@ Serializers for pilgrim profile and related data.
 """
 from rest_framework import serializers
 from apps.accounts.models import PilgrimProfile
-from apps.pilgrims.models import Passport, Visa
 from apps.bookings.models import Booking
-from apps.common.encryption import mask_value
-
-
-class PassportSerializer(serializers.ModelSerializer):
-    """Serializer for passport with masked number."""
-    
-    number_masked = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Passport
-        fields = ['id', 'country', 'expiry_date', 'number_masked', 'created_at']
-        read_only_fields = ['id', 'created_at']
-    
-    def get_number_masked(self, obj):
-        """Return masked passport number."""
-        try:
-            # Get the actual number (will be decrypted by the field)
-            number = obj.number
-            return mask_value(number, visible_chars=4)
-        except Exception:
-            return "****"
-
-
-class VisaSerializer(serializers.ModelSerializer):
-    """Serializer for visa information."""
-    
-    trip_code = serializers.CharField(source='trip.code', read_only=True)
-    trip_name = serializers.CharField(source='trip.name', read_only=True)
-    doc_url_signed = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Visa
-        fields = [
-            'id', 'trip_code', 'trip_name', 'status', 
-            'ref_no', 'issue_date', 'expiry_date',
-            'doc_url_signed', 'created_at', 'updated_at'
-        ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
-    
-    def get_doc_url_signed(self, obj):
-        """Get signed URL for visa document."""
-        if not obj.doc_public_id:
-            return None
-        
-        from apps.common.cloudinary import signed_delivery
-        return signed_delivery(obj.doc_public_id, expires_in=600)
 
 
 class BookingSummarySerializer(serializers.ModelSerializer):
@@ -97,7 +50,6 @@ class PilgrimProfileSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source='user.name', read_only=True)
     phone = serializers.CharField(source='user.phone', read_only=True)
     email = serializers.CharField(source='user.email', read_only=True)
-    passport = serializers.SerializerMethodField()
     emergency_contact = serializers.SerializerMethodField()
     
     class Meta:
@@ -107,16 +59,8 @@ class PilgrimProfileSerializer(serializers.ModelSerializer):
             'full_name', 'dob', 'gender', 'nationality',
             'passport_number', 'address',
             'emergency_name', 'emergency_phone', 'emergency_relationship',
-            'emergency_contact',
-            'passport'
+            'emergency_contact'
         ]
-    
-    def get_passport(self, obj):
-        """Get passport summary (if exists)."""
-        passport = obj.passports.first()
-        if passport:
-            return PassportSerializer(passport).data
-        return None
     
     def get_emergency_contact(self, obj):
         """Get emergency contact as a dict."""
@@ -127,4 +71,3 @@ class PilgrimProfileSerializer(serializers.ModelSerializer):
                 'relationship': obj.emergency_relationship,
             }
         return None
-

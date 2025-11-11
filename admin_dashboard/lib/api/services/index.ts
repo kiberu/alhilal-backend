@@ -10,6 +10,7 @@ export { DuaService } from "./duas"
 export { PackageService } from "./packages"
 export { UserService } from "./users"
 export { PaymentService } from "./payments"
+export { HotelService, FlightService } from "./hotels-flights"
 
 // Export types
 export type {
@@ -17,4 +18,13 @@ export type {
   ChangePasswordData,
   AuthResponse,
 } from "./auth"
+
+export type {
+  PackageHotel,
+  PackageFlight,
+  CreatePackageHotelData,
+  UpdatePackageHotelData,
+  CreatePackageFlightData,
+  UpdatePackageFlightData,
+} from "./hotels-flights"
 

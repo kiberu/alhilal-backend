@@ -204,6 +204,8 @@ export const API_ENDPOINTS = {
     LIST: API_BASE_URL + "passports",
     /** GET /passports/:id – Get passport details. */
     GET: (id: string) => API_BASE_URL + `passports/${id}`,
+    /** GET /passports/:id – Get passport details (alias). */
+    DETAIL: (id: string) => API_BASE_URL + `passports/${id}`,
     /** POST /passports – Create passport. */
     CREATE: API_BASE_URL + "passports",
     /** PATCH /passports/:id – Update passport. */
@@ -212,6 +214,8 @@ export const API_ENDPOINTS = {
     DELETE: (id: string) => API_BASE_URL + `passports/${id}`,
     /** GET /passports/export – Export passports to CSV. */
     EXPORT_CSV: API_BASE_URL + "passports/export",
+    /** GET /passports/expiring – Get expiring passports. */
+    EXPIRING: API_BASE_URL + "passports/expiring",
   },
 
   /** Visas Management */
@@ -220,6 +224,8 @@ export const API_ENDPOINTS = {
     LIST: API_BASE_URL + "visas",
     /** GET /visas/:id – Get visa details. */
     GET: (id: string) => API_BASE_URL + `visas/${id}`,
+    /** GET /visas/:id – Get visa details (alias). */
+    DETAIL: (id: string) => API_BASE_URL + `visas/${id}`,
     /** POST /visas – Create visa application. */
     CREATE: API_BASE_URL + "visas",
     /** PATCH /visas/:id – Update visa. */
@@ -234,6 +240,28 @@ export const API_ENDPOINTS = {
     BULK_REJECT: API_BASE_URL + "visas/bulk/reject",
     /** GET /visas/export – Export visa status to CSV. */
     EXPORT_CSV: API_BASE_URL + "visas/export",
+  },
+
+  /** Documents Management (Unified - replaces Passports & Visas) */
+  DOCUMENTS: {
+    /** GET /documents – List all documents. */
+    LIST: API_BASE_URL + "documents",
+    /** GET /documents/:id – Get document details. */
+    GET: (id: string) => API_BASE_URL + `documents/${id}`,
+    /** POST /documents – Create document. */
+    CREATE: API_BASE_URL + "documents",
+    /** PATCH /documents/:id – Update document. */
+    UPDATE: (id: string) => API_BASE_URL + `documents/${id}`,
+    /** DELETE /documents/:id – Delete document. */
+    DELETE: (id: string) => API_BASE_URL + `documents/${id}`,
+    /** POST /documents/:id/verify – Verify document. */
+    VERIFY: (id: string) => API_BASE_URL + `documents/${id}/verify`,
+    /** POST /documents/:id/reject – Reject document. */
+    REJECT: (id: string) => API_BASE_URL + `documents/${id}/reject`,
+    /** GET /documents/expiring_soon – Get documents expiring soon. */
+    EXPIRING_SOON: API_BASE_URL + "documents/expiring_soon",
+    /** GET /documents/expired – Get expired documents. */
+    EXPIRED: API_BASE_URL + "documents/expired",
   },
 
   /** Content Management (Duas) */

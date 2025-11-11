@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   RefreshControl,
   Alert,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -61,7 +62,7 @@ export default function MyDocumentsScreen() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -81,7 +82,7 @@ export default function MyDocumentsScreen() {
       } else {
         setIsLoading(true);
       }
-      setError('');
+      setError(null);
 
       const response = await DocumentsService.getMyDocuments(accessToken);
 
@@ -109,10 +110,36 @@ export default function MyDocumentsScreen() {
     router.back();
   };
 
-  const handleDocumentPress = (documentId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // TODO: Navigate to document detail/preview screen
-    console.log('View document:', documentId);
+  const handleDocumentPress = async (fileUrl: string) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const canOpen = await Linking.canOpenURL(fileUrl);
+      if (canOpen) {
+        await Linking.openURL(fileUrl);
+      } else {
+        Alert.alert('Error', 'Cannot open this document. The file may not be available.');
+      }
+    } catch (err) {
+      console.error('Error opening document:', err);
+      Alert.alert('Error', 'Failed to open document. Please try again.');
+    }
+  };
+
+  const handleDownloadDocument = async (fileUrl: string, title: string) => {
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      const canOpen = await Linking.canOpenURL(fileUrl);
+      if (canOpen) {
+        await Linking.openURL(fileUrl);
+        // On mobile, opening the URL will trigger download or viewing based on the browser
+        Alert.alert('Success', `Opening ${title}. Your browser will handle the download.`);
+      } else {
+        Alert.alert('Error', 'Cannot download this document. The file may not be available.');
+      }
+    } catch (err) {
+      console.error('Error downloading document:', err);
+      Alert.alert('Error', 'Failed to download document. Please try again.');
+    }
   };
 
   const handleUploadDocument = () => {
@@ -121,41 +148,6 @@ export default function MyDocumentsScreen() {
       'Upload Document',
       'Document upload feature coming soon!',
       [{ text: 'OK' }]
-    );
-  };
-
-  const handleDeleteDocument = (documentId: string, title: string) => {
-    Alert.alert(
-      'Delete Document',
-      `Are you sure you want to delete "${title}"?`,
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-          onPress: () => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light),
-        },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            if (!accessToken) return;
-            
-            try {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-              const response = await DocumentsService.deleteDocument(documentId, accessToken);
-              
-              if (response.success) {
-                setDocuments(documents.filter((doc) => doc.id !== documentId));
-              } else {
-                throw new Error(response.error || 'Failed to delete document');
-              }
-            } catch (err: any) {
-              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-              Alert.alert('Error', err.message || 'Failed to delete document');
-            }
-          },
-        },
-      ]
     );
   };
 
@@ -179,7 +171,7 @@ export default function MyDocumentsScreen() {
       <TouchableOpacity
         key={document.id}
         style={[styles.documentCard, { backgroundColor: colors.card }, Shadow.medium]}
-        onPress={() => handleDocumentPress(document.id)}
+        onPress={() => handleDocumentPress(document.file_url)}
         activeOpacity={0.95}
       >
         {/* Document Icon & Type */}
@@ -251,7 +243,7 @@ export default function MyDocumentsScreen() {
         <View style={styles.documentActions}>
           <TouchableOpacity
             style={[styles.actionButton, { borderColor: colors.border }]}
-            onPress={() => handleDocumentPress(document.id)}
+            onPress={() => handleDocumentPress(document.file_url)}
             activeOpacity={0.8}
           >
             <Ionicons name="eye-outline" size={18} color={colors.primary} />
@@ -259,11 +251,11 @@ export default function MyDocumentsScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionButton, { borderColor: colors.border }]}
-            onPress={() => handleDeleteDocument(document.id, document.title)}
+            onPress={() => handleDownloadDocument(document.file_url, document.title)}
             activeOpacity={0.8}
           >
-            <Ionicons name="trash-outline" size={18} color="#EF4444" />
-            <Text style={[styles.actionButtonText, { color: '#EF4444' }]}>Delete</Text>
+            <Ionicons name="download-outline" size={18} color={colors.primary} />
+            <Text style={[styles.actionButtonText, { color: colors.primary }]}>Download</Text>
           </TouchableOpacity>
         </View>
       </TouchableOpacity>

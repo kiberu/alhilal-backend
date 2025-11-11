@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   ScrollView,
@@ -6,6 +6,8 @@ import {
   Text,
   Linking,
   TouchableOpacity,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,60 +16,120 @@ import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Typography, BorderRadius, Shadow } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
-
-const trips = [
-  {
-    id: 1,
-    title: 'Ramadhan Umrah',
-    subtitle: 'Last 15 Days',
-    month: 'MAR',
-    day: '15-30',
-    year: '2026',
-    price: '6,750,000',
-    originalPrice: '12,250,000',
-    discount: '45% OFF',
-    spotsLeft: 8,
-    duration: '15 nights',
-    featured: true,
-    available: true,
-    gradient: ['#970246', '#A8024E'] as const,
-  },
-  {
-    id: 2,
-    title: 'Rajab Umrah',
-    subtitle: 'Mid Rajab 1446',
-    month: 'JAN',
-    day: '20-30',
-    year: '2026',
-    price: '8,500,000',
-    spotsLeft: 15,
-    duration: '10 nights',
-    featured: false,
-    available: true,
-    gradient: ['#7C3AED', '#A78BFA'] as const,
-  },
-  {
-    id: 3,
-    title: 'Shawwal Umrah',
-    subtitle: 'First Week',
-    month: 'MAY',
-    day: '1-10',
-    year: '2026',
-    price: '7,200,000',
-    spotsLeft: 12,
-    duration: '10 nights',
-    featured: false,
-    available: true,
-    gradient: ['#F59E0B', '#FBB040'] as const,
-  },
-];
+import { TripsService, Trip } from '@/lib/api/services';
 
 export default function TripsScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const router = useRouter();
 
-  const handleTripPress = (tripId: number) => {
+  // State
+  const [allTrips, setAllTrips] = useState<Trip[]>([]);
+  const [featuredTrips, setFeaturedTrips] = useState<Trip[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = useState<string>('all');
+  
+  // Fetch trips on mount
+  useEffect(() => {
+    loadTrips();
+  }, []);
+  
+  const loadTrips = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await TripsService.getPublicTrips();
+      
+      if (!response.success || !response.data) {
+        throw new Error(response.error || 'Failed to load trips');
+      }
+      
+      const trips = response.data.results;
+      setAllTrips(trips);
+      setFeaturedTrips(trips.filter(trip => trip.featured));
+    } catch (err: any) {
+      console.error('Error loading trips:', err);
+      setError(err.message || 'Failed to load trips');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Get unique years from trips
+  const getAvailableYears = () => {
+    const years = new Set<string>();
+    allTrips.forEach(trip => {
+      const year = new Date(trip.start_date).getFullYear().toString();
+      years.add(year);
+    });
+    return Array.from(years).sort();
+  };
+  
+  // Filter trips by year
+  const getFilteredTrips = () => {
+    if (selectedYear === 'all') return allTrips;
+    return allTrips.filter(trip => {
+      const year = new Date(trip.start_date).getFullYear().toString();
+      return year === selectedYear;
+    });
+  };
+  
+  // Format date for display
+  const formatTripDate = (startDate: string, endDate: string) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    const month = start.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+    const startDay = start.getDate();
+    const endDay = end.getDate();
+    const year = start.getFullYear();
+    
+    return {
+      month,
+      day: `${startDay}-${endDay}`,
+      year: year.toString(),
+    };
+  };
+  
+  // Calculate duration
+  const calculateDuration = (startDate: string, endDate: string) => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const nights = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) - 1;
+    return `${nights} nights`;
+  };
+  
+  // Get default image
+  const getDefaultTripImage = () => require('@/assets/alhilal-assets/Kaaba-hero1.jpg');
+  
+  // Format price
+  const formatPrice = (packages: any[], currency?: string) => {
+    if (packages.length === 0) return 'Contact for pricing';
+    const lowestPrice = Math.min(...packages.map(p => p.price_minor_units));
+    const major = lowestPrice / 100;
+    const curr = currency || packages[0].currency;
+    
+    if (curr === 'UGX') {
+      return `UGX ${major.toLocaleString('en-UG', { maximumFractionDigits: 0 })}`;
+    }
+    return `${curr} ${major.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+  
+  // Get gradient colors based on featured status
+  const getGradient = (featured: boolean, index: number): [string, string] => {
+    if (featured) return ['#970246', '#A8024E'];
+    const gradients: [string, string][] = [
+      ['#7C3AED', '#A78BFA'],
+      ['#F59E0B', '#FBB040'],
+      ['#10B981', '#34D399'],
+      ['#3B82F6', '#60A5FA'],
+    ];
+    return gradients[index % gradients.length];
+  };
+
+  const handleTripPress = (tripId: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     router.push(`/trip/${tripId}`);
   };
@@ -77,43 +139,90 @@ export default function TripsScreen() {
     Linking.openURL('tel:+256700773535');
   };
 
+  const availableYears = getAvailableYears();
+  const filteredTrips = getFilteredTrips();
+
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: colors.text }]}>Umrah Trips</Text>
-        <TouchableOpacity onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}>
-          <Ionicons name="filter" size={24} color={colors.text} />
+        <TouchableOpacity onPress={loadTrips}>
+          <Ionicons name="refresh" size={24} color={colors.text} />
         </TouchableOpacity>
       </View>
 
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Loading trips...</Text>
+        </View>
+      ) : error ? (
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color={colors.destructive} />
+          <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: colors.primary }]}
+            onPress={loadTrips}
+          >
+            <Text style={[styles.retryButtonText, { color: colors.primaryForeground }]}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Year Selector */}
+          {availableYears.length > 0 && (
         <View style={styles.yearSection}>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
             contentContainerStyle={styles.yearScroll}
           >
-            {['2026', '2027'].map((year) => (
+                <TouchableOpacity
+                  key="all"
+                  style={[
+                    styles.yearButton,
+                    selectedYear === 'all' && { backgroundColor: colors.primary },
+                    selectedYear !== 'all' && { backgroundColor: colors.muted },
+                  ]}
+                  onPress={() => {
+                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setSelectedYear('all');
+                  }}
+                  activeOpacity={0.7}
+                >
+                  <Text
+                    style={[
+                      styles.yearText,
+                      selectedYear === 'all' && { color: colors.primaryForeground },
+                      selectedYear !== 'all' && { color: colors.text },
+                    ]}
+                  >
+                    All
+                  </Text>
+                </TouchableOpacity>
+                {availableYears.map((year) => (
               <TouchableOpacity
                 key={year}
                 style={[
                   styles.yearButton,
-                  year === '2026' && { backgroundColor: colors.primary },
-                  year !== '2026' && { backgroundColor: colors.muted },
+                      year === selectedYear && { backgroundColor: colors.primary },
+                      year !== selectedYear && { backgroundColor: colors.muted },
                 ]}
-                onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setSelectedYear(year);
+                    }}
                 activeOpacity={0.7}
               >
                 <Text
                   style={[
                     styles.yearText,
-                    year === '2026' && { color: colors.primaryForeground },
-                    year !== '2026' && { color: colors.text },
+                        year === selectedYear && { color: colors.primaryForeground },
+                        year !== selectedYear && { color: colors.text },
                   ]}
                 >
                   {year}
@@ -122,18 +231,27 @@ export default function TripsScreen() {
             ))}
           </ScrollView>
         </View>
+          )}
 
         {/* Info Banner */}
+          {featuredTrips.length > 0 && (
         <View style={[styles.infoBanner, { backgroundColor: `${colors.gold}15` }]}>
-          <Ionicons name="information-circle" size={20} color={colors.gold} />
+              <Ionicons name="star" size={20} color={colors.gold} />
           <Text style={[styles.infoText, { color: colors.text }]}>
-            Limited spots available • Early booking recommended
+                {featuredTrips.length} featured {featuredTrips.length === 1 ? 'trip' : 'trips'} available
           </Text>
         </View>
+          )}
 
         {/* Trip Cards */}
+          {filteredTrips.length > 0 ? (
         <View style={styles.tripsSection}>
-          {trips.map((trip) => (
+              {filteredTrips.map((trip, index) => {
+                const dateInfo = formatTripDate(trip.start_date, trip.end_date);
+                const duration = calculateDuration(trip.start_date, trip.end_date);
+                const gradient = getGradient(trip.featured, index);
+                
+                return (
             <TouchableOpacity
               key={trip.id}
               style={[
@@ -149,7 +267,7 @@ export default function TripsScreen() {
                 <View style={[styles.featuredBadge, { backgroundColor: colors.gold }]}>
                   <Ionicons name="star" size={12} color={colors.goldForeground} />
                   <Text style={[styles.featuredText, { color: colors.goldForeground }]}>
-                    MOST POPULAR
+                          FEATURED
                   </Text>
                 </View>
               )}
@@ -157,34 +275,34 @@ export default function TripsScreen() {
               <View style={styles.tripCardContent}>
                 <View style={styles.tripLeft}>
                   <LinearGradient
-                    colors={trip.gradient}
+                          colors={gradient}
                     style={styles.dateBox}
                   >
-                    <Text style={styles.dateMonth}>{trip.month}</Text>
-                    <Text style={styles.dateDay}>{trip.day}</Text>
-                    <Text style={styles.dateYear}>{trip.year}</Text>
+                          <Text style={styles.dateMonth}>{dateInfo.month}</Text>
+                          <Text style={styles.dateDay}>{dateInfo.day}</Text>
+                          <Text style={styles.dateYear}>{dateInfo.year}</Text>
                   </LinearGradient>
                 </View>
 
                 <View style={styles.tripRight}>
                   <Text style={[styles.tripTitle, { color: colors.text }]}>
-                    {trip.title}
+                          {trip.name}
                   </Text>
                   <Text style={[styles.tripSubtitle, { color: colors.mutedForeground }]}>
-                    {trip.subtitle}
+                          {trip.cities.join(', ')}
                   </Text>
 
                   <View style={styles.tripMeta}>
                     <View style={styles.metaItem}>
                       <Ionicons name="time-outline" size={16} color={colors.mutedForeground} />
                       <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-                        {trip.duration}
+                              {duration}
                       </Text>
                     </View>
                     <View style={styles.metaItem}>
-                      <Ionicons name="people-outline" size={16} color={colors.mutedForeground} />
+                            <Ionicons name="briefcase-outline" size={16} color={colors.mutedForeground} />
                       <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-                        {trip.spotsLeft} spots left
+                              {trip.packages_count} {trip.packages_count === 1 ? 'package' : 'packages'}
                       </Text>
                     </View>
                   </View>
@@ -192,20 +310,8 @@ export default function TripsScreen() {
                   <View style={styles.tripFooter}>
                     <View>
                       <Text style={[styles.price, { color: colors.text }]}>
-                        UGX {trip.price}
-                      </Text>
-                      {trip.discount && (
-                        <View style={styles.discountRow}>
-                          {trip.originalPrice && (
-                            <Text style={[styles.originalPrice, { color: colors.mutedForeground }]}>
-                              {trip.originalPrice}
+                              From {trip.packages_count > 0 ? 'varies' : 'TBD'}
                             </Text>
-                          )}
-                          <Text style={[styles.discount, { color: colors.gold }]}>
-                            {trip.discount}
-                          </Text>
-                        </View>
-                      )}
                     </View>
                     <View style={[styles.bookButton, { backgroundColor: colors.primary }]}>
                       <Ionicons name="arrow-forward" size={20} color={colors.primaryForeground} />
@@ -214,8 +320,17 @@ export default function TripsScreen() {
                 </View>
               </View>
             </TouchableOpacity>
-          ))}
+                );
+              })}
+            </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="calendar-outline" size={64} color={colors.mutedForeground} />
+              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+                No trips available for {selectedYear === 'all' ? 'this period' : selectedYear}
+              </Text>
         </View>
+          )}
 
         {/* Quick Contact */}
         <View style={[styles.contactCard, { backgroundColor: colors.card }, Shadow.medium]}>
@@ -253,6 +368,7 @@ export default function TripsScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -479,6 +595,47 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: Typography.fontSize.base,
     fontWeight: Typography.fontWeight.bold,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xxl,
+    gap: Spacing.md,
+  },
+  loadingText: {
+    fontSize: Typography.fontSize.base,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.xxl,
+    gap: Spacing.md,
+  },
+  errorText: {
+    fontSize: Typography.fontSize.base,
+    textAlign: 'center',
+  },
+  retryButton: {
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.lg,
+    marginTop: Spacing.md,
+  },
+  retryButtonText: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  emptyContainer: {
+    padding: Spacing.xxl,
+    alignItems: 'center',
+    gap: Spacing.md,
+    marginTop: Spacing.xxl,
+  },
+  emptyText: {
+    fontSize: Typography.fontSize.base,
+    textAlign: 'center',
   },
 });
 

@@ -199,6 +199,8 @@ export default function CompleteProfileScreen() {
                 value={formData.dob}
                 mode="date"
                 display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                themeVariant={colorScheme === 'dark' ? 'dark' : 'light'}
+                textColor={colors.text}
                 onChange={(event, selectedDate) => {
                   setShowDatePicker(Platform.OS === 'ios');
                   if (selectedDate) {

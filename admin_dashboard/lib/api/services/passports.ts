@@ -17,14 +17,14 @@ export const PassportService = {
    * Get a single passport by ID
    */
   get: async (id: string, token?: string | null): Promise<ApiResponse<Passport>> => {
-    return apiClient.get(API_ENDPOINTS.PASSPORTS.DETAIL(id), undefined, token)
+    return apiClient.get(API_ENDPOINTS.PASSPORTS.GET(id), undefined, token)
   },
 
   /**
    * Create a new passport
    */
   create: async (data: Partial<Passport>, token?: string | null): Promise<ApiResponse<Passport>> => {
-    return apiClient.post(API_ENDPOINTS.PASSPORTS.CREATE, data, token)
+    return apiClient.post(API_ENDPOINTS.PASSPORTS.CREATE, data, undefined, token)
   },
 
   /**
@@ -35,14 +35,14 @@ export const PassportService = {
     data: Partial<Passport>,
     token?: string | null
   ): Promise<ApiResponse<Passport>> => {
-    return apiClient.patch(API_ENDPOINTS.PASSPORTS.UPDATE(id), data, token)
+    return apiClient.patch(API_ENDPOINTS.PASSPORTS.UPDATE(id), data, undefined, token)
   },
 
   /**
    * Delete a passport
    */
   delete: async (id: string, token?: string | null): Promise<ApiResponse<void>> => {
-    return apiClient.delete(API_ENDPOINTS.PASSPORTS.DELETE(id), token)
+    return apiClient.delete(API_ENDPOINTS.PASSPORTS.DELETE(id), undefined, token)
   },
 
   /**

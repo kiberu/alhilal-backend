@@ -17,14 +17,14 @@ export const VisaService = {
    * Get a single visa by ID
    */
   get: async (id: string, token?: string | null): Promise<ApiResponse<Visa>> => {
-    return apiClient.get(API_ENDPOINTS.VISAS.DETAIL(id), undefined, token)
+    return apiClient.get(API_ENDPOINTS.VISAS.GET(id), undefined, token)
   },
 
   /**
    * Create a new visa
    */
   create: async (data: Partial<Visa>, token?: string | null): Promise<ApiResponse<Visa>> => {
-    return apiClient.post(API_ENDPOINTS.VISAS.CREATE, data, token)
+    return apiClient.post(API_ENDPOINTS.VISAS.CREATE, data, undefined, token)
   },
 
   /**
@@ -35,28 +35,28 @@ export const VisaService = {
     data: Partial<Visa>,
     token?: string | null
   ): Promise<ApiResponse<Visa>> => {
-    return apiClient.patch(API_ENDPOINTS.VISAS.UPDATE(id), data, token)
+    return apiClient.patch(API_ENDPOINTS.VISAS.UPDATE(id), data, undefined, token)
   },
 
   /**
    * Delete a visa
    */
   delete: async (id: string, token?: string | null): Promise<ApiResponse<void>> => {
-    return apiClient.delete(API_ENDPOINTS.VISAS.DELETE(id), token)
+    return apiClient.delete(API_ENDPOINTS.VISAS.DELETE(id), undefined, token)
   },
 
   /**
    * Bulk approve visas
    */
   bulkApprove: async (visaIds: string[], token?: string | null): Promise<ApiResponse<void>> => {
-    return apiClient.post(API_ENDPOINTS.VISAS.BULK_APPROVE, { visa_ids: visaIds }, token)
+    return apiClient.post(API_ENDPOINTS.VISAS.BULK_APPROVE, { visa_ids: visaIds }, undefined, token)
   },
 
   /**
    * Bulk reject visas
    */
   bulkReject: async (visaIds: string[], token?: string | null): Promise<ApiResponse<void>> => {
-    return apiClient.post(API_ENDPOINTS.VISAS.BULK_REJECT, { visa_ids: visaIds }, token)
+    return apiClient.post(API_ENDPOINTS.VISAS.BULK_REJECT, { visa_ids: visaIds }, undefined, token)
   },
 }
 

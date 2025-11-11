@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -36,6 +37,7 @@ export default function HomeScreen() {
   const [allTrips, setAllTrips] = useState<Trip[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Fetch trips on mount
   useEffect(() => {
@@ -70,6 +72,12 @@ export default function HomeScreen() {
     }
   };
 
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadTrips();
+    setRefreshing(false);
+  };
+
   // Get user name - priority: profile full_name > user name > phone
   const getUserName = () => {
     if (profile?.full_name) return profile.full_name.split(' ')[0]; // First name only
@@ -91,9 +99,10 @@ export default function HomeScreen() {
   const formatPrice = (minorUnits: number, currency: string) => {
     const major = minorUnits / 100;
     if (currency === 'UGX') {
-      return major.toLocaleString('en-UG', { maximumFractionDigits: 0 });
+      return `UGX ${major.toLocaleString('en-UG', { maximumFractionDigits: 0 })}`;
     }
-    return major.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // For USD and other currencies
+    return `$${major.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
   
   // Format date range
@@ -143,6 +152,14 @@ export default function HomeScreen() {
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
+          />
+        }
       >
         <View
           style={[
@@ -195,8 +212,8 @@ export default function HomeScreen() {
           </View>
         ) : error ? (
           <View style={[styles.section, styles.errorContainer]}>
-            <Ionicons name="alert-circle-outline" size={48} color={colors.destructive} />
-            <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>
+            <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
+            <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
             <TouchableOpacity
               style={[styles.retryButton, { backgroundColor: colors.primary }]}
               onPress={loadTrips}
@@ -205,54 +222,54 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
         ) : allTrips.length > 0 && (
-          <View style={styles.section}>
-            <TouchableOpacity
-              style={[styles.nextTripCard, Shadow.large]}
+        <View style={styles.section}>
+          <TouchableOpacity
+            style={[styles.nextTripCard, Shadow.large]}
               onPress={() => handleTripPress(allTrips[0].id)}
-              activeOpacity={0.95}
+            activeOpacity={0.95}
+          >
+            <LinearGradient
+              colors={[colors.primary, '#A8024E']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.nextTripGradient}
             >
-              <LinearGradient
-                colors={[colors.primary, '#A8024E']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.nextTripGradient}
-              >
-                <View style={styles.nextTripContent}>
-                  <Text style={styles.upcomingTripLabel}>UPCOMING TRIP</Text>
+              <View style={styles.nextTripContent}>
+                <Text style={styles.upcomingTripLabel}>UPCOMING TRIP</Text>
                   <Text style={styles.nextTripTitle}>{allTrips[0].name}</Text>
-                  
-                  <View style={styles.nextTripRow}>
-                    <View style={styles.nextTripInfo}>
-                      <Ionicons name="calendar-outline" size={16} color="#FFFFFF" />
-                      <Text style={styles.nextTripText}>
+                
+                <View style={styles.nextTripRow}>
+                  <View style={styles.nextTripInfo}>
+                    <Ionicons name="calendar-outline" size={16} color="#FFFFFF" />
+                    <Text style={styles.nextTripText}>
                         {formatDateRange(allTrips[0].start_date, allTrips[0].end_date)}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.nextTripRow}>
-                    <View style={styles.nextTripInfo}>
-                      <Ionicons name="location-outline" size={16} color="#FFFFFF" />
-                      <Text style={styles.nextTripText}>
-                        {allTrips[0].cities.join(' • ')}
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View style={styles.nextTripFooter}>
-                    <View>
-                      <Text style={styles.nextTripSeats}>
-                        {allTrips[0].packages_count} {allTrips[0].packages_count === 1 ? 'package' : 'packages'}
-                      </Text>
-                    </View>
-                    <View style={[styles.nextTripButton, { backgroundColor: colors.gold }]}>
-                      <Ionicons name="arrow-forward" size={24} color={colors.goldForeground} />
-                    </View>
+                    </Text>
                   </View>
                 </View>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
+
+                <View style={styles.nextTripRow}>
+                  <View style={styles.nextTripInfo}>
+                    <Ionicons name="location-outline" size={16} color="#FFFFFF" />
+                    <Text style={styles.nextTripText}>
+                        {allTrips[0].cities.join(' • ')}
+                    </Text>
+                  </View>
+                </View>
+
+                <View style={styles.nextTripFooter}>
+                  <View>
+                    <Text style={styles.nextTripSeats}>
+                        {allTrips[0].packages_count} {allTrips[0].packages_count === 1 ? 'package' : 'packages'}
+                    </Text>
+                  </View>
+                  <View style={[styles.nextTripButton, { backgroundColor: colors.gold }]}>
+                    <Ionicons name="arrow-forward" size={24} color={colors.goldForeground} />
+                  </View>
+                </View>
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
         )}
 
         {/* Featured Packages */}
@@ -267,20 +284,20 @@ export default function HomeScreen() {
           </View>
 
           {!loading && featuredTrips.length > 0 ? (
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.packagesScroll}
-              snapToInterval={CARD_WIDTH + 16}
-              decelerationRate="fast"
-            >
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.packagesScroll}
+            snapToInterval={CARD_WIDTH + 16}
+            decelerationRate="fast"
+          >
               {featuredTrips.map((trip) => (
-                <TouchableOpacity
+              <TouchableOpacity
                   key={trip.id}
-                  style={[styles.packageCard, Shadow.large]}
+                style={[styles.packageCard, Shadow.large]}
                   onPress={() => handleTripPress(trip.id)}
-                  activeOpacity={0.95}
-                >
+                activeOpacity={0.95}
+              >
                   {trip.cover_image ? (
                     <Image
                       source={{ uri: trip.cover_image }}
@@ -288,40 +305,40 @@ export default function HomeScreen() {
                       resizeMode="cover"
                     />
                   ) : (
-                    <Image
+                <Image
                       source={getDefaultTripImage()}
-                      style={styles.packageImage}
-                      resizeMode="cover"
-                    />
+                  style={styles.packageImage}
+                  resizeMode="cover"
+                />
                   )}
-                  <LinearGradient
-                    colors={['transparent', 'rgba(0,0,0,0.8)']}
-                    style={styles.packageGradient}
-                  >
+                <LinearGradient
+                  colors={['transparent', 'rgba(0,0,0,0.8)']}
+                  style={styles.packageGradient}
+                >
                     <View style={[styles.featuredBadge, { backgroundColor: colors.gold }]}>
                       <Ionicons name="star" size={12} color={colors.goldForeground} />
                       <Text style={[styles.featuredText, { color: colors.goldForeground }]}>
                         FEATURED
                       </Text>
                     </View>
-                    <View style={styles.packageInfo}>
+                  <View style={styles.packageInfo}>
                       <Text style={styles.packageSubtitle}>{trip.cities.join(', ')}</Text>
                       <Text style={styles.packageTitle}>{trip.name}</Text>
-                      <View style={styles.packageFooter}>
-                        <View>
+                    <View style={styles.packageFooter}>
+                      <View>
                           <Text style={styles.packageDate}>
                             {formatDateRange(trip.start_date, trip.end_date)}
                           </Text>
-                        </View>
-                        <View style={[styles.packageButton, { backgroundColor: colors.gold }]}>
-                          <Ionicons name="arrow-forward" size={20} color={colors.goldForeground} />
-                        </View>
+                      </View>
+                      <View style={[styles.packageButton, { backgroundColor: colors.gold }]}>
+                        <Ionicons name="arrow-forward" size={20} color={colors.goldForeground} />
                       </View>
                     </View>
-                  </LinearGradient>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                  </View>
+                </LinearGradient>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
           ) : !loading && (
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>

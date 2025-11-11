@@ -28,8 +28,9 @@ export const API_ENDPOINTS = {
     UPDATE: API_BASE_URL + "profile/update/",
   },
   BOOKINGS: {
-    MY_BOOKINGS: API_BASE_URL + "bookings/my/",
-    BOOKING_DETAIL: (id: string) => API_BASE_URL + `bookings/${id}/`,
+    MY_BOOKINGS: API_BASE_URL + "me/bookings/",
+    BOOKING_DETAIL: (id: string) => API_BASE_URL + `me/bookings/${id}/`,
+    CREATE: API_BASE_URL + "bookings/create/",
   },
   TRIPS: {
     PUBLIC_LIST: API_BASE_URL + "public/trips/",
@@ -40,7 +41,7 @@ export const API_ENDPOINTS = {
     ESSENTIALS: (tripId: string) => API_BASE_URL + `me/trips/${tripId}/essentials/`,
   },
   DOCUMENTS: {
-    MY_DOCUMENTS: API_BASE_URL + "documents/my/",
+    MY_DOCUMENTS: API_BASE_URL + "me/documents/",
     UPLOAD: API_BASE_URL + "documents/upload/",
     DETAIL: (id: string) => API_BASE_URL + `documents/${id}/`,
     DELETE: (id: string) => API_BASE_URL + `documents/${id}/`,

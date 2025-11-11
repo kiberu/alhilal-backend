@@ -9,40 +9,74 @@ import {
   Platform,
   ScrollView,
   ActivityIndicator,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, BorderRadius, Typography, Shadow } from '@/constants/theme';
+import { AlHilalLogo } from '@/components/AlHilalLogo';
+
+// Country type
+interface Country {
+  code: string;
+  name: string;
+  dialCode: string;
+  flag: string;
+}
+
+// Supported East African countries
+const COUNTRIES: Country[] = [
+  { code: 'UG', name: 'Uganda', dialCode: '+256', flag: '🇺🇬' },
+  { code: 'KE', name: 'Kenya', dialCode: '+254', flag: '🇰🇪' },
+  { code: 'RW', name: 'Rwanda', dialCode: '+250', flag: '🇷🇼' },
+  { code: 'TZ', name: 'Tanzania', dialCode: '+255', flag: '🇹🇿' },
+];
 
 export default function PhoneLoginScreen() {
   const router = useRouter();
   const { requestOTP } = useAuth();
   const colorScheme = useColorScheme();
   
+  // Default to Kenya
+  const [selectedCountry, setSelectedCountry] = useState<Country>(COUNTRIES[0]);
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Handle phone number input - remove leading zeros and non-digits
+  const handlePhoneChange = (text: string) => {
+    // Remove all non-digit characters
+    const digits = text.replace(/\D/g, '');
+    // Remove leading zeros
+    const withoutLeadingZeros = digits.replace(/^0+/, '');
+    setPhoneNumber(withoutLeadingZeros);
+  };
 
   const handleSendOTP = async () => {
     setError('');
     
-    // Simple validation - must start with + and have at least 10 digits
-    if (!phoneNumber.startsWith('+') || phoneNumber.length < 10) {
-      setError('Please enter a valid phone number with country code (e.g., +254712345678)');
+    // Validate phone number (should be 9-10 digits without country code)
+    if (phoneNumber.length < 9) {
+      setError('Please enter a valid phone number');
       return;
     }
 
+    // Combine country code and phone number
+    const fullPhoneNumber = `${selectedCountry.dialCode}${phoneNumber}`;
+
     setIsLoading(true);
     try {
-      const result = await requestOTP(phoneNumber);
+      const result = await requestOTP(fullPhoneNumber);
       
       if (result.success) {
         // Navigate to OTP verification screen
         router.push({
           pathname: '/(auth)/verify-otp',
-          params: { phone: phoneNumber }
+          params: { phone: fullPhoneNumber }
         });
       } else {
         setError(result.error || 'Failed to send OTP. Please try again.');
@@ -68,11 +102,7 @@ export default function PhoneLoginScreen() {
       >
         <View style={styles.content}>
           {/* Logo/Icon */}
-          <View style={styles.iconContainer}>
-            <View style={[styles.iconCircle, { backgroundColor: colors.muted }]}>
-              <Ionicons name="call" size={48} color={colors.primary} />
-            </View>
-          </View>
+          <AlHilalLogo width={180} height={32} />
 
           {/* Header */}
           <View style={styles.header}>
@@ -86,22 +116,32 @@ export default function PhoneLoginScreen() {
           <View style={[styles.card, { backgroundColor: colors.card }]}>
             <Text style={[styles.label, { color: colors.text }]}>Phone Number</Text>
             <View style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.background }]}>
-              <View style={styles.inputIcon}>
-                <Ionicons name="call-outline" size={20} color={colors.mutedForeground} />
-              </View>
+              {/* Country Code Selector */}
+              <TouchableOpacity
+                style={[styles.countrySelector, { borderRightColor: colors.border }]}
+                onPress={() => setShowCountryPicker(true)}
+                disabled={isLoading}
+              >
+                <Text style={styles.flag}>{selectedCountry.flag}</Text>
+                <Text style={[styles.dialCode, { color: colors.text }]}>{selectedCountry.dialCode}</Text>
+                <Ionicons name="chevron-down" size={16} color={colors.mutedForeground} />
+              </TouchableOpacity>
+
+              {/* Phone Number Input */}
               <TextInput
                 style={[styles.input, { color: colors.text }]}
-                placeholder="+254712345678"
+                placeholder="712345678"
                 placeholderTextColor={colors.mutedForeground}
                 keyboardType="phone-pad"
                 value={phoneNumber}
-                onChangeText={setPhoneNumber}
+                onChangeText={handlePhoneChange}
                 editable={!isLoading}
                 autoFocus
+                maxLength={10}
               />
             </View>
             <Text style={[styles.hint, { color: colors.mutedForeground }]}>
-              Include country code (e.g., +254 for Kenya, +256 for Uganda)
+              Enter your phone number without the leading zero
             </Text>
 
             {/* Error Message */}
@@ -142,6 +182,52 @@ export default function PhoneLoginScreen() {
           </View>
         </View>
       </ScrollView>
+
+      {/* Country Picker Modal */}
+      <Modal
+        visible={showCountryPicker}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowCountryPicker(false)}
+      >
+        <Pressable 
+          style={styles.modalOverlay}
+          onPress={() => setShowCountryPicker(false)}
+        >
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Select Country</Text>
+              <TouchableOpacity onPress={() => setShowCountryPicker(false)}>
+                <Ionicons name="close" size={24} color={colors.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+
+            {COUNTRIES.map((country) => (
+              <TouchableOpacity
+                key={country.code}
+                style={[
+                  styles.countryOption,
+                  { borderBottomColor: colors.border },
+                  selectedCountry.code === country.code && { backgroundColor: colors.muted }
+                ]}
+                onPress={() => {
+                  setSelectedCountry(country);
+                  setShowCountryPicker(false);
+                }}
+              >
+                <Text style={styles.countryFlag}>{country.flag}</Text>
+                <Text style={[styles.countryName, { color: colors.text }]}>{country.name}</Text>
+                <Text style={[styles.countryDialCode, { color: colors.mutedForeground }]}>
+                  {country.dialCode}
+                </Text>
+                {selectedCountry.code === country.code && (
+                  <Ionicons name="checkmark" size={24} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
@@ -155,24 +241,19 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    padding: Spacing.lg,
+    padding: Spacing.md,
     justifyContent: 'center',
   },
   iconContainer: {
     alignItems: 'center',
     marginBottom: Spacing.xl,
   },
-  iconCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: BorderRadius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Shadow.medium,
-  },
+
   header: {
     marginBottom: Spacing.xl,
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    marginTop: Spacing.xl,
   },
   title: {
     fontSize: Typography.fontSize['3xl'],
@@ -201,9 +282,22 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderRadius: BorderRadius.md,
     marginBottom: Spacing.sm,
+    overflow: 'hidden',
   },
-  inputIcon: {
-    paddingLeft: Spacing.md,
+  countrySelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    gap: Spacing.xs,
+    borderRightWidth: 1,
+  },
+  flag: {
+    fontSize: 24,
+  },
+  dialCode: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semibold,
   },
   input: {
     flex: 1,
@@ -259,5 +353,47 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    borderTopLeftRadius: BorderRadius.xl,
+    borderTopRightRadius: BorderRadius.xl,
+    paddingBottom: Platform.OS === 'ios' ? Spacing.xl : Spacing.md,
+    ...Shadow.large,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: Typography.fontSize.xl,
+    fontWeight: Typography.fontWeight.bold,
+  },
+  countryOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.lg,
+    gap: Spacing.md,
+    borderBottomWidth: 1,
+  },
+  countryFlag: {
+    fontSize: 32,
+  },
+  countryName: {
+    flex: 1,
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  countryDialCode: {
+    fontSize: Typography.fontSize.base,
+    marginRight: Spacing.sm,
   },
 });

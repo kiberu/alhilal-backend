@@ -112,7 +112,7 @@ class Booking(models.Model):
                     raise ValidationError(f"Package capacity ({self.package.capacity}) reached")
 
     def update_payment_status(self):
-        """Update payment status based on total payments."""
+        """Update payment status and booking status based on total payments."""
         total_paid = self.payments.aggregate(
             total=models.Sum('amount_minor_units')
         )['total'] or 0
@@ -128,6 +128,10 @@ class Booking(models.Model):
             self.payment_status = 'PAID'
         else:
             self.payment_status = 'PARTIAL'
+        
+        # Auto-upgrade booking status from EOI to BOOKED when payment is made
+        if self.status == 'EOI' and total_paid > 0:
+            self.status = 'BOOKED'
         
         self.save()
 

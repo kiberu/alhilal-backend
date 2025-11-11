@@ -39,9 +39,10 @@ export default function PilgrimDocumentsPage() {
 
   // Form state
   const [tripId, setTripId] = useState("")
-  const [documentType, setDocumentType] = useState("")
+  const [documentType, setDocumentType] = useState<"PASSPORT" | "VISA" | "VACCINATION" | "ID_CARD" | "BIRTH_CERTIFICATE" | "TRAVEL_PERMIT" | "OTHER" | "">("")
   const [otherDocumentType, setOtherDocumentType] = useState("")
   const [documentPublicId, setDocumentPublicId] = useState<string | null>(null)
+  const [documentFormat, setDocumentFormat] = useState<string | null>(null)
 
   useEffect(() => {
     loadBookedTrips()
@@ -77,10 +78,6 @@ export default function PilgrimDocumentsPage() {
       }
 
       setBookedTrips(trips)
-
-      if (trips.length === 0) {
-        setError("No booked trips found for this pilgrim. Please book a trip first.")
-      }
     } catch (err) {
       console.error("Error loading trips:", err)
       const errorMessage = err instanceof Error ? err.message : "Failed to load trips"
@@ -93,6 +90,7 @@ export default function PilgrimDocumentsPage() {
 
   const handleDocumentUpload = (document: UploadedDocument) => {
     setDocumentPublicId(document.publicId)
+    setDocumentFormat(document.format)
     toast.success("Document uploaded successfully")
   }
 
@@ -100,11 +98,6 @@ export default function PilgrimDocumentsPage() {
     e.preventDefault()
 
     // Validation
-    if (!tripId) {
-      toast.error("Please select a trip")
-      return
-    }
-
     if (!documentType) {
       toast.error("Please select a document type")
       return
@@ -125,42 +118,47 @@ export default function PilgrimDocumentsPage() {
       setError(null)
       setSuccess(null)
 
-      // Import API client
-      const { apiClient } = await import("@/lib/api/client")
-      const { API_ENDPOINTS } = await import("@/lib/api/config")
+      // Import Document Service
+      const { DocumentService } = await import("@/lib/api/services/documents")
 
-      let response: any
+      // Get trip name for title if trip is selected
+      const selectedTrip = tripId ? bookedTrips.find(t => t.id === tripId) : null
+      const tripName = selectedTrip?.name || ""
 
-      if (documentType === "PASSPORT") {
-        // Create passport record
-        const payload = {
-          pilgrim: pilgrimId,
-          passportNumber: "TBD", // Required field - staff can update later
-          issueCountry: "XX",    // Required field - staff can update later
-          expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 1 year from now
-          documentPublicId: documentPublicId,
-        }
-        response = await apiClient.post(API_ENDPOINTS.PASSPORTS.CREATE, payload, undefined, accessToken)
-      } else if (documentType === "VISA") {
-        // Create visa record
-        const payload = {
-          pilgrim: pilgrimId,
-          trip: tripId,
-          status: "PENDING",
-          documentPublicId: documentPublicId,
-        }
-        response = await apiClient.post(API_ENDPOINTS.VISAS.CREATE, payload, undefined, accessToken)
-      } else {
-        // For OTHER documents, create a visa record with a note
-        const payload = {
-          pilgrim: pilgrimId,
-          trip: tripId,
-          status: "PENDING",
-          visaNumber: `OTHER: ${otherDocumentType}`,
-          documentPublicId: documentPublicId,
-        }
-        response = await apiClient.post(API_ENDPOINTS.VISAS.CREATE, payload, undefined, accessToken)
+      // Create unified document payload (using snake_case for Django)
+      const payload: any = {
+        pilgrim: pilgrimId,
+        document_type: documentType as "PASSPORT" | "VISA" | "VACCINATION" | "ID_CARD" | "BIRTH_CERTIFICATE" | "TRAVEL_PERMIT" | "OTHER",
+        title: documentType === "PASSPORT" 
+          ? "Passport" 
+          : documentType === "VISA" && tripName
+          ? `Visa - ${tripName}`
+          : documentType === "VISA"
+          ? "Visa"
+          : documentType === "VACCINATION"
+          ? "Vaccination Certificate"
+          : documentType === "ID_CARD"
+          ? "ID Card"
+          : documentType === "BIRTH_CERTIFICATE"
+          ? "Birth Certificate"
+          : documentType === "TRAVEL_PERMIT"
+          ? "Travel Permit"
+          : otherDocumentType || documentType,
+        file_public_id: documentPublicId,
+        file_format: documentFormat,
+        notes: documentType === "OTHER" ? `Document type: ${otherDocumentType}` : undefined,
+        // For passports, set a default expiry date
+        expiry_date: documentType === "PASSPORT" 
+          ? new Date(Date.now() + 10 * 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] // 10 years from now
+          : undefined,
       }
+
+      // Only add trip if it's provided
+      if (tripId) {
+        payload.trip = tripId
+      }
+
+      const response = await DocumentService.create(payload, accessToken)
 
       if (!response.success) {
         throw new Error(response.error || "Failed to upload document")
@@ -174,6 +172,7 @@ export default function PilgrimDocumentsPage() {
       setDocumentType("")
       setOtherDocumentType("")
       setDocumentPublicId(null)
+      setDocumentFormat(null)
 
       // Redirect back to pilgrim detail after 2 seconds
       setTimeout(() => {
@@ -248,19 +247,40 @@ export default function PilgrimDocumentsPage() {
             Document Upload
           </CardTitle>
           <CardDescription>
-            Select trip, document type, and upload the file
+            Upload pilgrim documents (passport, visa, vaccination, etc.)
           </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Trip Selection */}
+            {/* Document Type */}
+            <div className="space-y-2">
+              <Label htmlFor="documentType">
+                Document Type <span className="text-red-500">*</span>
+              </Label>
+              <Select value={documentType} onValueChange={(value) => setDocumentType(value as typeof documentType)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select document type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PASSPORT">Passport</SelectItem>
+                  <SelectItem value="VISA">Visa</SelectItem>
+                  <SelectItem value="VACCINATION">Vaccination Certificate</SelectItem>
+                  <SelectItem value="ID_CARD">ID Card / National ID</SelectItem>
+                  <SelectItem value="BIRTH_CERTIFICATE">Birth Certificate</SelectItem>
+                  <SelectItem value="TRAVEL_PERMIT">Travel Permit</SelectItem>
+                  <SelectItem value="OTHER">Other (Specify)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Trip Selection (Optional) */}
             <div className="space-y-2">
               <Label htmlFor="trip">
-                Trip <span className="text-red-500">*</span>
+                Trip <span className="text-muted-foreground text-xs">(Optional)</span>
               </Label>
               <Select value={tripId} onValueChange={setTripId} disabled={bookedTrips.length === 0}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a booked trip" />
+                  <SelectValue placeholder="Select a trip (optional)" />
                 </SelectTrigger>
                 <SelectContent>
                   {bookedTrips.map((trip) => (
@@ -271,25 +291,8 @@ export default function PilgrimDocumentsPage() {
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground">
-                Only trips with active bookings are shown
+                Link this document to a specific trip (e.g., visas). Leave empty for general documents like passports.
               </p>
-            </div>
-
-            {/* Document Type */}
-            <div className="space-y-2">
-              <Label htmlFor="documentType">
-                Document Type <span className="text-red-500">*</span>
-              </Label>
-              <Select value={documentType} onValueChange={setDocumentType}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select document type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PASSPORT">Passport</SelectItem>
-                  <SelectItem value="VISA">Visa</SelectItem>
-                  <SelectItem value="OTHER">Other (Specify)</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             {/* Other Document Type (shown when OTHER is selected) */}
@@ -312,11 +315,7 @@ export default function PilgrimDocumentsPage() {
             <DocumentUpload
               onUploadSuccess={handleDocumentUpload}
               folder={documentType === "PASSPORT" ? "passports" : documentType === "VISA" ? "visas" : "documents"}
-              label={
-                <span>
-                  Upload Document <span className="text-red-500">*</span>
-                </span>
-              }
+              label="Upload Document *"
               description="Upload document (image, PDF, or doc file)"
               accept="image/*,application/pdf,.doc,.docx"
               maxSizeMB={10}
