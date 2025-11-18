@@ -20,6 +20,7 @@ export const metadata: Metadata = generatePageMetadata({
     "Makkah packages Kampala",
     "Islamic travel Uganda"
   ],
+  // Root path - will generate https://alhilaltravels.com as canonical
   path: "/"
 });
 

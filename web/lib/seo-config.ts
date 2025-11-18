@@ -139,7 +139,22 @@ export const generatePageMetadata = (page: {
   type?: string
   images?: string[]
 }) => {
-  const url = page.path ? `${seoConfig.siteUrl}${page.path}` : seoConfig.siteUrl
+  // Normalize the path to ensure consistent canonical URLs
+  let normalizedPath = page.path || '/';
+  // Remove trailing slash unless it's the root path
+  if (normalizedPath !== '/' && normalizedPath.endsWith('/')) {
+    normalizedPath = normalizedPath.slice(0, -1);
+  }
+  // Ensure path starts with /
+  if (!normalizedPath.startsWith('/')) {
+    normalizedPath = `/${normalizedPath}`;
+  }
+  
+  // Build the canonical URL
+  const url = normalizedPath === '/' 
+    ? seoConfig.siteUrl 
+    : `${seoConfig.siteUrl}${normalizedPath}`;
+  
   const allKeywords = [
     ...(page.keywords || []),
     ...seoConfig.primaryKeywords.slice(0, 10)

@@ -12,6 +12,7 @@ import logging
 
 from apps.accounts.models import Account, OTPCode
 from .serializers import StaffLoginSerializer
+from .tokens import RoleBasedRefreshToken
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -208,8 +209,8 @@ class VerifyOTPView(APIView):
                         logger.error(f"Failed to create pilgrim profile for existing user {phone}: {e}")
                         raise
 
-            # Generate tokens
-            refresh = RefreshToken.for_user(user)
+            # Generate tokens with role-based expiration (pilgrim tokens never expire)
+            refresh = RoleBasedRefreshToken.for_user(user)
 
             # Get profile data
             profile_data = None
@@ -264,8 +265,8 @@ class StaffLoginView(APIView):
 
         user = serializer.validated_data['user']
 
-        # Generate JWT tokens
-        refresh = RefreshToken.for_user(user)
+        # Generate JWT tokens with role-based expiration (staff tokens expire normally)
+        refresh = RoleBasedRefreshToken.for_user(user)
 
         # Get staff profile if exists
         staff_profile = None

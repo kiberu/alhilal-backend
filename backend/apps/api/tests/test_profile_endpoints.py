@@ -28,9 +28,9 @@ class TestMeEndpoint:
     
     def test_get_profile_staff_denied(self, api_client, staff_user):
         """Test that staff cannot access pilgrim profile endpoint."""
-        from rest_framework_simplejwt.tokens import RefreshToken
+        from apps.api.auth.tokens import RoleBasedRefreshToken
         
-        refresh = RefreshToken.for_user(staff_user)
+        refresh = RoleBasedRefreshToken.for_user(staff_user)
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {str(refresh.access_token)}")
         
         response = api_client.get('/api/v1/me/')
