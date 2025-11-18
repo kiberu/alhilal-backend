@@ -13,7 +13,6 @@ export class ApiClient {
   private timeout = REQUEST_TIMEOUT;
   private maxRetries = MAX_RETRIES;
   private retryDelay = RETRY_DELAY;
-  private onUnauthorized?: () => void;
 
   private buildURL(endpoint: string, params?: Record<string, any>): string {
     const url = new URL(endpoint, this.baseURL);
@@ -72,19 +71,9 @@ export class ApiClient {
       if (!res.ok) {
         const message = typeof payload === 'object' ? (payload.message || payload.error || payload.detail) : String(payload || 'Request failed');
         
-        // Check for unauthorized/token expired errors
-        const isUnauthorized = res.status === 401 || res.status === 403;
-        const isTokenError = message && (
-          message.toLowerCase().includes('invalid token') ||
-          message.toLowerCase().includes('expired token') ||
-          message.toLowerCase().includes('unauthorized') ||
-          message.toLowerCase().includes('authentication')
-        );
-        
-        if ((isUnauthorized || isTokenError) && this.onUnauthorized) {
-          // Trigger logout callback
-          this.onUnauthorized();
-        }
+        // Note: Auto-logout on 401/403 removed for pilgrims
+        // Pilgrim tokens have very long expiration and should only be cleared on manual logout
+        // If you get a 401, it's likely a backend issue, not token expiration
         
         return { success: false, error: message };
       }
@@ -128,12 +117,9 @@ export class ApiClient {
   }
 
   /**
-   * Set a callback to be invoked when an unauthorized (401/403) response is received
-   * This is used to automatically logout the user when their token expires
+   * Note: Unauthorized callback removed
+   * Pilgrim tokens have very long expiration (365 days) and should only be cleared on manual logout
    */
-  setUnauthorizedCallback(callback: () => void) {
-    this.onUnauthorized = callback;
-  }
 }
 
 export const apiClient = new ApiClient();

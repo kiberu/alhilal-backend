@@ -4,7 +4,7 @@ Pytest configuration and fixtures for the Alhilal project.
 import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
-from rest_framework_simplejwt.tokens import RefreshToken
+from apps.api.auth.tokens import RoleBasedRefreshToken
 from datetime import date, datetime, timedelta
 from django.utils import timezone
 
@@ -61,8 +61,8 @@ def staff_user(db):
 
 @pytest.fixture
 def pilgrim_tokens(pilgrim_user):
-    """Generate JWT tokens for pilgrim user."""
-    refresh = RefreshToken.for_user(pilgrim_user)
+    """Generate JWT tokens for pilgrim user with long expiration."""
+    refresh = RoleBasedRefreshToken.for_user(pilgrim_user)
     return {
         'access': str(refresh.access_token),
         'refresh': str(refresh)

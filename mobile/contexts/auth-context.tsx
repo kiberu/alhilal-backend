@@ -36,13 +36,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
   }, []);
 
-  // Set up unauthorized callback
-  useEffect(() => {
-    apiClient.setUnauthorizedCallback(() => {
-      // Auto-logout on token expiration
-      logout();
-    });
-  }, []);
+  // Note: Auto-logout on token expiration removed
+  // Pilgrim tokens have very long expiration (365 days) and should only be cleared on manual logout
 
   const initializeAuth = async () => {
     try {

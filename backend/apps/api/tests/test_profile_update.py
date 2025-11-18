@@ -100,9 +100,9 @@ class TestUpdateProfile:
     
     def test_update_profile_staff_user_denied(self, api_client, staff_user):
         """Test that staff users cannot update pilgrim profile."""
-        from rest_framework_simplejwt.tokens import RefreshToken
+        from apps.api.auth.tokens import RoleBasedRefreshToken
         
-        refresh = RefreshToken.for_user(staff_user)
+        refresh = RoleBasedRefreshToken.for_user(staff_user)
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {str(refresh.access_token)}")
         
         response = api_client.put('/api/v1/profile/update/', {

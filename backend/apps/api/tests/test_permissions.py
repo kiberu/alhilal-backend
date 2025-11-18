@@ -88,9 +88,9 @@ class TestIsPilgrimPermission:
     
     def test_staff_cannot_access_pilgrim_endpoints(self, api_client, staff_user):
         """Test that staff users cannot access pilgrim-only endpoints."""
-        from rest_framework_simplejwt.tokens import RefreshToken
+        from apps.api.auth.tokens import RoleBasedRefreshToken
         
-        refresh = RefreshToken.for_user(staff_user)
+        refresh = RoleBasedRefreshToken.for_user(staff_user)
         api_client.credentials(HTTP_AUTHORIZATION=f"Bearer {str(refresh.access_token)}")
         
         # Try to access pilgrim endpoints
