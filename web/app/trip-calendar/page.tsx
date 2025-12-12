@@ -20,7 +20,7 @@ const upcomingTrips = [
     title: "Ramadan Umrah - Last 15 Days",
     dates: "Last 15 nights of Ramadan 2026",
     duration: "15 Days",
-    price: "6,750,000",
+    price: "6,790,000",
     currency: "UGX",
     originalPrice: "12,300,000",
     discount: "45%",

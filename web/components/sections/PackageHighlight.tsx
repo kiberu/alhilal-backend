@@ -40,7 +40,7 @@ export default function PackageHighlight() {
               </p>
               <div className="flex items-baseline gap-3 mb-2">
                 <span className="text-5xl md:text-6xl font-bold text-white tracking-tight">
-                  6,750,000
+                  6,790,000
                 </span>
                 <span className="text-xl md:text-2xl font-semibold text-white/90">
                   UGX

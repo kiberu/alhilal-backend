@@ -90,7 +90,7 @@ export default function Features() {
             All-inclusive package with no hidden fees
           </p>
           <div className="mt-2 flex items-center justify-center gap-2">
-            <span className="text-gold text-2xl md:text-3xl font-black">6,750,000 UGX</span>
+            <span className="text-gold text-2xl md:text-3xl font-black">6,790,000 UGX</span>
             <span className="text-gray-500 line-through text-lg">12,000,000 UGX</span>
           </div>
           <p className="text-primary font-bold mt-1">Save 45% - Limited Time Offer</p>

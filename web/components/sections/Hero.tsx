@@ -118,7 +118,7 @@ export default function Hero() {
               <div className="pb-4 border-b border-white/20 space-y-2">
                 <p className="text-white/80 text-xs font-medium tracking-wide">AT ONLY</p>
                 <div className="flex items-baseline gap-2">
-                  <p className="text-3xl md:text-4xl font-bold text-white tracking-tight">6,750,000</p>
+                  <p className="text-3xl md:text-4xl font-bold text-white tracking-tight">6,790,000</p>
                   <p className="text-lg md:text-xl font-semibold text-white/90">UGX</p>
                 </div>
                 <p className="text-gold text-sm font-semibold tracking-wide">45% OFF THIS RAMADHAN</p>
