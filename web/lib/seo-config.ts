@@ -137,7 +137,15 @@ export const generatePageMetadata = (page: {
   keywords?: string[]
   path?: string
   type?: string
-  images?: string[]
+  images?: Array<
+    | string
+    | {
+        url: string
+        width?: number
+        height?: number
+        alt?: string
+      }
+  >
 }) => {
   // Normalize the path to ensure consistent canonical URLs
   let normalizedPath = page.path || '/';
@@ -159,6 +167,22 @@ export const generatePageMetadata = (page: {
     ...(page.keywords || []),
     ...seoConfig.primaryKeywords.slice(0, 10)
   ]
+
+  const fallbackImages = [
+    {
+      // WhatsApp typically does not accept SVG for og:image, so use a PNG metadata route
+      url: "/opengraph-image",
+      width: 1200,
+      height: 630,
+      alt: "Al-Hilal Travels Uganda"
+    }
+  ]
+
+  const normalizedOgImages = (page.images && page.images.length > 0)
+    ? page.images.map((img) => (typeof img === "string" ? { url: img } : img))
+    : fallbackImages
+
+  const normalizedTwitterImages = normalizedOgImages.map((img) => img.url)
   
   return {
     title: page.title,
@@ -171,14 +195,7 @@ export const generatePageMetadata = (page: {
       siteName: seoConfig.siteName,
       locale: "en_UG",
       type: page.type || "website",
-      images: page.images || [
-        {
-          url: `${seoConfig.siteUrl}/alhilal-assets/LOGO-landscape.svg`,
-          width: 1200,
-          height: 630,
-          alt: "Al-Hilal Travels Uganda"
-        }
-      ]
+      images: normalizedOgImages
     },
     twitter: {
       card: "summary_large_image",
@@ -186,7 +203,7 @@ export const generatePageMetadata = (page: {
       description: page.description,
       site: "@alhilal_travels",
       creator: "@alhilal_travels",
-      images: page.images || [`${seoConfig.siteUrl}/alhilal-assets/LOGO-landscape.svg`]
+      images: normalizedTwitterImages
     },
     alternates: {
       canonical: url

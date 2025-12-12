@@ -31,9 +31,16 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
-    icon: '/favicon.svg',
-    shortcut: '/favicon.svg',
-    apple: '/favicon.svg',
+    icon: [
+      { url: "/favicon.png", type: "image/png" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icon", type: "image/png" },
+    ],
+    shortcut: ["/favicon.png"],
+    apple: [
+      { url: "/favicon.png", type: "image/png" },
+      { url: "/apple-icon", type: "image/png" },
+    ],
   },
   openGraph: {
     type: "website",
@@ -44,7 +51,8 @@ export const metadata: Metadata = {
     description: seoConfig.defaultDescription,
     images: [
       {
-        url: `${seoConfig.siteUrl}/alhilal-assets/LOGO-landscape.svg`,
+        // WhatsApp typically does not accept SVG for og:image
+        url: "/opengraph-image",
         width: 1200,
         height: 630,
         alt: "Al-Hilal Travels Uganda - Umrah and Hajj Packages",
@@ -57,7 +65,7 @@ export const metadata: Metadata = {
     description: seoConfig.defaultDescription,
     site: "@alhilal_travels",
     creator: "@alhilal_travels",
-    images: [`${seoConfig.siteUrl}/alhilal-assets/LOGO-landscape.svg`],
+    images: ["/opengraph-image"],
   },
   robots: {
     index: true,
