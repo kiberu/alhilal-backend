@@ -1,178 +1,70 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
-
 @theme inline {
-  /* Al-Hilal Brand Colors */
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-gold: var(--gold);
-  --color-gold-foreground: var(--gold-foreground);
-  
-  /* Base Colors */
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-inter);
-  --font-mono: var(--font-geist-mono);
-  
-  /* UI Colors */
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  
-  /* Chart Colors */
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  
-  /* Radius */
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-plus-jakarta);
+  --font-serif: var(--font-plus-jakarta);
 }
 
 :root {
-  /* Al-Hilal Brand Colors - Primary Maroon/Magenta */
-  --primary: 338 93% 30%; /* #970246 */
-  --primary-foreground: 0 0% 100%; /* White text on primary */
-  
-  /* Al-Hilal Gold/Orange Accent */
-  --gold: 35 95% 57%; /* #F9A028 */
-  --gold-foreground: 0 0% 0%; /* Black text on gold */
-  
-  /* Base Colors */
-  --radius: 0.75rem;
-  --background: 0 0% 100%; /* White */
-  --foreground: 0 0% 10%; /* Almost black for text */
-  
-  /* Card & Popover */
-  --card: 0 0% 100%;
-  --card-foreground: 0 0% 10%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 10%;
-  
-  /* Secondary - Light gray */
-  --secondary: 0 0% 96%;
-  --secondary-foreground: 0 0% 10%;
-  
-  /* Muted - Medium gray */
-  --muted: 0 0% 96%;
-  --muted-foreground: 0 0% 45%;
-  
-  /* Accent - Using primary color */
-  --accent: 338 93% 30%;
-  --accent-foreground: 0 0% 100%;
-  
-  /* Destructive - Red */
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 100%;
-  
-  /* Borders & Input */
-  --border: 0 0% 90%;
-  --input: 0 0% 90%;
-  --ring: 338 93% 30%;
-  
-  /* Chart Colors - Using brand palette */
-  --chart-1: 338 93% 30%; /* Primary */
-  --chart-2: 35 95% 57%; /* Gold */
-  --chart-3: 338 93% 45%; /* Lighter primary */
-  --chart-4: 35 90% 70%; /* Lighter gold */
-  --chart-5: 0 0% 60%; /* Gray */
-}
-
-.dark {
-  --background: 0 0% 10%;
-  --foreground: 0 0% 98%;
-  --card: 0 0% 15%;
-  --card-foreground: 0 0% 98%;
-  --popover: 0 0% 15%;
-  --popover-foreground: 0 0% 98%;
-  --primary: 338 93% 35%;
-  --primary-foreground: 0 0% 100%;
-  --gold: 35 95% 60%;
-  --gold-foreground: 0 0% 10%;
-  --secondary: 0 0% 20%;
-  --secondary-foreground: 0 0% 98%;
-  --muted: 0 0% 20%;
-  --muted-foreground: 0 0% 65%;
-  --accent: 338 93% 35%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 0 0% 20%;
-  --input: 0 0% 20%;
-  --ring: 338 93% 35%;
-  --chart-1: 338 93% 35%;
-  --chart-2: 35 95% 60%;
-  --chart-3: 338 93% 50%;
-  --chart-4: 35 90% 75%;
-  --chart-5: 0 0% 50%;
+  --surface-page: #f7f3ee;
+  --surface-card: #fffdfa;
+  --surface-strong: #efe5da;
+  --surface-muted: #ede1d4;
+  --surface-tint: #f8efe4;
+  --surface-glass: rgba(255, 250, 246, 0.82);
+  --surface-glass-strong: rgba(255, 251, 247, 0.96);
+  --brand-maroon: #970246;
+  --brand-maroon-deep: #6c0535;
+  --gold-solid: #f9a028;
+  --gold-deep: #d4871d;
+  --ink-strong: #22181d;
+  --ink-soft: #5d5056;
+  --ink-muted: #93828a;
+  --border-soft: rgba(79, 47, 59, 0.12);
+  --border-strong: rgba(79, 47, 59, 0.22);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-transparent;
+    box-sizing: border-box;
   }
-  
-  body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
-  }
-  
-  /* Swiss Design Typography - Precise hierarchy */
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-bold;
-    font-feature-settings: "kern" 1;
-  }
-  
-  /* Container system - Swiss grid precision */
-  .container {
-    width: 100%;
-    margin-left: auto;
-    margin-right: auto;
-    max-width: 1536px; /* 96rem */
-  }
-}
 
-/* Custom utility classes for Al-Hilal brand */
-@layer utilities {
-  .text-primary {
-    color: hsl(var(--primary));
+  html {
+    scroll-behavior: smooth;
   }
-  
-  .bg-primary {
-    background-color: hsl(var(--primary));
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    background:
+      radial-gradient(circle at top left, rgba(151, 2, 70, 0.1), transparent 28%),
+      radial-gradient(circle at top right, rgba(249, 160, 40, 0.12), transparent 24%),
+      linear-gradient(180deg, #f9f5f0 0%, #f7f3ee 100%);
+    color: var(--ink-strong);
+    font-feature-settings: "rlig" 1, "calt" 1;
+    text-rendering: optimizeLegibility;
   }
-  
-  .text-gold {
-    color: hsl(var(--gold));
+
+  a {
+    color: inherit;
+    text-decoration: none;
   }
-  
-  .bg-gold {
-    background-color: hsl(var(--gold));
+
+  img {
+    display: block;
+    max-width: 100%;
   }
-  
-  .border-primary {
-    border-color: hsl(var(--primary));
+
+  button,
+  input,
+  textarea {
+    font: inherit;
   }
-  
-  .border-gold {
-    border-color: hsl(var(--gold));
+
+  ::selection {
+    background: rgba(151, 2, 70, 0.14);
+    color: var(--ink-strong);
   }
 }

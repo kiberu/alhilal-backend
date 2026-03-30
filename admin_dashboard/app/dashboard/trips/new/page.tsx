@@ -36,6 +36,10 @@ import { PhotoUpload } from "@/components/shared"
 const tripSchema = z.object({
   code: z.string().min(3, "Code must be at least 3 characters").max(20, "Code must be less than 20 characters"),
   name: z.string().min(3, "Name must be at least 3 characters"),
+  slug: z.string().optional(),
+  excerpt: z.string().max(280, "Excerpt must be 280 characters or fewer").optional(),
+  seoTitle: z.string().max(120, "SEO title must be 120 characters or fewer").optional(),
+  seoDescription: z.string().max(180, "SEO description must be 180 characters or fewer").optional(),
   cities: z.string().min(1, "At least one city is required"),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
@@ -65,6 +69,10 @@ export default function NewTripPage() {
     defaultValues: {
       code: "",
       name: "",
+      slug: "",
+      excerpt: "",
+      seoTitle: "",
+      seoDescription: "",
       cities: "",
       startDate: "",
       endDate: "",
@@ -243,6 +251,46 @@ export default function NewTripPage() {
                 )}
               />
 
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="slug"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Public Slug</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., july-fenna-umrah-2026" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Leave blank to auto-generate from the trip name.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="excerpt"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Journey Summary</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Short public summary for cards, previews, and search."
+                          className="min-h-[120px]"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Public-facing summary used on the website and search previews.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               <FormField
                 control={form.control}
                 name="cities"
@@ -321,6 +369,57 @@ export default function NewTripPage() {
 
           <Card>
             <CardHeader>
+              <CardTitle>Search Metadata</CardTitle>
+              <CardDescription>
+                Optional title and description for public search and social previews.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="seoTitle"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>SEO Title</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g., July Fenna Umrah 2026 | Al Hilal Travels Uganda"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Used for the browser title and search result title.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="seoDescription"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>SEO Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Concise description for search listings and social shares."
+                        className="min-h-[120px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Keep this concise and specific to the journey.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Operator Notes</CardTitle>
               <CardDescription>
                 Internal notes for staff only (not visible to pilgrims)
@@ -366,4 +465,3 @@ export default function NewTripPage() {
     </div>
   )
 }
-

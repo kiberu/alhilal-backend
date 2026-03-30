@@ -1,61 +1,44 @@
-import { MetadataRoute } from 'next'
-import { seoConfig } from '@/lib/seo-config'
+import type { MetadataRoute } from "next";
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = seoConfig.siteUrl
+import { guidanceArticles } from "@/lib/content/guidance";
+import { fennaCampaign } from "@/lib/content/fenna";
+import { siteConfig } from "@/lib/site-config";
+import { getPublicJourneys } from "@/lib/trips";
 
-  // Define all pages with their priorities and change frequencies
-  const routes = [
-    {
-      url: baseUrl,
-      lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
-      priority: 1.0,
-    },
-    {
-      url: `${baseUrl}/services`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/trip-calendar`,
-      lastModified: new Date(),
-      changeFrequency: 'weekly' as const,
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/who-we-are`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/how-to-book`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/contact`,
-      lastModified: new Date(),
-      changeFrequency: 'monthly' as const,
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/privacy`,
-      lastModified: new Date(),
-      changeFrequency: 'yearly' as const,
-      priority: 0.3,
-    },
-    {
-      url: `${baseUrl}/terms`,
-      lastModified: new Date(),
-      changeFrequency: 'yearly' as const,
-      priority: 0.3,
-    },
-  ]
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const journeys = await getPublicJourneys();
+  const now = new Date();
 
-  return routes
+  const staticRoutes = [
+    "/",
+    "/journeys",
+    "/how-to-book",
+    "/guidance",
+    "/about",
+    "/contact",
+    "/privacy",
+    "/terms",
+    fennaCampaign.route,
+  ];
+
+  return [
+    ...staticRoutes.map((path) => ({
+      url: `${siteConfig.siteUrl}${path}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: path === "/" ? 1 : path === fennaCampaign.route ? 0.95 : 0.8,
+    })),
+    ...journeys.map((journey) => ({
+      url: `${siteConfig.siteUrl}/journeys/${journey.slug}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: journey.slug === fennaCampaign.slug ? 0.92 : 0.78,
+    })),
+    ...guidanceArticles.map((article) => ({
+      url: `${siteConfig.siteUrl}/guidance/${article.slug}`,
+      lastModified: now,
+      changeFrequency: "monthly" as const,
+      priority: 0.68,
+    })),
+  ];
 }
-

@@ -56,9 +56,32 @@ class AdminTripListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trip
         fields = [
-            'id', 'code', 'name', 'cities', 'start_date', 'end_date',
+            'id', 'code', 'name', 'slug', 'excerpt', 'seo_title', 'seo_description',
+            'cities', 'start_date', 'end_date', 'cover_image', 'featured',
             'visibility', 'created_at', 'updated_at', 'packages'
         ]
+
+    def to_representation(self, instance):
+        """Convert list payload to frontend camelCase format."""
+        data = super().to_representation(instance)
+        return {
+            'id': str(data['id']),
+            'code': data['code'],
+            'name': data['name'],
+            'slug': data.get('slug'),
+            'excerpt': data.get('excerpt'),
+            'seoTitle': data.get('seo_title'),
+            'seoDescription': data.get('seo_description'),
+            'cities': data['cities'],
+            'startDate': data['start_date'],
+            'endDate': data['end_date'],
+            'coverImage': data.get('cover_image'),
+            'featured': data.get('featured', False),
+            'visibility': data['visibility'],
+            'createdAt': data['created_at'],
+            'updatedAt': data['updated_at'],
+            'packages': data['packages'],
+        }
 
 
 class AdminTripDetailSerializer(serializers.ModelSerializer):
@@ -72,8 +95,9 @@ class AdminTripDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trip
         fields = [
-            'id', 'code', 'name', 'cities', 'start_date', 'end_date',
-            'cover_image', 'visibility', 'operator_notes', 'created_at', 'updated_at',
+            'id', 'code', 'name', 'slug', 'excerpt', 'seo_title', 'seo_description',
+            'cities', 'start_date', 'end_date', 'cover_image', 'featured',
+            'visibility', 'operator_notes', 'created_at', 'updated_at',
             'packages', 'booking_stats', 'itinerary', 'guide_sections'
         ]
         extra_kwargs = {
@@ -125,7 +149,7 @@ class AdminTripDetailSerializer(serializers.ModelSerializer):
         return [{
             'id': str(section.id),
             'title': section.title,
-            'content': section.content,
+            'content': section.content_md,
             'order': section.order
         } for section in sections]
     
@@ -136,10 +160,15 @@ class AdminTripDetailSerializer(serializers.ModelSerializer):
             'id': str(data['id']),
             'code': data['code'],
             'name': data['name'],
+            'slug': data.get('slug'),
+            'excerpt': data.get('excerpt'),
+            'seoTitle': data.get('seo_title'),
+            'seoDescription': data.get('seo_description'),
             'cities': data['cities'],
             'startDate': data['start_date'],
             'endDate': data['end_date'],
             'coverImage': data.get('cover_image'),
+            'featured': data.get('featured', False),
             'visibility': data['visibility'],
             'operatorNotes': data.get('operator_notes'),
             'createdAt': data['created_at'],
@@ -158,6 +187,8 @@ class AdminTripDetailSerializer(serializers.ModelSerializer):
             'startDate': 'start_date',
             'endDate': 'end_date',
             'coverImage': 'cover_image',
+            'seoTitle': 'seo_title',
+            'seoDescription': 'seo_description',
             'operatorNotes': 'operator_notes',
         }
         
@@ -989,4 +1020,3 @@ class AdminBookingDetailSerializer(serializers.ModelSerializer):
             'created_at': data['created_at'],
             'updated_at': data['updated_at'],
         }
-

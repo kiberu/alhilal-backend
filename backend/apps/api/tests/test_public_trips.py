@@ -46,6 +46,7 @@ class TestPublicTripListView:
         assert len(response.data['results']) == 1
         assert response.data['results'][0]['code'] == 'NOV2025'
         assert response.data['results'][0]['name'] == 'November Umrah'
+        assert response.data['results'][0]['slug'] == 'november-umrah'
         assert response.data['results'][0]['featured'] is True
         assert response.data['results'][0]['cover_image'] == 'https://example.com/image.jpg'
         assert response.data['results'][0]['packages_count'] == 1
@@ -315,6 +316,7 @@ class TestPublicTripDetailView:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['code'] == 'NOV2025'
         assert response.data['name'] == 'November Umrah'
+        assert response.data['slug'] == 'november-umrah'
         assert response.data['featured'] is True
         assert len(response.data['packages']) == 1
         assert response.data['packages'][0]['name'] == 'Gold Package'
@@ -348,6 +350,36 @@ class TestPublicTripDetailView:
         
         assert response.status_code == status.HTTP_200_OK
         assert response.data['code'] == 'DEC2025'
+
+    def test_get_trip_detail_by_slug_success(self, api_client, currency_usd):
+        """Test retrieving trip details using the public slug route."""
+        trip = Trip.objects.create(
+            code='FENNA2026',
+            name='July Fenna Umrah',
+            slug='july-fenna-umrah-2026',
+            cities=['Makkah', 'Madinah'],
+            start_date=timezone.now().date() + timedelta(days=90),
+            end_date=timezone.now().date() + timedelta(days=98),
+            visibility='PUBLIC',
+            excerpt='Featured Fenna departure for July pilgrims.',
+            seo_title='July Fenna Umrah 2026 | Al Hilal Travels Uganda',
+            seo_description='Book the July Fenna Umrah journey with Al Hilal Travels Uganda.',
+        )
+
+        TripPackage.objects.create(
+            trip=trip,
+            name='Family Group Package',
+            price_minor_units=4650000,
+            currency=currency_usd,
+            visibility='PUBLIC',
+        )
+
+        response = api_client.get('/api/v1/public/trips/slug/july-fenna-umrah-2026/')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['slug'] == 'july-fenna-umrah-2026'
+        assert response.data['excerpt'] == 'Featured Fenna departure for July pilgrims.'
+        assert response.data['seo_title'] == 'July Fenna Umrah 2026 | Al Hilal Travels Uganda'
     
     def test_get_private_trip_not_found(self, api_client, currency_usd):
         """Test that private trips cannot be accessed."""
@@ -521,4 +553,3 @@ class TestPublicTripDetailView:
         response = api_client.get(f'/api/v1/public/trips/{fake_id}/')
         
         assert response.status_code == status.HTTP_404_NOT_FOUND
-

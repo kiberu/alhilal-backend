@@ -1,6 +1,9 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import { ImageResponse } from "next/og";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 export const size = {
   width: 180,
@@ -9,7 +12,16 @@ export const size = {
 
 export const contentType = "image/png";
 
-export default function AppleIcon() {
+async function getLogoDataUri() {
+  const logoPath = path.join(process.cwd(), "public", "alhilal-assets", "LOGO-POTRAIT.svg");
+  const logo = await readFile(logoPath, "utf8");
+
+  return `data:image/svg+xml;base64,${Buffer.from(logo).toString("base64")}`;
+}
+
+export default async function AppleIcon() {
+  const logoSrc = await getLogoDataUri();
+
   return new ImageResponse(
     (
       <div
@@ -21,14 +33,17 @@ export default function AppleIcon() {
           justifyContent: "center",
           backgroundColor: "#970246",
           borderRadius: 40,
-          color: "#ffffff",
-          fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial",
-          fontWeight: 900,
-          fontSize: 92,
-          letterSpacing: -6,
+          padding: "28px",
+          boxSizing: "border-box",
         }}
       >
-        AH
+        <img
+          src={logoSrc}
+          alt="Al Hilal logo"
+          width="124"
+          height="124"
+          style={{ objectFit: "contain" }}
+        />
       </div>
     ),
     size

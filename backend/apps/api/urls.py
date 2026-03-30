@@ -5,7 +5,7 @@ from .views.profile import MeView, MyBookingsView, MyBookingDetailView, UpdatePr
 from .views.trips import (
     TripListView, TripDetailView, TripItineraryView,
     TripUpdatesView, TripEssentialsView,
-    PublicTripListView, PublicTripDetailView
+    PublicTripListView, PublicTripDetailView, PublicTripDetailBySlugView
 )
 from .views.packages import (
     PackageDetailView, PackageFlightsView, PackageHotelsView
@@ -53,6 +53,7 @@ urlpatterns = [
     
     # Public endpoints (no authentication required)
     path('public/trips/', PublicTripListView.as_view(), name='public-trips'),
+    path('public/trips/slug/<slug:slug>/', PublicTripDetailBySlugView.as_view(), name='public-trip-detail-by-slug'),
     path('public/trips/<uuid:id>/', PublicTripDetailView.as_view(), name='public-trip-detail'),
     
     # Dashboard endpoints (staff only)
@@ -95,4 +96,3 @@ urlpatterns = [
     # Admin ViewSets (staff only) - registered via router
     path('', include(router.urls)),
 ]
-

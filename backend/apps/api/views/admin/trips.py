@@ -137,12 +137,16 @@ class AdminTripViewSet(viewsets.ModelViewSet):
         new_trip = Trip.objects.create(
             code=f"{trip.code}-COPY",
             name=f"{trip.name} (Copy)",
+            excerpt=trip.excerpt,
+            seo_title=trip.seo_title,
+            seo_description=trip.seo_description,
             cities=trip.cities,
             start_date=trip.start_date,
             end_date=trip.end_date,
+            cover_image=trip.cover_image,
+            featured=False,
             visibility='PRIVATE',  # Set to private by default
         )
         
         serializer = self.get_serializer(new_trip)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-
