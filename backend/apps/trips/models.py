@@ -1,5 +1,7 @@
-from django.db import models
 from uuid import uuid4
+
+from django.db import models
+from django.utils.text import slugify
 from simple_history.models import HistoricalRecords
 
 
@@ -14,6 +16,10 @@ class Trip(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     code = models.CharField(max_length=24, unique=True)
     name = models.CharField(max_length=120)
+    slug = models.SlugField(max_length=180, unique=True, blank=True, null=True)
+    excerpt = models.CharField(max_length=280, blank=True, default="")
+    seo_title = models.CharField(max_length=120, blank=True, default="")
+    seo_description = models.CharField(max_length=180, blank=True, default="")
     cities = models.JSONField(default=list)
     start_date = models.DateField()
     end_date = models.DateField()
@@ -35,6 +41,25 @@ class Trip(models.Model):
     
     def __str__(self):
         return f"{self.code} - {self.name}"
+
+    def save(self, *args, **kwargs):
+        """Normalize a stable public slug before saving."""
+        self.slug = self._build_unique_slug()
+        super().save(*args, **kwargs)
+
+    def _build_unique_slug(self) -> str:
+        """Generate a unique slug from the explicit slug, name, or code."""
+        base_value = self.slug or self.name or self.code or str(self.id)
+        base_slug = slugify(base_value) or slugify(self.code) or str(self.id)
+        candidate = base_slug[:180]
+        index = 2
+
+        while Trip.objects.exclude(pk=self.pk).filter(slug=candidate).exists():
+            suffix = f"-{index}"
+            candidate = f"{base_slug[: 180 - len(suffix)]}{suffix}"
+            index += 1
+
+        return candidate
 
 
 class TripPackage(models.Model):
@@ -333,4 +358,3 @@ class TripFAQ(models.Model):
     
     def __str__(self):
         return f"{self.trip.code} - {self.question[:50]}"
-

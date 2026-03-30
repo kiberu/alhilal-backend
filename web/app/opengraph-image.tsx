@@ -17,107 +17,71 @@ export default function OpenGraphImage() {
           width: "100%",
           height: "100%",
           display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "linear-gradient(135deg, #970246 0%, #7b013a 60%, #4a001f 100%)",
+          background:
+            "radial-gradient(circle at 18% 24%, rgba(249,160,40,0.28), transparent 26%), linear-gradient(135deg, #3d091e 0%, #6f0032 42%, #970246 100%)",
+          color: "white",
+          fontFamily: "sans-serif",
+          padding: "56px",
           position: "relative",
-          color: "#ffffff",
-          fontFamily: "ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial",
         }}
       >
-        {/* subtle pattern */}
         <div
           style={{
             position: "absolute",
-            inset: 0,
-            background:
-              "radial-gradient(circle at 20% 30%, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0) 55%), radial-gradient(circle at 80% 70%, rgba(255,215,0,0.10) 0%, rgba(255,215,0,0) 60%)",
+            inset: "32px",
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: "28px",
           }}
         />
-
         <div
           style={{
             position: "relative",
+            zIndex: 1,
             display: "flex",
-            flexDirection: "row",
-            alignItems: "center",
-            gap: 48,
-            padding: 80,
+            flexDirection: "column",
+            justifyContent: "space-between",
+            width: "100%",
           }}
         >
-          {/* logo mark */}
-          <div
-            style={{
-              width: 220,
-              height: 220,
-              borderRadius: 999,
-              backgroundColor: "#970246",
-              border: "10px solid rgba(255,255,255,0.92)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              boxShadow: "0 18px 50px rgba(0,0,0,0.35)",
-            }}
-          >
+          <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
             <div
               style={{
-                width: 170,
-                height: 170,
-                borderRadius: 999,
-                backgroundColor: "rgba(255,255,255,0.10)",
+                borderRadius: "22px",
+                background: "rgba(255,255,255,0.08)",
+                border: "1px solid rgba(255,255,255,0.18)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                fontWeight: 800,
-                fontSize: 84,
-                letterSpacing: -2,
+                padding: "18px 24px",
               }}
             >
-              AH
+              <div style={{ fontSize: "30px", fontWeight: 700, letterSpacing: "-0.04em" }}>Al Hilal</div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <div style={{ fontSize: "22px", letterSpacing: "0.28em", textTransform: "uppercase", opacity: 0.76 }}>
+                Al Hilal Travels Uganda
+              </div>
+              <div style={{ fontSize: "28px", fontWeight: 700 }}>Guided Umrah and Hajj from Kampala</div>
             </div>
           </div>
 
-          {/* text */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, maxWidth: 760 }}>
-            <div style={{ fontSize: 58, fontWeight: 800, lineHeight: 1.05 }}>
-              Al‑Hilal Travels Uganda
-            </div>
-            <div style={{ fontSize: 28, fontWeight: 500, lineHeight: 1.25, opacity: 0.95 }}>
-              Affordable Umrah & Hajj Packages from Kampala
-            </div>
-            <div
-              style={{
-                marginTop: 14,
-                fontSize: 22,
-                opacity: 0.9,
-                display: "flex",
-                gap: 18,
-              }}
-            >
-              <span>Visa Processing</span>
-              <span style={{ opacity: 0.6 }}>•</span>
-              <span>Accommodation</span>
-              <span style={{ opacity: 0.6 }}>•</span>
-              <span>Expert Guides</span>
+          <div style={{ maxWidth: "860px", display: "flex", flexDirection: "column", gap: "22px" }}>
+            <div style={{ fontSize: "76px", lineHeight: 1, fontWeight: 700 }}>Plan your journey with a team that keeps worship first.</div>
+            <div style={{ fontSize: "28px", lineHeight: 1.35, opacity: 0.86 }}>
+              See journeys, check dates and pricing, and speak to Al Hilal on WhatsApp with clear planning and family-aware care.
             </div>
           </div>
-        </div>
 
-        <div
-          style={{
-            position: "absolute",
-            left: 60,
-            bottom: 50,
-            fontSize: 20,
-            opacity: 0.85,
-          }}
-        >
-          alhilaltravels.com
+          <div style={{ display: "flex", gap: "18px", fontSize: "22px", opacity: 0.9 }}>
+            <span>Journeys</span>
+            <span>•</span>
+            <span>Guidance</span>
+            <span>•</span>
+            <span>WhatsApp</span>
+          </div>
         </div>
       </div>
     ),
-    {
-      ...size,
-    }
+    size,
   );
 }

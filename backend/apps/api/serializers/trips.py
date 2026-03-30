@@ -18,7 +18,21 @@ class TripListSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Trip
-        fields = ['id', 'code', 'name', 'cities', 'start_date', 'end_date', 'cover_image', 'featured', 'packages_count']
+        fields = [
+            'id',
+            'code',
+            'name',
+            'slug',
+            'excerpt',
+            'seo_title',
+            'seo_description',
+            'cities',
+            'start_date',
+            'end_date',
+            'cover_image',
+            'featured',
+            'packages_count',
+        ]
     
     def get_packages_count(self, obj):
         """Get count of available packages."""
@@ -205,7 +219,8 @@ class PublicTripDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trip
         fields = [
-            'id', 'code', 'name', 'cities', 'start_date', 'end_date',
+            'id', 'code', 'name', 'slug', 'excerpt', 'seo_title', 'seo_description',
+            'cities', 'start_date', 'end_date',
             'cover_image', 'featured', 'packages', 'itinerary',
             'has_itinerary', 'faqs', 'guide_sections', 'emergency_contacts'
         ]
@@ -318,4 +333,3 @@ class PilgrimBookingDetailSerializer(serializers.ModelSerializer):
         package_price = obj.package.price_minor_units or 0
         amount_paid = obj.amount_paid_minor_units or 0
         return max(0, package_price - amount_paid)
-

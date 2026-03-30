@@ -264,5 +264,18 @@ class PublicTripDetailView(generics.RetrieveAPIView):
     
     def get_queryset(self):
         """Return public trips only."""
-        return Trip.objects.filter(visibility='PUBLIC')
+        from django.db.models import Count, Q
 
+        return Trip.objects.filter(visibility='PUBLIC').annotate(
+            public_packages_count=Count('packages', filter=Q(packages__visibility='PUBLIC'))
+        ).filter(public_packages_count__gt=0)
+
+
+class PublicTripDetailBySlugView(PublicTripDetailView):
+    """
+    Get public trip details by slug.
+
+    GET /api/v1/public/trips/slug/{slug}
+    """
+
+    lookup_field = 'slug'

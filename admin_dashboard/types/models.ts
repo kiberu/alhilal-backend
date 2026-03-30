@@ -197,10 +197,15 @@ export interface Trip {
   id: string
   code: string
   name: string
+  slug?: string
+  excerpt?: string
+  seoTitle?: string
+  seoDescription?: string
   cities: string[]
   startDate: string
   endDate: string
   coverImage?: string // Cloudinary URL
+  featured?: boolean
   visibility: TripVisibility
   operatorNotes?: string
   created_at: string
@@ -543,10 +548,15 @@ export interface RecentActivity {
 export interface CreateTripData {
   code: string
   name: string
+  slug?: string
+  excerpt?: string
+  seoTitle?: string
+  seoDescription?: string
   cities: string[]
   startDate: string
   endDate: string
   coverImage?: string
+  featured?: boolean
   visibility: TripVisibility
   operatorNotes?: string
 }
@@ -626,4 +636,3 @@ export interface VisaStatistics {
   approvalRate: number
   averageProcessingDays: number
 }
-

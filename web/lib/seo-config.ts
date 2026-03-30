@@ -1,212 +1,126 @@
-/**
- * SEO Configuration for Al-Hilal Travels
- * Optimized for Ugandan Umrah and Hajj Market
- */
+import type { Metadata } from "next";
+
+import { siteConfig } from "@/lib/site-config";
 
 export const seoConfig = {
-  siteName: "Al-Hilal Hajj and Umrah Services",
-  siteUrl: "https://alhilaltravels.com",
-  defaultTitle: "Al-Hilal Hajj and Umrah Services Uganda | Licensed Umrah & Hajj Tour Operator",
-  defaultDescription: "Licensed Hajj and Umrah tour operator in Uganda. Affordable Umrah packages from Kampala, expert visa processing, 5-star accommodation near Haram. Book your pilgrimage today.",
-  businessName: "Al-Hilal Travels Uganda",
-  contactPhone: "+256700773535",
-  contactEmail: "info@alhilaltravels.com",
+  siteName: siteConfig.siteName,
+  siteUrl: siteConfig.siteUrl,
+  defaultTitle: `${siteConfig.siteName} | Umrah and Hajj from Kampala`,
+  defaultDescription: siteConfig.defaultDescription,
+  businessName: siteConfig.businessName,
+  contactPhone: siteConfig.phoneDisplay,
+  contactEmail: siteConfig.email,
   address: {
     street: "Kyato Complex, Suite B5-18, Bombo Road",
     city: "Kampala",
     country: "Uganda",
-    postalCode: ""
+    postalCode: "",
   },
-  
-  // Primary keywords targeting Ugandan market
   primaryKeywords: [
     "Umrah packages Uganda",
     "Hajj packages Uganda",
     "Umrah from Kampala",
+    "guided Umrah Uganda",
     "Hajj from Kampala",
-    "Umrah tour operator Uganda",
-    "Hajj tour operator Uganda",
-    "licensed Umrah agent Uganda",
-    "Ramadan Umrah Uganda",
-    "Makkah packages Uganda",
-    "Madinah packages Uganda",
-    "Saudi Arabia visa Uganda",
-    "Islamic travel Uganda",
-    "Muslim pilgrimage Uganda",
-    "Umrah booking Kampala",
-    "Hajj booking Kampala",
-    "affordable Umrah packages",
-    "Umrah visa processing Uganda",
-    "Hajj visa processing Uganda",
-    "Ziyarah tours Uganda",
-    "5 pillar Hajj Uganda"
+    "pilgrimage planning Uganda",
+    "Umrah family travel Uganda",
+    "family Umrah Uganda",
+    "first time Umrah Uganda",
+    "July Umrah Uganda",
+    "licensed Umrah operator Uganda",
   ],
-  
-  // Long-tail keywords for specific searches
-  longTailKeywords: [
-    "best Umrah packages from Uganda",
-    "cheap Umrah packages Kampala",
-    "Ramadan Umrah packages Uganda 2026",
-    "Hajj packages Uganda 2026",
-    "Umrah and Hajj tour operator Kampala",
-    "licensed Hajj agent in Uganda",
-    "how to book Umrah from Uganda",
-    "Umrah package prices Uganda",
-    "family Umrah packages Uganda",
-    "VIP Umrah packages Kampala",
-    "group Umrah booking Uganda",
-    "Umrah with guided tours Uganda",
-    "hotels near Haram Uganda packages",
-    "Umrah visa requirements for Ugandans",
-    "Hajj training Uganda",
-    "Islamic travel agency Kampala",
-    "Umrah flights from Entebbe",
-    "complete Umrah package Uganda"
-  ],
-  
-  // Local search terms
   localKeywords: [
-    "Umrah travel agency Kampala",
-    "Hajj services Kampala Uganda",
-    "Islamic tours Kampala",
-    "Umrah operator near me Uganda",
-    "best Umrah agent Kampala",
-    "Bombo Road travel agency",
-    "Muslim travel services Uganda",
-    "pilgrimage services Kampala"
+    "Kampala Umrah operator",
+    "Bombo Road pilgrimage services",
+    "Uganda Hajj and Umrah agency",
+    "WhatsApp Umrah consultation Kampala",
   ],
-  
-  // Social media
-  social: {
-    facebook: "https://www.facebook.com/61554545522475",
-    twitter: "https://x.com/alhilal_travels",
-    instagram: "https://www.instagram.com/al_hilal_travels/",
-    tiktok: "https://www.tiktok.com/@alhilaltravels",
-    whatsapp: "https://wa.me/256700773535"
-  },
-  
-  // Organization Schema
+  social: siteConfig.social,
   organizationSchema: {
     "@context": "https://schema.org",
     "@type": "TravelAgency",
-    "name": "Al-Hilal Travels Uganda",
-    "alternateName": "Al-Hilal Hajj and Umrah Services",
-    "description": "Licensed Hajj and Umrah tour operator in Uganda providing comprehensive pilgrimage packages, visa processing, and spiritual guidance.",
-    "url": "https://alhilaltravels.com",
-    "logo": "https://alhilaltravels.com/alhilal-assets/LOGO-landscape.svg",
-    "telephone": "+256700773535",
-    "email": "info@alhilaltravels.com",
-    "address": {
+    name: siteConfig.businessName,
+    alternateName: "Al Hilal Hajj and Umrah Services",
+    description: siteConfig.defaultDescription,
+    url: siteConfig.siteUrl,
+    logo: `${siteConfig.siteUrl}/alhilal-assets/LOGO-landscape.svg`,
+    telephone: siteConfig.phoneDisplay,
+    email: siteConfig.email,
+    address: {
       "@type": "PostalAddress",
-      "streetAddress": "Kyato Complex, Suite B5-18, Bombo Road",
-      "addressLocality": "Kampala",
-      "addressCountry": "UG"
+      streetAddress: "Kyato Complex, Suite B5-18, Bombo Road",
+      addressLocality: "Kampala",
+      addressCountry: "UG",
     },
-    "geo": {
-      "@type": "GeoCoordinates",
-      "latitude": "0.3476",
-      "longitude": "32.5825"
-    },
-    "areaServed": {
+    areaServed: {
       "@type": "Country",
-      "name": "Uganda"
+      name: "Uganda",
     },
-    "serviceType": [
-      "Umrah Packages",
-      "Hajj Packages",
-      "Visa Processing",
-      "Islamic Tours",
-      "Ziyarah Tours",
-      "Group Bookings",
-      "VIP Pilgrimage Services"
+    sameAs: Object.values(siteConfig.social),
+    serviceType: [
+      "Umrah journeys",
+      "Hajj journeys",
+      "Pilgrimage planning",
+      "Family pilgrimage support",
+      "Sacred travel consultation",
     ],
-    "priceRange": "$$",
-    "openingHours": "Mo-Fr 09:00-18:00, Sa 10:00-16:00",
-    "sameAs": [
-      "https://www.facebook.com/61554545522475",
-      "https://x.com/alhilal_travels",
-      "https://www.instagram.com/al_hilal_travels/",
-      "https://www.tiktok.com/@alhilaltravels"
-    ]
+  },
+};
+
+export function buildCanonicalUrl(path = "/") {
+  if (!path || path === "/") {
+    return siteConfig.siteUrl;
   }
+
+  return `${siteConfig.siteUrl}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
-export const generatePageMetadata = (page: {
-  title: string
-  description: string
-  keywords?: string[]
-  path?: string
-  type?: string
+export function generatePageMetadata(page: {
+  title: string;
+  description: string;
+  path?: string;
+  keywords?: string[];
   images?: Array<
     | string
     | {
-        url: string
-        width?: number
-        height?: number
-        alt?: string
+        url: string;
+        width?: number;
+        height?: number;
+        alt?: string;
       }
-  >
-}) => {
-  // Normalize the path to ensure consistent canonical URLs
-  let normalizedPath = page.path || '/';
-  // Remove trailing slash unless it's the root path
-  if (normalizedPath !== '/' && normalizedPath.endsWith('/')) {
-    normalizedPath = normalizedPath.slice(0, -1);
-  }
-  // Ensure path starts with /
-  if (!normalizedPath.startsWith('/')) {
-    normalizedPath = `/${normalizedPath}`;
-  }
-  
-  // Build the canonical URL
-  const url = normalizedPath === '/' 
-    ? seoConfig.siteUrl 
-    : `${seoConfig.siteUrl}${normalizedPath}`;
-  
-  const allKeywords = [
-    ...(page.keywords || []),
-    ...seoConfig.primaryKeywords.slice(0, 10)
-  ]
+  >;
+  type?: "website" | "article";
+}): Metadata {
+  const canonical = buildCanonicalUrl(page.path);
+  const normalizedImages = (page.images?.length ? page.images : [siteConfig.defaultOgImage]).map((image) =>
+    typeof image === "string"
+      ? { url: image, width: 1200, height: 630, alt: page.title }
+      : image,
+  );
 
-  const fallbackImages = [
-    {
-      // WhatsApp typically does not accept SVG for og:image, so use a PNG metadata route
-      url: "/opengraph-image",
-      width: 1200,
-      height: 630,
-      alt: "Al-Hilal Travels Uganda"
-    }
-  ]
-
-  const normalizedOgImages = (page.images && page.images.length > 0)
-    ? page.images.map((img) => (typeof img === "string" ? { url: img } : img))
-    : fallbackImages
-
-  const normalizedTwitterImages = normalizedOgImages.map((img) => img.url)
-  
   return {
     title: page.title,
     description: page.description,
-    keywords: allKeywords,
+    keywords: [...(page.keywords ?? []), ...seoConfig.primaryKeywords, ...seoConfig.localKeywords],
+    alternates: {
+      canonical,
+    },
     openGraph: {
+      type: page.type ?? "website",
       title: page.title,
       description: page.description,
-      url: url,
-      siteName: seoConfig.siteName,
+      url: canonical,
+      siteName: siteConfig.siteName,
       locale: "en_UG",
-      type: page.type || "website",
-      images: normalizedOgImages
+      images: normalizedImages,
     },
     twitter: {
       card: "summary_large_image",
       title: page.title,
       description: page.description,
-      site: "@alhilal_travels",
+      images: normalizedImages.map((image) => image.url),
       creator: "@alhilal_travels",
-      images: normalizedTwitterImages
-    },
-    alternates: {
-      canonical: url
+      site: "@alhilal_travels",
     },
     robots: {
       index: true,
@@ -214,11 +128,10 @@ export const generatePageMetadata = (page: {
       googleBot: {
         index: true,
         follow: true,
-        'max-video-preview': -1,
-        'max-image-preview': 'large' as const,
-        'max-snippet': -1,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
       },
-    }
-  }
+    },
+  };
 }
-
