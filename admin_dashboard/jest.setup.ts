@@ -8,8 +8,9 @@ jest.mock('next/navigation', () => ({
     prefetch: jest.fn(),
     back: jest.fn(),
   })),
+  useParams: jest.fn(() => ({})),
   usePathname: () => '/',
-  useSearchParams: () => new URLSearchParams(),
+  useSearchParams: jest.fn(() => new URLSearchParams()),
 }))
 
 // Mock next-auth

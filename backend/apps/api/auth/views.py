@@ -14,7 +14,7 @@ import re
 from apps.accounts.models import Account, OTPCode
 from apps.common.models import PlatformSettings
 from apps.common.permissions import IsStaff
-from .serializers import StaffLoginSerializer
+from .serializers import StaffChangePasswordSerializer, StaffLoginSerializer
 from .tokens import RoleBasedRefreshToken
 
 User = get_user_model()
@@ -339,3 +339,27 @@ class StaffProfileView(APIView):
             'isStaff': user.is_staff,
             'staffProfile': staff_profile,
         })
+
+
+class StaffChangePasswordView(APIView):
+    """Allow authenticated staff to change their own password."""
+
+    permission_classes = [IsAuthenticated, IsStaff]
+
+    def post(self, request):
+        serializer = StaffChangePasswordSerializer(
+            data=request.data,
+            context={"request": request},
+        )
+        serializer.is_valid(raise_exception=True)
+
+        request.user.set_password(serializer.validated_data["new_password"])
+        request.user.save(update_fields=["password"])
+
+        changed_at = timezone.now()
+        return Response(
+            {
+                "message": "Password changed successfully.",
+                "changed_at": changed_at,
+            }
+        )

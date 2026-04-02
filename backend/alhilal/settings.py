@@ -45,6 +45,8 @@ env = environ.Env(
     EMAIL_HOST_USER=(str, ''),
     EMAIL_HOST_PASSWORD=(str, ''),
     DEFAULT_FROM_EMAIL=(str, 'webmaster@localhost'),
+    TEST_USE_SQLITE=(bool, True),
+    TEST_SQLITE_NAME=(str, ''),
 )
 
 # Read .env file
@@ -156,6 +158,17 @@ if 'collectstatic' in sys.argv:
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': ':memory:',
+        }
+    }
+elif RUNNING_TESTS and env.bool('TEST_USE_SQLITE', default=True) and not env('DATABASE_URL'):
+    test_sqlite_name = env('TEST_SQLITE_NAME') or str(BASE_DIR / '.pytest.sqlite3')
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': test_sqlite_name,
+            'TEST': {
+                'NAME': test_sqlite_name,
+            },
         }
     }
 elif env('DATABASE_URL'):

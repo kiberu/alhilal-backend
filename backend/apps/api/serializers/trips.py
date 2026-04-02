@@ -1,6 +1,8 @@
 """
 Serializers for trips, packages, and related data.
 """
+from collections.abc import Mapping
+
 from rest_framework import serializers
 from apps.trips.models import (
     Trip, TripPackage, PackageFlight, PackageHotel,
@@ -228,11 +230,19 @@ class TripResourceSerializer(serializers.ModelSerializer):
 
     def get_file_url_signed(self, obj):
         """Get signed URL for the resource file."""
-        if not obj.file_public_id:
+        if isinstance(obj, Mapping):
+            existing_url = obj.get('file_url_signed')
+            if existing_url is not None:
+                return existing_url
+            file_public_id = obj.get('file_public_id')
+        else:
+            file_public_id = getattr(obj, 'file_public_id', None)
+
+        if not file_public_id:
             return None
 
         from apps.common.cloudinary import signed_delivery
-        return signed_delivery(obj.file_public_id, expires_in=600)
+        return signed_delivery(file_public_id, expires_in=600)
 
 
 class PilgrimTripReadinessSerializer(serializers.ModelSerializer):

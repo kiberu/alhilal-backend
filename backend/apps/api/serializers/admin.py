@@ -41,12 +41,20 @@ class AdminTripPackageListSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
+    currency_code = serializers.SlugRelatedField(
+        queryset=Currency.objects.all(),
+        slug_field='code',
+        source='currency',
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
     
     class Meta:
         model = TripPackage
         fields = [
             'id', 'package_code', 'name', 'start_date_override', 'end_date_override',
-            'nights', 'price_minor_units', 'currency', 'currency_id',
+            'nights', 'price_minor_units', 'currency', 'currency_id', 'currency_code',
             'capacity', 'sales_target', 'hotel_booking_month', 'airline_booking_month',
             'status', 'visibility', 'created_at', 'updated_at'
         ]
@@ -560,7 +568,12 @@ class AdminPilgrimReadinessSerializer(serializers.ModelSerializer):
     pilgrim_name = serializers.CharField(source='pilgrim.full_name', read_only=True)
     booking_reference = serializers.CharField(source='booking.reference_number', read_only=True)
     trip_code = serializers.CharField(source='trip.code', read_only=True)
+    trip_name = serializers.CharField(source='trip.name', read_only=True)
+    trip_start_date = serializers.DateField(source='trip.start_date', read_only=True)
+    trip_end_date = serializers.DateField(source='trip.end_date', read_only=True)
     package_name = serializers.CharField(source='package.name', read_only=True)
+    booking_status = serializers.CharField(source='booking.status', read_only=True)
+    package_status = serializers.CharField(source='package.status', read_only=True)
     validated_by_name = serializers.CharField(source='validated_by.name', read_only=True)
     missing_items = serializers.SerializerMethodField()
     blockers = serializers.SerializerMethodField()
@@ -575,8 +588,13 @@ class AdminPilgrimReadinessSerializer(serializers.ModelSerializer):
             'booking_reference',
             'trip',
             'trip_code',
+            'trip_name',
+            'trip_start_date',
+            'trip_end_date',
             'package',
             'package_name',
+            'booking_status',
+            'package_status',
             'status',
             'ready_for_travel',
             'profile_complete',
@@ -606,8 +624,13 @@ class AdminPilgrimReadinessSerializer(serializers.ModelSerializer):
             'pilgrim_name',
             'trip',
             'trip_code',
+            'trip_name',
+            'trip_start_date',
+            'trip_end_date',
             'package',
             'package_name',
+            'booking_status',
+            'package_status',
             'status',
             'ready_for_travel',
             'profile_complete',
@@ -934,12 +957,20 @@ class AdminPackageSerializer(serializers.ModelSerializer):
         required=False,
         allow_null=True
     )
+    currency_code = serializers.SlugRelatedField(
+        queryset=Currency.objects.all(),
+        slug_field='code',
+        source='currency',
+        write_only=True,
+        required=False,
+        allow_null=True,
+    )
     
     class Meta:
         model = TripPackage
         fields = [
             'id', 'trip', 'package_code', 'name', 'start_date_override', 'end_date_override',
-            'nights', 'price_minor_units', 'currency', 'currency_id',
+            'nights', 'price_minor_units', 'currency', 'currency_id', 'currency_code',
             'capacity', 'sales_target', 'hotel_booking_month', 'airline_booking_month',
             'status', 'visibility', 'created_at', 'updated_at'
         ]

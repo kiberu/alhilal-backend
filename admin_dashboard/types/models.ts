@@ -189,6 +189,17 @@ export interface ChangeUserPasswordData {
   newPassword: string
 }
 
+export interface StaffChangePasswordRequest {
+  currentPassword: string
+  newPassword: string
+  confirmPassword: string
+}
+
+export interface StaffChangePasswordResponse {
+  message: string
+  changedAt: string
+}
+
 /** Pilgrim Profile */
 export interface PilgrimProfile {
   id: string
@@ -280,8 +291,13 @@ export interface PilgrimReadiness {
   booking_reference: string
   trip: string
   trip_code: string
+  trip_name?: string
+  trip_start_date?: string
+  trip_end_date?: string
   package: string
   package_name: string
+  booking_status?: string
+  package_status?: string
   status: ReadinessStatus
   ready_for_travel: boolean
   profile_complete: boolean
@@ -523,6 +539,92 @@ export interface TripUpdate {
   updated_at: string
 }
 
+export type TripMilestoneStatus =
+  | "NOT_STARTED"
+  | "SCHEDULED"
+  | "ON_TRACK"
+  | "AT_RISK"
+  | "BLOCKED"
+  | "DONE"
+  | "CANCELLED"
+
+export interface TripMilestone {
+  id: string
+  trip: string
+  package?: string | null
+  milestoneType: string
+  title: string
+  status: TripMilestoneStatus
+  targetDate?: string | null
+  actualDate?: string | null
+  notes?: string
+  owner?: string | null
+  ownerName?: string | null
+  isPublic: boolean
+  order: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateTripMilestoneData {
+  trip: string
+  package?: string | null
+  milestoneType: string
+  title: string
+  status: TripMilestoneStatus
+  targetDate?: string | null
+  actualDate?: string | null
+  notes?: string
+  owner?: string | null
+  isPublic?: boolean
+  order?: number
+}
+
+export type TripResourceType =
+  | "UMRAH_GUIDE"
+  | "DUA_BOOKLET"
+  | "DAILY_PROGRAM"
+  | "CHECKLIST"
+  | "POST_TRIP_MODULE"
+  | "OTHER"
+
+export type TripResourceViewerMode = "VIEW_ONLY" | "DOWNLOADABLE"
+
+export interface TripResource {
+  id: string
+  trip: string
+  package?: string | null
+  title: string
+  description?: string
+  resourceType: TripResourceType
+  order: number
+  filePublicId: string
+  fileFormat?: string | null
+  fileUrl?: string | null
+  viewerMode: TripResourceViewerMode
+  metadata?: Record<string, unknown>
+  isPinned: boolean
+  publishedAt?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface CreateTripResourceData {
+  trip: string
+  package?: string | null
+  title: string
+  description?: string
+  resourceType: TripResourceType
+  order?: number
+  filePublicId: string
+  fileFormat?: string | null
+  fileUrl?: string | null
+  viewerMode?: TripResourceViewerMode
+  metadata?: Record<string, unknown>
+  isPinned?: boolean
+  publishedAt?: string | null
+}
+
 /** Booking Status */
 export type BookingStatus = "EOI" | "BOOKED" | "CONFIRMED" | "CANCELLED"
 
@@ -637,6 +739,8 @@ export interface TripFullDetails extends Trip {
   emergencyContacts: EmergencyContact[]
   faqs: TripFAQ[]
   updates: TripUpdate[]
+  milestones: TripMilestone[]
+  resources: TripResource[]
   bookingStats: {
     total: number
     eoiCount: number
@@ -661,6 +765,7 @@ export interface PaginatedResponse<T> {
 
 export interface TripFilters extends PaginationParams {
   visibility?: TripVisibility
+  status?: TripOperationalStatus
   startDate?: string
   endDate?: string
   search?: string
@@ -709,6 +814,187 @@ export interface DashboardStats {
   }
 }
 
+export interface ReportFilters {
+  trip?: string
+  package?: string
+  days?: number
+  status?: string
+}
+
+export interface ReportMetricCard {
+  id: string
+  label: string
+  value: number
+  unit: string
+  description: string
+  created_at: string
+  updated_at: string
+}
+
+export interface SummaryReport {
+  id: string
+  report_type: "summary"
+  created_at: string
+  updated_at: string
+  generated_at: string
+  filters: ReportFilters
+  cards: ReportMetricCard[]
+  rows: ReportMetricCard[]
+}
+
+export interface PaymentTargetReportRow {
+  id: string
+  trip_id: string
+  trip_code: string
+  trip_name: string
+  package_id: string
+  package_name: string
+  package_status: string
+  active_bookings: number
+  pilgrims_at_target: number
+  attainment_rate: number
+  sales_target: number
+  sales_target_attainment_rate: number
+  created_at: string
+  updated_at: string
+}
+
+export interface PaymentTargetReport {
+  id: string
+  report_type: "payment_target"
+  created_at: string
+  updated_at: string
+  generated_at: string
+  filters: ReportFilters
+  rows: PaymentTargetReportRow[]
+}
+
+export interface ReadinessCompletionReportRow {
+  id: string
+  trip_id: string
+  trip_code: string
+  trip_name: string
+  package_id: string
+  package_name: string
+  readiness_records: number
+  ready_for_travel: number
+  ready_for_review: number
+  blocked: number
+  requires_follow_up: number
+  completion_rate: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ReadinessCompletionReport {
+  id: string
+  report_type: "readiness_completion"
+  created_at: string
+  updated_at: string
+  generated_at: string
+  filters: ReportFilters
+  rows: ReadinessCompletionReportRow[]
+}
+
+export interface VisaTicketProgressReportRow {
+  id: string
+  trip_id: string
+  trip_code: string
+  trip_name: string
+  package_id: string
+  package_name: string
+  readiness_records: number
+  visa_verified: number
+  ticket_issued: number
+  documents_complete: number
+  visa_verification_rate: number
+  ticket_issue_rate: number
+  visa_and_ticket_complete: number
+  visa_and_ticket_complete_rate: number
+  created_at: string
+  updated_at: string
+}
+
+export interface VisaTicketProgressReport {
+  id: string
+  report_type: "visa_ticket_progress"
+  created_at: string
+  updated_at: string
+  generated_at: string
+  filters: ReportFilters
+  rows: VisaTicketProgressReportRow[]
+}
+
+export interface TripPackagePerformanceReportRow {
+  id: string
+  trip_id: string
+  trip_code: string
+  trip_name: string
+  trip_status: string
+  trip_family_code?: string
+  commercial_month_label?: string
+  package_id: string
+  package_name: string
+  package_status: string
+  capacity: number
+  active_bookings: number
+  confirmed_bookings: number
+  occupancy_rate: number
+  sales_target: number
+  sales_target_attainment_rate: number
+  total_paid_minor_units: number
+  average_payment_progress_percent: number
+  hotel_booking_month?: string
+  airline_booking_month?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface TripPackagePerformanceReport {
+  id: string
+  report_type: "trip_package_performance"
+  created_at: string
+  updated_at: string
+  generated_at: string
+  filters: ReportFilters
+  rows: TripPackagePerformanceReportRow[]
+}
+
+export interface LeadFunnelReportRow {
+  id: string
+  status?: string
+  source?: string
+  total: number
+  consultation?: number
+  guide_request?: number
+  conversion_rate?: number
+  share_rate?: number
+  created_at: string
+  updated_at: string
+}
+
+export interface LeadFunnelTotals {
+  id: string
+  total: number
+  contacted: number
+  qualified: number
+  closed: number
+  created_at: string
+  updated_at: string
+}
+
+export interface LeadFunnelReport {
+  id: string
+  report_type: "lead_funnel"
+  created_at: string
+  updated_at: string
+  generated_at: string
+  filters: ReportFilters
+  totals: LeadFunnelTotals
+  rows: LeadFunnelReportRow[]
+  sources: LeadFunnelReportRow[]
+}
+
 export interface Activity {
   id: string
   type: string
@@ -731,14 +1017,19 @@ export interface RecentActivity {
 // Form data types (for create/update)
 export interface CreateTripData {
   code: string
+  familyCode?: string
+  commercialMonthLabel?: string
   name: string
   slug?: string
   excerpt?: string
   seoTitle?: string
   seoDescription?: string
   cities: string[]
+  status?: TripOperationalStatus
+  salesOpenDate?: string
   startDate: string
   endDate: string
+  defaultNights?: number | null
   coverImage?: string
   featured?: boolean
   visibility: TripVisibility
@@ -747,10 +1038,18 @@ export interface CreateTripData {
 
 export interface CreatePackageData {
   trip: string
+  packageCode?: string
   name: string
+  startDateOverride?: string | null
+  endDateOverride?: string | null
+  nights?: number | null
   priceMinorUnits: number
   currency: string
   capacity: number
+  salesTarget?: number | null
+  hotelBookingMonth?: string
+  airlineBookingMonth?: string
+  status?: PackageOperationalStatus
   visibility: PackageVisibility
 }
 

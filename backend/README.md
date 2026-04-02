@@ -43,13 +43,20 @@ python manage.py check
 pytest
 ```
 
-## Verified on April 2, 2026
+## Test Database Defaults
+
+- Local pytest runs now default to SQLite so backend contract tests do not depend on the Docker-only `db` hostname.
+- Set `TEST_USE_SQLITE=False` if you want pytest to use the configured Postgres connection instead.
+- Set `TEST_SQLITE_NAME` to override the default SQLite test database path.
+
+## Verified on April 3, 2026
 
 - `python manage.py check` passed.
 - The Phase 1 contract suite passed with `76` tests.
+- The combined Phase 3 and Phase 4 backend contract slice passed with `13` tests under the local SQLite pytest default.
 
 ## Notes
 
 - Pilgrim-facing endpoints now require an authenticated user with a pilgrim profile. That includes staff users who also have pilgrim profiles.
 - The seed command now creates passport and visa records through `Document`.
-- Staff self-service password change is not part of the current backend contract. That work is planned for a later phase.
+- Staff self-service password change is part of the Phase 4 backend contract.

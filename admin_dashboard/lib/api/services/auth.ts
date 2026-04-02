@@ -1,7 +1,11 @@
 // lib/api/services/auth.ts
 import { apiClient, type ApiResponse } from "../client"
 import { API_ENDPOINTS } from "../config"
-import type { Account, StaffProfile } from "@/types/models"
+import type {
+  Account,
+  StaffChangePasswordResponse,
+  StaffProfile,
+} from "@/types/models"
 
 /**
  * Credentials for staff login.
@@ -127,14 +131,35 @@ export class AuthService {
   }
 
   /**
-   * Staff self-service password change is scheduled for a later phase.
+   * POST /auth/staff/change-password/
+   * Change the authenticated staff user's password.
    */
   static async changePassword(
     data: ChangePasswordData,
     authToken?: string
-  ): Promise<ApiResponse<void>> {
-    void data
-    void authToken
-    throw { message: "Staff self-service password change is not available until Phase 4.", status: 501 }
+  ): Promise<ApiResponse<StaffChangePasswordResponse>> {
+    const response = await apiClient.post<{
+      message: string
+      changed_at: string
+    }>(
+      API_ENDPOINTS.AUTH.CHANGE_PASSWORD,
+      {
+        current_password: data.currentPassword,
+        new_password: data.newPassword,
+        confirm_password: data.confirmPassword,
+      },
+      undefined,
+      authToken
+    )
+
+    return {
+      ...response,
+      data: response.data
+        ? {
+            message: response.data.message,
+            changedAt: response.data.changed_at,
+          }
+        : undefined,
+    }
   }
 }

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
 import { Textarea } from "@/components/ui/textarea"
 import { useAuth } from "@/hooks/useAuth"
+import { AuthService } from "@/lib/api/services/auth"
 import { PlatformService } from "@/lib/api/services/platform"
 import type { PlatformSettings } from "@/types/models"
 
@@ -38,6 +39,13 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState<PlatformSettings>(EMPTY_SETTINGS)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  })
 
   const loadSettings = useCallback(async () => {
     try {
@@ -91,6 +99,49 @@ export default function SettingsPage() {
     }))
   }
 
+  const updatePasswordField = (field: "currentPassword" | "newPassword" | "confirmPassword", value: string) => {
+    setPasswordForm((current) => ({
+      ...current,
+      [field]: value,
+    }))
+  }
+
+  const handlePasswordChange = async () => {
+    setPasswordError(null)
+
+    if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setPasswordError("All password fields are required.")
+      return
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("New password and confirmation must match.")
+      return
+    }
+
+    try {
+      setPasswordSaving(true)
+      const response = await AuthService.changePassword(passwordForm, accessToken)
+
+      if (response.success) {
+        setPasswordForm({
+          currentPassword: "",
+          newPassword: "",
+          confirmPassword: "",
+        })
+        toast.success(response.data?.message || "Password changed successfully.")
+        return
+      }
+
+      setPasswordError(response.error || "Failed to change password.")
+    } catch (error) {
+      console.error("Error changing password:", error)
+      setPasswordError(error instanceof Error ? error.message : "Failed to change password.")
+    } finally {
+      setPasswordSaving(false)
+    }
+  }
+
   const formatLastSynced = (value?: string | null) => {
     if (!value) {
       return "Not synced yet"
@@ -142,6 +193,64 @@ export default function SettingsPage() {
             <div className="space-y-2">
               <Label htmlFor="role">Staff Role</Label>
               <Input id="role" value={user?.staffProfile?.role || "Unknown"} disabled />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Shield className="h-5 w-5" />
+              <CardTitle>Account Security</CardTitle>
+            </div>
+            <CardDescription>
+              Change your current staff password without leaving the admin workspace.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="current-password">Current Password</Label>
+                <Input
+                  id="current-password"
+                  type="password"
+                  value={passwordForm.currentPassword}
+                  onChange={(event) => updatePasswordField("currentPassword", event.target.value)}
+                  disabled={passwordSaving}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-password">New Password</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  value={passwordForm.newPassword}
+                  onChange={(event) => updatePasswordField("newPassword", event.target.value)}
+                  disabled={passwordSaving}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-password">Confirm Password</Label>
+                <Input
+                  id="confirm-password"
+                  type="password"
+                  value={passwordForm.confirmPassword}
+                  onChange={(event) => updatePasswordField("confirmPassword", event.target.value)}
+                  disabled={passwordSaving}
+                />
+              </div>
+            </div>
+            {passwordError ? (
+              <p className="text-sm text-destructive">{passwordError}</p>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Use your existing staff password as confirmation before the new password is saved.
+              </p>
+            )}
+            <div className="flex justify-end">
+              <Button onClick={handlePasswordChange} disabled={passwordSaving}>
+                {passwordSaving ? "Updating..." : "Change Password"}
+              </Button>
             </div>
           </CardContent>
         </Card>

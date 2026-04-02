@@ -37,14 +37,18 @@ cd apps/mobile
 npm ci
 npm run start
 npm run web
+npm test -- --runInBand tests/phase3 tests/smoke/phase3-device-registration.smoke.test.ts
+npm run test:smoke
 npx eslint lib/api/config.ts lib/api/services/auth.ts lib/api/services/documents.ts app/my-documents.tsx
 ```
 
-## Verified on April 2, 2026
+## Verified on April 3, 2026
 
-- The Phase 1 mobile contract slice linted with `0` errors.
+- The Phase 3 closeout suite passed with `5` suites and `9` tests:
+  - `cd apps/mobile && npm test -- --runInBand tests/phase3 tests/smoke/phase3-device-registration.smoke.test.ts`
+- Covered stale-cache daily-program behavior, cached guide reopen, notification preferences and device sync, document truth with support handoff, feedback eligibility/submission, and iOS/Android device-registration smoke behavior.
 
 ## Known Gaps
 
 - Broader workspace lint and TypeScript debt still exists in booking, profile, theme, and auth screens outside the Phase 1 contract slice.
-- The Phase 3 support foundation still needs full contract, mobile, offline, and Maestro evidence before it can count as a phase exit.
+- The backend Phase 3 contract slice still needs a rerun in an environment where the Postgres service alias `db` is reachable.

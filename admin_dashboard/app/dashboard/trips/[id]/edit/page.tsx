@@ -36,15 +36,33 @@ import { PhotoUpload } from "@/components/shared"
 
 const tripSchema = z.object({
   code: z.string().min(3, "Code must be at least 3 characters").max(20, "Code must be less than 20 characters"),
+  familyCode: z.string().optional(),
+  commercialMonthLabel: z.string().optional(),
   name: z.string().min(3, "Name must be at least 3 characters"),
   slug: z.string().optional(),
   excerpt: z.string().max(280, "Excerpt must be 280 characters or fewer").optional(),
   seoTitle: z.string().max(120, "SEO title must be 120 characters or fewer").optional(),
   seoDescription: z.string().max(180, "SEO description must be 180 characters or fewer").optional(),
   cities: z.string().min(1, "At least one city is required"),
+  status: z.enum([
+    "DRAFT",
+    "PLANNING",
+    "OPEN_FOR_SALES",
+    "PREPARATION",
+    "VISA_IN_PROGRESS",
+    "TICKETING",
+    "READY_TO_TRAVEL",
+    "IN_JOURNEY",
+    "RETURNED",
+    "POST_TRIP",
+    "ARCHIVED",
+    "CANCELLED",
+  ]),
+  salesOpenDate: z.string().optional(),
   startDate: z.string().min(1, "Start date is required"),
   endDate: z.string().min(1, "End date is required"),
-  visibility: z.enum(["PUBLIC", "PRIVATE", "ARCHIVED"]),
+  defaultNights: z.string().optional(),
+  visibility: z.enum(["PUBLIC", "PRIVATE"]),
   featured: z.boolean().default(false),
   coverImage: z.string().optional(),
   operatorNotes: z.string().optional(),
@@ -72,14 +90,19 @@ export default function EditTripPage() {
     resolver: zodResolver(tripSchema),
     defaultValues: {
       code: "",
+      familyCode: "",
+      commercialMonthLabel: "",
       name: "",
       slug: "",
       excerpt: "",
       seoTitle: "",
       seoDescription: "",
       cities: "",
+      status: "DRAFT",
+      salesOpenDate: "",
       startDate: "",
       endDate: "",
+      defaultNights: "",
       visibility: "PUBLIC",
       featured: false,
       coverImage: "",
@@ -111,14 +134,19 @@ export default function EditTripPage() {
 
         form.reset({
           code: trip.code || "",
+          familyCode: trip.familyCode || "",
+          commercialMonthLabel: trip.commercialMonthLabel || "",
           name: trip.name || "",
           slug: trip.slug || "",
           excerpt: trip.excerpt || "",
           seoTitle: trip.seoTitle || "",
           seoDescription: trip.seoDescription || "",
           cities: citiesString,
+          status: trip.status || "DRAFT",
+          salesOpenDate: trip.salesOpenDate || "",
           startDate: trip.startDate || "",
           endDate: trip.endDate || "",
+          defaultNights: trip.defaultNights != null ? String(trip.defaultNights) : "",
           visibility: trip.visibility || "PUBLIC",
           featured: Boolean(trip.featured),
           coverImage: trip.coverImage || "",
@@ -153,6 +181,8 @@ export default function EditTripPage() {
       const tripData = {
         ...data,
         cities: citiesArray,
+        defaultNights: data.defaultNights ? Number(data.defaultNights) : null,
+        salesOpenDate: data.salesOpenDate || undefined,
       }
 
       const response = await TripService.update(tripId, tripData, accessToken)
@@ -261,11 +291,46 @@ export default function EditTripPage() {
                         <SelectContent>
                           <SelectItem value="PUBLIC">Public</SelectItem>
                           <SelectItem value="PRIVATE">Private</SelectItem>
-                          <SelectItem value="ARCHIVED">Archived</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormDescription>
                         Controls who can see this trip
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="familyCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Family Code</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., UMRAH-2027" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Shared code used to group related departures and packages.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="commercialMonthLabel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Commercial Month Label</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g., January Umrah 2027" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Human-readable sales calendar label for the trip family.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -375,6 +440,68 @@ export default function EditTripPage() {
                   </FormItem>
                 )}
               />
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Operational Status *</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="DRAFT">Draft</SelectItem>
+                          <SelectItem value="PLANNING">Planning</SelectItem>
+                          <SelectItem value="OPEN_FOR_SALES">Open for sales</SelectItem>
+                          <SelectItem value="PREPARATION">Preparation</SelectItem>
+                          <SelectItem value="VISA_IN_PROGRESS">Visa in progress</SelectItem>
+                          <SelectItem value="TICKETING">Ticketing</SelectItem>
+                          <SelectItem value="READY_TO_TRAVEL">Ready to travel</SelectItem>
+                          <SelectItem value="IN_JOURNEY">In journey</SelectItem>
+                          <SelectItem value="RETURNED">Returned</SelectItem>
+                          <SelectItem value="POST_TRIP">Post trip</SelectItem>
+                          <SelectItem value="ARCHIVED">Archived</SelectItem>
+                          <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="salesOpenDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Sales Open Date</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="defaultNights"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Default Nights</FormLabel>
+                      <FormControl>
+                        <Input type="number" min="0" placeholder="8" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <FormField

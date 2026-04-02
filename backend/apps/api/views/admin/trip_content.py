@@ -1,6 +1,8 @@
 """
 Admin ViewSets for Trip content: Updates, Guides, Checklists, Contacts, FAQs.
 """
+from django.db import models
+from django.utils import timezone
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -165,7 +167,7 @@ class AdminTripMilestoneViewSet(StaffRoleAccessMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, StaffActionRolePermission]
     serializer_class = AdminTripMilestoneSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['trip', 'package', 'milestone_type', 'status', 'is_public']
+    filterset_fields = ['trip', 'package', 'milestone_type', 'status', 'is_public', 'owner']
     search_fields = ['title', 'notes']
     ordering_fields = ['target_date', 'actual_date', 'order', 'created_at']
     ordering = ['target_date', 'order']
@@ -190,4 +192,35 @@ class AdminTripResourceViewSet(StaffRoleAccessMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         if not user_has_staff_role(self.request.user, self.get_allowed_staff_roles(self.request)):
             return TripResource.objects.none()
-        return TripResource.objects.all().select_related('trip', 'package')
+        queryset = TripResource.objects.all().select_related('trip', 'package')
+        published_filter = self.request.query_params.get('published')
+
+        if published_filter is not None:
+            is_published = published_filter.lower() == 'true'
+            now = timezone.now()
+            if is_published:
+                queryset = queryset.filter(published_at__isnull=False, published_at__lte=now)
+            else:
+                queryset = queryset.filter(models.Q(published_at__isnull=True) | models.Q(published_at__gt=now))
+
+        return queryset
+
+    @action(detail=True, methods=['post'])
+    def publish(self, request, pk=None):
+        """Publish a resource immediately for staff and pilgrim reads."""
+        resource = self.get_object()
+        resource.published_at = timezone.now()
+        resource.save(update_fields=['published_at', 'updated_at'])
+
+        serializer = self.get_serializer(resource)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def unpublish(self, request, pk=None):
+        """Remove a resource from pilgrim-visible reads."""
+        resource = self.get_object()
+        resource.published_at = None
+        resource.save(update_fields=['published_at', 'updated_at'])
+
+        serializer = self.get_serializer(resource)
+        return Response(serializer.data)

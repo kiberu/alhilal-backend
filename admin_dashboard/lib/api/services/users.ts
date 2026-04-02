@@ -21,11 +21,16 @@ export class UserService {
     },
     authToken?: string
   ): Promise<ApiResponse<User[]>> {
-    return apiClient.get<User[]>(
+    const response = await apiClient.get<User[]>(
       API_ENDPOINTS.USERS.LIST,
       params as Record<string, string | number | boolean>,
       authToken
     )
+
+    return {
+      ...response,
+      data: response.data || response.items || [],
+    }
   }
 
   /**
@@ -108,4 +113,3 @@ export class UserService {
     )
   }
 }
-

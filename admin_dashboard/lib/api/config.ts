@@ -17,6 +17,8 @@ export const API_ENDPOINTS = {
     PROFILE: API_BASE_URL + "auth/staff/profile/",
     /** PATCH /auth/staff/profile – Update authenticated staff profile. */
     UPDATE_PROFILE: API_BASE_URL + "auth/staff/profile/",
+    /** POST /auth/staff/change-password/ – Change the current staff user's password. */
+    CHANGE_PASSWORD: API_BASE_URL + "auth/staff/change-password/",
   },
 
   /** Platform Settings */
@@ -216,6 +218,38 @@ export const API_ENDPOINTS = {
     CLEAR_VALIDATION: (id: string) => API_BASE_URL + `readiness/${id}/clear-validation`,
   },
 
+  /** Trip Milestones */
+  MILESTONES: {
+    /** GET /milestones – List milestones with filtering. */
+    LIST: API_BASE_URL + "milestones",
+    /** GET /milestones/:id – Get milestone details. */
+    GET: (id: string) => API_BASE_URL + `milestones/${id}`,
+    /** POST /milestones – Create milestone. */
+    CREATE: API_BASE_URL + "milestones",
+    /** PATCH /milestones/:id – Update milestone. */
+    UPDATE: (id: string) => API_BASE_URL + `milestones/${id}`,
+    /** DELETE /milestones/:id – Delete milestone. */
+    DELETE: (id: string) => API_BASE_URL + `milestones/${id}`,
+  },
+
+  /** Trip Resources */
+  RESOURCES: {
+    /** GET /resources – List resources with filtering. */
+    LIST: API_BASE_URL + "resources",
+    /** GET /resources/:id – Get resource details. */
+    GET: (id: string) => API_BASE_URL + `resources/${id}`,
+    /** POST /resources – Create resource. */
+    CREATE: API_BASE_URL + "resources",
+    /** PATCH /resources/:id – Update resource. */
+    UPDATE: (id: string) => API_BASE_URL + `resources/${id}`,
+    /** DELETE /resources/:id – Delete resource. */
+    DELETE: (id: string) => API_BASE_URL + `resources/${id}`,
+    /** POST /resources/:id/publish – Publish a resource immediately. */
+    PUBLISH: (id: string) => API_BASE_URL + `resources/${id}/publish`,
+    /** POST /resources/:id/unpublish – Remove a resource from pilgrim reads. */
+    UNPUBLISH: (id: string) => API_BASE_URL + `resources/${id}/unpublish`,
+  },
+
   /** Website Leads */
   LEADS: {
     /** GET /leads – List persisted website leads with filters. */
@@ -314,14 +348,30 @@ export const API_ENDPOINTS = {
 
   /** Reports & Analytics */
   REPORTS: {
-    /** GET /reports/trips – Trip analytics. */
-    TRIPS: API_BASE_URL + "reports/trips",
-    /** GET /reports/pilgrims – Pilgrim demographics. */
-    PILGRIMS: API_BASE_URL + "reports/pilgrims",
-    /** GET /reports/visas – Visa statistics. */
-    VISAS: API_BASE_URL + "reports/visas",
-    /** GET /reports/finance – Financial reports. */
-    FINANCE: API_BASE_URL + "reports/finance",
+    /** GET /dashboard/reports/summary/ – Summary report cards. */
+    SUMMARY: API_BASE_URL + "dashboard/reports/summary/",
+    /** GET /dashboard/reports/summary/export/ – CSV export for summary cards. */
+    SUMMARY_EXPORT: API_BASE_URL + "dashboard/reports/summary/export/",
+    /** GET /dashboard/reports/payment-target/ – Payment target attainment. */
+    PAYMENT_TARGET: API_BASE_URL + "dashboard/reports/payment-target/",
+    /** GET /dashboard/reports/payment-target/export/ – CSV export for payment target attainment. */
+    PAYMENT_TARGET_EXPORT: API_BASE_URL + "dashboard/reports/payment-target/export/",
+    /** GET /dashboard/reports/readiness/ – Readiness completion report. */
+    READINESS: API_BASE_URL + "dashboard/reports/readiness/",
+    /** GET /dashboard/reports/readiness/export/ – CSV export for readiness completion. */
+    READINESS_EXPORT: API_BASE_URL + "dashboard/reports/readiness/export/",
+    /** GET /dashboard/reports/visa-ticket-progress/ – Visa and ticket progress report. */
+    VISA_TICKET_PROGRESS: API_BASE_URL + "dashboard/reports/visa-ticket-progress/",
+    /** GET /dashboard/reports/visa-ticket-progress/export/ – CSV export for visa/ticket progress. */
+    VISA_TICKET_PROGRESS_EXPORT: API_BASE_URL + "dashboard/reports/visa-ticket-progress/export/",
+    /** GET /dashboard/reports/trip-package-performance/ – Trip and package performance report. */
+    TRIP_PACKAGE_PERFORMANCE: API_BASE_URL + "dashboard/reports/trip-package-performance/",
+    /** GET /dashboard/reports/trip-package-performance/export/ – CSV export for trip/package performance. */
+    TRIP_PACKAGE_PERFORMANCE_EXPORT: API_BASE_URL + "dashboard/reports/trip-package-performance/export/",
+    /** GET /dashboard/reports/lead-funnel/ – Lead funnel report. */
+    LEAD_FUNNEL: API_BASE_URL + "dashboard/reports/lead-funnel/",
+    /** GET /dashboard/reports/lead-funnel/export/ – CSV export for lead funnel. */
+    LEAD_FUNNEL_EXPORT: API_BASE_URL + "dashboard/reports/lead-funnel/export/",
   },
 
   /** Dashboard */

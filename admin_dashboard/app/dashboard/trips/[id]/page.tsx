@@ -229,6 +229,14 @@ export default function TripDetailsPage() {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => router.push(`/dashboard/trips/${tripId}/operations`)}
+            >
+              <BookOpen className="mr-2 h-4 w-4" />
+              Operations
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => router.push(`/dashboard/trips/${tripId}/edit`)}
             >
               <Edit className="mr-2 h-4 w-4" />
@@ -337,6 +345,33 @@ export default function TripDetailsPage() {
                     <p className="text-sm text-muted-foreground">
                       {formatDate(trip.startDate)} - {formatDate(trip.endDate)}
                     </p>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 rounded-lg border p-4 text-sm md:grid-cols-2">
+                  <div>
+                    <p className="font-medium">Operational Status</p>
+                    <p className="text-muted-foreground">{trip.status || "DRAFT"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Sales Open Date</p>
+                    <p className="text-muted-foreground">{trip.salesOpenDate || "Not set"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Family Code</p>
+                    <p className="text-muted-foreground">{trip.familyCode || "Not set"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Commercial Month</p>
+                    <p className="text-muted-foreground">{trip.commercialMonthLabel || "Not set"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Default Nights</p>
+                    <p className="text-muted-foreground">{trip.defaultNights ?? "Auto"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Milestones / Resources</p>
+                    <p className="text-muted-foreground">{trip.milestones?.length || 0} milestones · {trip.resources?.length || 0} resources</p>
                   </div>
                 </div>
 
@@ -599,4 +634,3 @@ export default function TripDetailsPage() {
     </div>
   )
 }
-

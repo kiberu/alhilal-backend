@@ -27,6 +27,30 @@ npm run test:coverage
 
 # Run tests for CI
 npm run test:ci
+
+# Run the Phase 4 smoke suite
+npm run test:smoke
+```
+
+## Phase 4 Closeout Coverage
+
+The Phase 4 closeout work adds route-level admin verification for the staff workflows that changed during readiness completion.
+
+- Reports page load and export:
+  - `app/dashboard/reports/page.test.tsx`
+- Readiness queue and detail flows:
+  - `app/dashboard/readiness/page.test.tsx`
+  - `app/dashboard/readiness/[id]/page.test.tsx`
+- Staff smoke flows:
+  - `tests/smoke/phase4-settings.smoke.test.tsx`
+  - `tests/smoke/phase4-trip-operations.smoke.test.tsx`
+
+Suggested Phase 4 verification commands:
+
+```bash
+cd apps/admin_dashboard
+npm test -- --runInBand --runTestsByPath app/dashboard/reports/page.test.tsx app/dashboard/readiness/page.test.tsx 'app/dashboard/readiness/[id]/page.test.tsx' tests/smoke/phase4-settings.smoke.test.tsx tests/smoke/phase4-trip-operations.smoke.test.tsx
+npm run test:smoke
 ```
 
 ## Test Structure
@@ -425,4 +449,3 @@ See `.github/workflows/test.yml` for the complete CI configuration.
 - [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
 - [Testing Playground](https://testing-playground.com/)
 - [Common Testing Mistakes](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
-

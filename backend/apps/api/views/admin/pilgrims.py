@@ -180,6 +180,34 @@ class AdminPilgrimReadinessViewSet(StaffRoleAccessMixin, viewsets.ModelViewSet):
             'validated_by',
         )
 
+    def list(self, request, *args, **kwargs):
+        """List readiness records with the admin dashboard's pagination shape."""
+        queryset = self.filter_queryset(self.get_queryset())
+
+        page_size = request.query_params.get('page_size', 10)
+        page = request.query_params.get('page', 1)
+
+        try:
+            page_size = int(page_size)
+            page = int(page)
+        except ValueError:
+            page_size = 10
+            page = 1
+
+        start = (page - 1) * page_size
+        end = start + page_size
+        total_count = queryset.count()
+        total_pages = (total_count + page_size - 1) // page_size
+
+        serializer = self.get_serializer(queryset[start:end], many=True)
+        return Response({
+            'results': serializer.data,
+            'count': total_count,
+            'totalPages': total_pages,
+            'page': page,
+            'pageSize': page_size,
+        })
+
     def perform_create(self, serializer):
         """Create the record and immediately synchronize its computed state."""
         readiness = serializer.save()

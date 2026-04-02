@@ -24,6 +24,7 @@ import {
   CreditCard,
   Plane,
   AlertCircle,
+  ShieldAlert,
   Phone,
   Mail,
   Calendar,
@@ -221,6 +222,14 @@ export default function PilgrimDetailsPage() {
           </div>
 
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => router.push(`/dashboard/readiness?pilgrim=${pilgrimId}`)}
+            >
+              <ShieldAlert className="mr-2 h-4 w-4" />
+              Open Readiness
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -553,4 +562,3 @@ export default function PilgrimDetailsPage() {
     </div>
   )
 }
-

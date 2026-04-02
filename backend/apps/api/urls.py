@@ -14,6 +14,20 @@ from .views.content import DuaListView
 from .views.dashboard import (
     DashboardStatsView, DashboardActivityView, DashboardUpcomingTripsView
 )
+from .views.reports import (
+    LeadFunnelReportExportView,
+    LeadFunnelReportView,
+    PaymentTargetReportExportView,
+    PaymentTargetReportView,
+    ReadinessCompletionReportExportView,
+    ReadinessCompletionReportView,
+    SummaryReportExportView,
+    SummaryReportView,
+    TripPackagePerformanceReportExportView,
+    TripPackagePerformanceReportView,
+    VisaTicketProgressReportExportView,
+    VisaTicketProgressReportView,
+)
 from .views.admin import (
     AdminTripViewSet, AdminBookingViewSet, AdminPilgrimViewSet, AdminPilgrimReadinessViewSet, AdminTripFeedbackViewSet, AdminWebsiteLeadViewSet,
     AdminDuaViewSet,
@@ -77,6 +91,18 @@ urlpatterns = [
     path('dashboard/stats/', DashboardStatsView.as_view(), name='dashboard-stats'),
     path('dashboard/activity/', DashboardActivityView.as_view(), name='dashboard-activity'),
     path('dashboard/upcoming-trips/', DashboardUpcomingTripsView.as_view(), name='dashboard-upcoming-trips'),
+    path('dashboard/reports/summary/', SummaryReportView.as_view(), name='dashboard-report-summary'),
+    path('dashboard/reports/summary/export/', SummaryReportExportView.as_view(), name='dashboard-report-summary-export'),
+    path('dashboard/reports/payment-target/', PaymentTargetReportView.as_view(), name='dashboard-report-payment-target'),
+    path('dashboard/reports/payment-target/export/', PaymentTargetReportExportView.as_view(), name='dashboard-report-payment-target-export'),
+    path('dashboard/reports/readiness/', ReadinessCompletionReportView.as_view(), name='dashboard-report-readiness'),
+    path('dashboard/reports/readiness/export/', ReadinessCompletionReportExportView.as_view(), name='dashboard-report-readiness-export'),
+    path('dashboard/reports/visa-ticket-progress/', VisaTicketProgressReportView.as_view(), name='dashboard-report-visa-ticket-progress'),
+    path('dashboard/reports/visa-ticket-progress/export/', VisaTicketProgressReportExportView.as_view(), name='dashboard-report-visa-ticket-progress-export'),
+    path('dashboard/reports/trip-package-performance/', TripPackagePerformanceReportView.as_view(), name='dashboard-report-trip-package-performance'),
+    path('dashboard/reports/trip-package-performance/export/', TripPackagePerformanceReportExportView.as_view(), name='dashboard-report-trip-package-performance-export'),
+    path('dashboard/reports/lead-funnel/', LeadFunnelReportView.as_view(), name='dashboard-report-lead-funnel'),
+    path('dashboard/reports/lead-funnel/export/', LeadFunnelReportExportView.as_view(), name='dashboard-report-lead-funnel-export'),
     
     # Profile endpoints (pilgrim-facing)
     path('me/', MeView.as_view(), name='me'),

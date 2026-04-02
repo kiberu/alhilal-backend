@@ -10,7 +10,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:ci": "jest --ci --coverage --maxWorkers=2"
+    "test:ci": "jest --ci --coverage --maxWorkers=2",
+    "test:smoke": "jest --runInBand --runTestsByPath tests/smoke/phase4-settings.smoke.test.tsx tests/smoke/phase4-trip-operations.smoke.test.tsx"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

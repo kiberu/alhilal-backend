@@ -1,7 +1,7 @@
 from datetime import timedelta
 
 from django.db import models
-from django.utils import timezone
+from django.utils import timezone as django_timezone
 from uuid import uuid4
 from simple_history.models import HistoricalRecords
 
@@ -100,14 +100,14 @@ class Document(models.Model):
     @property
     def is_expired(self) -> bool:
         """Return whether the document has already expired."""
-        return bool(self.expiry_date and self.expiry_date < timezone.now().date())
+        return bool(self.expiry_date and self.expiry_date < django_timezone.now().date())
 
     @property
     def is_expiring_soon(self) -> bool:
         """Return whether the document expires within the support warning window."""
         if not self.expiry_date:
             return False
-        return self.expiry_date <= timezone.now().date() + timedelta(days=self.EXPIRING_SOON_DAYS)
+        return self.expiry_date <= django_timezone.now().date() + timedelta(days=self.EXPIRING_SOON_DAYS)
 
     @property
     def is_missing_for_travel(self) -> bool:
@@ -141,7 +141,7 @@ class Document(models.Model):
             )
 
         if self.status != 'PENDING' and (self.reviewed_at is None or previous_status != self.status):
-            self.reviewed_at = timezone.now()
+            self.reviewed_at = django_timezone.now()
 
         super().save(*args, **kwargs)
         self.sync_readiness_records()
@@ -518,7 +518,7 @@ class DeviceInstallation(models.Model):
     capability_flags = models.JSONField(default=dict, blank=True)
     preference_state = models.JSONField(default=dict, blank=True)
     provider_token_fields = models.JSONField(default=dict, blank=True)
-    last_seen_at = models.DateTimeField(default=timezone.now)
+    last_seen_at = models.DateTimeField(default=django_timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
