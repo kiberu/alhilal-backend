@@ -2,7 +2,8 @@ from django.contrib import admin
 from .models import (
     Trip, TripPackage, PackageFlight, PackageHotel,
     ItineraryItem, TripUpdate, TripGuideSection,
-    ChecklistItem, EmergencyContact, TripFAQ
+    ChecklistItem, EmergencyContact, TripFAQ,
+    TripMilestone, TripResource
 )
 from .admin_actions import (
     duplicate_trip, export_trip_roster,
@@ -27,7 +28,7 @@ class PackageHotelInline(admin.TabularInline):
 class TripPackageInline(admin.TabularInline):
     model = TripPackage
     extra = 0
-    fields = ['name', 'capacity', 'price_minor_units', 'currency', 'visibility']
+    fields = ['package_code', 'name', 'status', 'capacity', 'sales_target', 'price_minor_units', 'currency', 'visibility']
 
 
 class ItineraryItemInline(admin.StackedInline):
@@ -66,13 +67,25 @@ class TripFAQInline(admin.StackedInline):
     fields = ['order', 'question', 'answer']
 
 
+class TripMilestoneInline(admin.TabularInline):
+    model = TripMilestone
+    extra = 0
+    fields = ['milestone_type', 'title', 'status', 'target_date', 'package', 'is_public']
+
+
+class TripResourceInline(admin.TabularInline):
+    model = TripResource
+    extra = 0
+    fields = ['resource_type', 'title', 'viewer_mode', 'is_pinned', 'published_at', 'package']
+
+
 @admin.register(Trip)
 class TripAdmin(admin.ModelAdmin):
     """Admin for Trip model."""
     
-    list_display = ['code', 'name', 'start_date', 'end_date', 'visibility', 'featured', 'created_at']
-    list_filter = ['visibility', 'featured', 'start_date']
-    search_fields = ['code', 'name']
+    list_display = ['code', 'family_code', 'commercial_month_label', 'name', 'status', 'start_date', 'end_date', 'visibility', 'featured', 'created_at']
+    list_filter = ['visibility', 'featured', 'status', 'start_date']
+    search_fields = ['code', 'family_code', 'commercial_month_label', 'name']
     readonly_fields = ['created_at', 'updated_at']
     actions = [
         duplicate_trip,
@@ -89,11 +102,16 @@ class TripAdmin(admin.ModelAdmin):
         ChecklistItemInline,
         EmergencyContactInline,
         TripFAQInline,
+        TripMilestoneInline,
+        TripResourceInline,
     ]
     
     fieldsets = (
         ('Basic Information', {
-            'fields': ('code', 'name', 'cities', 'visibility', 'featured', 'cover_image')
+            'fields': ('code', 'family_code', 'commercial_month_label', 'name', 'cities', 'visibility', 'featured', 'cover_image')
+        }),
+        ('Commercial Status', {
+            'fields': ('status', 'sales_open_date', 'default_nights')
         }),
         ('Dates', {
             'fields': ('start_date', 'end_date')
@@ -113,12 +131,24 @@ class TripAdmin(admin.ModelAdmin):
 class TripPackageAdmin(admin.ModelAdmin):
     """Admin for TripPackage model."""
     
-    list_display = ['trip', 'name', 'capacity', 'price_minor_units', 'currency', 'visibility']
-    list_filter = ['visibility', 'trip']
-    search_fields = ['name', 'trip__code']
+    list_display = ['trip', 'package_code', 'name', 'status', 'effective_start_date_display', 'effective_end_date_display', 'effective_nights_display', 'capacity', 'sales_target', 'price_minor_units', 'currency', 'visibility']
+    list_filter = ['visibility', 'status', 'trip']
+    search_fields = ['package_code', 'name', 'trip__code']
     readonly_fields = ['created_at', 'updated_at']
     
     inlines = [PackageFlightInline, PackageHotelInline]
+
+    def effective_start_date_display(self, obj):
+        return obj.effective_start_date
+    effective_start_date_display.short_description = 'Start Date'
+
+    def effective_end_date_display(self, obj):
+        return obj.effective_end_date
+    effective_end_date_display.short_description = 'End Date'
+
+    def effective_nights_display(self, obj):
+        return obj.effective_nights
+    effective_nights_display.short_description = 'Nights'
 
 
 @admin.register(PackageFlight)
@@ -228,3 +258,22 @@ class TripFAQAdmin(admin.ModelAdmin):
         return obj.question[:100] + '...' if len(obj.question) > 100 else obj.question
     question_preview.short_description = 'Question'
 
+
+@admin.register(TripMilestone)
+class TripMilestoneAdmin(admin.ModelAdmin):
+    """Admin for TripMilestone model."""
+
+    list_display = ['trip', 'package', 'milestone_type', 'title', 'status', 'target_date', 'actual_date', 'is_public']
+    list_filter = ['status', 'milestone_type', 'trip', 'is_public']
+    search_fields = ['title', 'notes', 'trip__code', 'package__name']
+    readonly_fields = ['created_at', 'updated_at']
+
+
+@admin.register(TripResource)
+class TripResourceAdmin(admin.ModelAdmin):
+    """Admin for TripResource model."""
+
+    list_display = ['trip', 'package', 'resource_type', 'title', 'viewer_mode', 'is_pinned', 'published_at']
+    list_filter = ['resource_type', 'viewer_mode', 'is_pinned', 'trip']
+    search_fields = ['title', 'description', 'trip__code', 'package__name']
+    readonly_fields = ['created_at', 'updated_at']

@@ -2,12 +2,12 @@ import '@testing-library/jest-dom'
 
 // Mock next/navigation
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({
+  useRouter: jest.fn(() => ({
     push: jest.fn(),
     replace: jest.fn(),
     prefetch: jest.fn(),
     back: jest.fn(),
-  }),
+  })),
   usePathname: () => '/',
   useSearchParams: () => new URLSearchParams(),
 }))
@@ -47,10 +47,16 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 })
 
+if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout !== 'function') {
+  Object.defineProperty(AbortSignal, 'timeout', {
+    configurable: true,
+    value: jest.fn(() => new AbortController().signal),
+  })
+}
+
 // Suppress console errors in tests
 global.console = {
   ...console,
   error: jest.fn(),
   warn: jest.fn(),
 }
-

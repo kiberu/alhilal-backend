@@ -9,8 +9,11 @@ from django.conf import settings
 from datetime import timedelta
 import random
 import logging
+import re
 
 from apps.accounts.models import Account, OTPCode
+from apps.common.models import PlatformSettings
+from apps.common.permissions import IsStaff
 from .serializers import StaffLoginSerializer
 from .tokens import RoleBasedRefreshToken
 
@@ -18,9 +21,25 @@ User = get_user_model()
 logger = logging.getLogger(__name__)
 
 
+def send_sms_message(phone, message):
+    """Send an SMS using Africa's Talking."""
+    import africastalking
+
+    sms = africastalking.SMS
+    send_params = {
+        'message': message,
+        'recipients': [phone],
+    }
+    if settings.AFRICASTALKING_SENDER_ID:
+        send_params['sender_id'] = settings.AFRICASTALKING_SENDER_ID
+
+    return sms.send(**send_params)
+
+
 class RequestOTPView(APIView):
     """Request OTP for pilgrim authentication (NO OTP FOR STAFF/ADMINS)"""
     permission_classes = [AllowAny]
+    phone_pattern = re.compile(r'^\+\d{9,15}$')
 
     def post(self, request):
         phone = request.data.get('phone')
@@ -30,7 +49,14 @@ class RequestOTPView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        if not self.phone_pattern.match(phone):
+            return Response(
+                {'error': 'Phone number must include a valid country code.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         try:
+            platform_settings = PlatformSettings.get_solo()
             # Check for recent OTP requests (rate limiting)
             recent_otp = OTPCode.objects.filter(
                 phone=phone,
@@ -73,20 +99,8 @@ class RequestOTPView(APIView):
             
             if settings.SMS_ENABLED:
                 try:
-                    import africastalking
-                    sms = africastalking.SMS
-                    
                     message = f"Your Al-Hilal verification code is: {otp_code}. Valid for 10 minutes. Do not share this code."
-                    
-                    # Only include sender_id if it's configured
-                    send_params = {
-                        'message': message,
-                        'recipients': [phone]
-                    }
-                    if settings.AFRICASTALKING_SENDER_ID:
-                        send_params['sender_id'] = settings.AFRICASTALKING_SENDER_ID
-                    
-                    response = sms.send(**send_params)
+                    response = send_sms_message(phone, message)
                     
                     # Log the response
                     logger.info(f"SMS sent to {phone}: {response}")
@@ -110,7 +124,14 @@ class RequestOTPView(APIView):
             response_data = {
                 'sent': True,
                 'expires_in': 600,  # 10 minutes in seconds
+                'retry_after_seconds': 60,
+                'delivery_channel': 'SMS',
                 'message': 'OTP sent successfully' if sms_sent else 'OTP generated. Check console in development mode.',
+                'fallback': {
+                    'supportPhone': platform_settings.otp_support_phone,
+                    'supportWhatsApp': platform_settings.otp_support_whatsapp,
+                    'message': platform_settings.otp_fallback_message,
+                },
             }
             
             # In development mode, include OTP in response (REMOVE IN PRODUCTION)
@@ -209,7 +230,7 @@ class VerifyOTPView(APIView):
                         logger.error(f"Failed to create pilgrim profile for existing user {phone}: {e}")
                         raise
 
-            # Generate tokens with role-based expiration (pilgrim tokens never expire)
+            # Generate tokens with role-based expiration and silent refresh support.
             refresh = RoleBasedRefreshToken.for_user(user)
 
             # Get profile data
@@ -221,6 +242,8 @@ class VerifyOTPView(APIView):
             return Response({
                 'access': str(refresh.access_token),
                 'refresh': str(refresh),
+                'access_expires_at': refresh.access_token.payload['exp'],
+                'refresh_expires_at': refresh.payload['exp'],
                 'user': {
                     'id': str(user.id),
                     'phone': user.phone,
@@ -270,10 +293,10 @@ class StaffLoginView(APIView):
 
         # Get staff profile if exists
         staff_profile = None
-        if hasattr(user, 'staffprofile'):
+        if hasattr(user, 'staff_profile'):
             staff_profile = {
-                'id': str(user.staffprofile.id),
-                'role': user.staffprofile.role,
+                'id': str(user.staff_profile.id),
+                'role': user.staff_profile.role,
             }
 
         return Response({
@@ -289,27 +312,22 @@ class StaffLoginView(APIView):
             'accessToken': str(refresh.access_token),
             'refreshToken': str(refresh),
             'expiresAt': refresh.access_token.payload['exp'],
+            'refreshExpiresAt': refresh.payload['exp'],
         })
 
 
 class StaffProfileView(APIView):
     """Get authenticated staff profile"""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, IsStaff]
 
     def get(self, request):
         user = request.user
 
-        if not user.is_staff:
-            return Response(
-                {'error': 'Only staff members can access this endpoint'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
         staff_profile = None
-        if hasattr(user, 'staffprofile'):
+        if hasattr(user, 'staff_profile'):
             staff_profile = {
-                'id': str(user.staffprofile.id),
-                'role': user.staffprofile.role,
+                'id': str(user.staff_profile.id),
+                'role': user.staff_profile.role,
             }
 
         return Response({

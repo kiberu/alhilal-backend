@@ -81,6 +81,7 @@ class Booking(models.Model):
             logger.warning(f"Package {self.package.id} does not have a currency set. Booking {self.reference_number} may have currency issues.")
         
         super().save(*args, **kwargs)
+        self.sync_readiness_state()
     
     def __str__(self):
         return f"{self.reference_number} - {self.pilgrim.user.name} - {self.package.trip.code}"
@@ -88,16 +89,16 @@ class Booking(models.Model):
     def clean(self):
         """Validate booking requirements."""
         from django.core.exceptions import ValidationError
-        from django.utils import timezone
         
         if self.status == 'BOOKED':
             # Check passport exists and is valid
-            passports = self.pilgrim.passports.all()
-            if not passports.exists():
+            passport = self.pilgrim.get_passport_document()
+            if not passport:
                 raise ValidationError("Pilgrim must have a passport before booking")
             
-            passport = passports.first()
-            trip_end = self.package.trip.end_date
+            trip_end = self.package.effective_end_date
+            if not passport.expiry_date:
+                raise ValidationError("Pilgrim passport must include an expiry date before booking")
             if passport.expiry_date < trip_end:
                 raise ValidationError(f"Passport expires before trip ends ({trip_end})")
             
@@ -134,6 +135,20 @@ class Booking(models.Model):
             self.status = 'BOOKED'
         
         self.save()
+
+    def sync_readiness_state(self):
+        """Create or refresh the booking's readiness record."""
+        from apps.pilgrims.models import PilgrimReadiness
+
+        readiness, _ = PilgrimReadiness.objects.get_or_create(
+            booking=self,
+            defaults={
+                'pilgrim': self.pilgrim,
+                'trip': self.package.trip,
+                'package': self.package,
+            }
+        )
+        readiness.refresh_status(save=True)
 
 
 class Payment(models.Model):

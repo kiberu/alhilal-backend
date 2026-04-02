@@ -3,6 +3,9 @@ export { AuthService } from "./auth"
 export { TripService } from "./trips"
 export { BookingService } from "./bookings"
 export { PilgrimService } from "./pilgrims"
+export { ReadinessService } from "./readiness"
+export { LeadService } from "./leads"
+export { FeedbackService } from "./feedback"
 export { DashboardService } from "./dashboard"
 export { PassportService } from "./passports"
 export { VisaService } from "./visas"
@@ -11,6 +14,7 @@ export { PackageService } from "./packages"
 export { UserService } from "./users"
 export { PaymentService } from "./payments"
 export { HotelService, FlightService } from "./hotels-flights"
+export { PlatformService } from "./platform"
 
 // Export types
 export type {
@@ -27,4 +31,3 @@ export type {
   CreatePackageFlightData,
   UpdatePackageFlightData,
 } from "./hotels-flights"
-

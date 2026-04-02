@@ -3,13 +3,28 @@ import { API_ENDPOINTS } from '../config';
 
 export interface Document {
   id: string;
-  document_type: 'PASSPORT' | 'VISA' | 'VACCINATION' | 'OTHER';
-  document_number?: string;
+  document_type: 'PASSPORT' | 'VISA' | 'VACCINATION' | 'ID_CARD' | 'BIRTH_CERTIFICATE' | 'TRAVEL_PERMIT' | 'OTHER';
+  document_number?: string | null;
   title: string;
-  file_url: string;
-  uploaded_at: string;
-  expiry_date?: string;
-  status?: 'PENDING' | 'VERIFIED' | 'REJECTED';
+  issuing_country?: string | null;
+  file_url: string | null;
+  file_format?: string | null;
+  issue_date?: string | null;
+  expiry_date?: string | null;
+  status: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'MISSING';
+  verification_status: 'PENDING' | 'VERIFIED' | 'REJECTED' | 'MISSING';
+  required_for_travel: boolean;
+  missing_item: boolean;
+  is_expired: boolean;
+  is_expiring_soon: boolean;
+  support_next_step: string;
+  trip?: string | null;
+  trip_name?: string | null;
+  booking_reference?: string | null;
+  last_reviewed_at?: string | null;
+  last_changed_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface DocumentUploadData {
@@ -24,7 +39,7 @@ export class DocumentsService {
   /**
    * Get all documents for the authenticated user
    */
-  static getMyDocuments(token: string): Promise<ApiResponse<Document[]>> {
+  static async getMyDocuments(token: string): Promise<ApiResponse<Document[]>> {
     return apiClient.get<Document[]>(API_ENDPOINTS.DOCUMENTS.MY_DOCUMENTS, undefined, token);
   }
 
@@ -32,25 +47,16 @@ export class DocumentsService {
    * Upload a new document
    */
   static uploadDocument(data: DocumentUploadData, token: string): Promise<ApiResponse<Document>> {
-    const formData = new FormData();
-    formData.append('document_type', data.document_type);
-    formData.append('title', data.title);
-    if (data.document_number) formData.append('document_number', data.document_number);
-    if (data.expiry_date) formData.append('expiry_date', data.expiry_date);
-    formData.append('file', data.file);
-
-    return apiClient.post<Document>(API_ENDPOINTS.DOCUMENTS.UPLOAD, formData, undefined, token);
+    void data;
+    void token;
+    throw new Error('Document uploads are currently handled by Al Hilal support while the pilgrim upload API is being prepared.');
   }
 
   /**
    * Get details of a specific document
    */
-  static getDocumentDetail(documentId: string, token: string): Promise<ApiResponse<Document>> {
-    return apiClient.get<Document>(
-      API_ENDPOINTS.DOCUMENTS.DETAIL(documentId),
-      undefined,
-      token
-    );
+  static async getDocumentDetail(documentId: string, token: string): Promise<ApiResponse<Document>> {
+    return apiClient.get<Document>(API_ENDPOINTS.DOCUMENTS.DETAIL(documentId), undefined, token);
   }
 
   /**
@@ -64,4 +70,3 @@ export class DocumentsService {
     );
   }
 }
-

@@ -3,6 +3,30 @@ Custom permission classes for the API.
 """
 from rest_framework import permissions
 
+STAFF_READ_ROLES = ('ADMIN', 'AGENT', 'AUDITOR')
+STAFF_WRITE_ROLES = ('ADMIN', 'AGENT')
+ADMIN_ONLY_ROLES = ('ADMIN',)
+
+
+def get_staff_role(user):
+    """Return the staff role for an authenticated staff user."""
+    return getattr(getattr(user, 'staff_profile', None), 'role', None)
+
+
+def user_has_staff_role(user, allowed_roles):
+    """Check whether a user has one of the allowed staff roles."""
+    if not user or not user.is_authenticated:
+        return False
+
+    if user.is_superuser:
+        return True
+
+    if user.role != 'STAFF' or not user.is_staff:
+        return False
+
+    staff_role = get_staff_role(user)
+    return bool(staff_role and staff_role in allowed_roles)
+
 
 class IsPilgrim(permissions.BasePermission):
     """
@@ -20,6 +44,24 @@ class IsPilgrim(permissions.BasePermission):
         return request.user.role == 'PILGRIM'
 
 
+class HasPilgrimProfile(permissions.BasePermission):
+    """
+    Permission class for pilgrim-facing endpoints.
+
+    Grants access to any authenticated user who has an attached pilgrim profile,
+    including staff accounts that are also represented as pilgrims.
+    """
+
+    message = "This endpoint requires a pilgrim profile."
+
+    def has_permission(self, request, view):
+        """Check whether the authenticated user has a pilgrim profile."""
+        if not request.user or not request.user.is_authenticated:
+            return False
+
+        return hasattr(request.user, 'pilgrim_profile')
+
+
 class IsStaff(permissions.BasePermission):
     """
     Permission class that allows access only to staff members.
@@ -30,10 +72,7 @@ class IsStaff(permissions.BasePermission):
     
     def has_permission(self, request, view):
         """Check if user is authenticated and is staff."""
-        if not request.user or not request.user.is_authenticated:
-            return False
-        
-        return request.user.role == 'STAFF' and request.user.is_staff
+        return user_has_staff_role(request.user, STAFF_READ_ROLES)
 
 
 class IsAdmin(permissions.BasePermission):
@@ -45,16 +84,50 @@ class IsAdmin(permissions.BasePermission):
     
     def has_permission(self, request, view):
         """Check if user is authenticated and is admin."""
-        if not request.user or not request.user.is_authenticated:
-            return False
-        
-        if request.user.role != 'STAFF' or not request.user.is_staff:
-            return False
-        
-        try:
-            return request.user.staff_profile.role == 'ADMIN'
-        except AttributeError:
-            return False
+        return user_has_staff_role(request.user, ADMIN_ONLY_ROLES)
+
+
+class StaffActionRolePermission(permissions.BasePermission):
+    """Permission class that enforces explicit staff-role maps on views."""
+
+    message = "You do not have permission to perform this action."
+
+    def has_permission(self, request, view):
+        """Check whether the authenticated staff role is allowed on this action."""
+        allowed_roles = None
+
+        if hasattr(view, 'get_allowed_staff_roles'):
+            allowed_roles = view.get_allowed_staff_roles(request)
+        elif hasattr(view, 'allowed_staff_roles'):
+            allowed_roles = getattr(view, 'allowed_staff_roles')
+
+        if allowed_roles is None:
+            allowed_roles = STAFF_READ_ROLES
+
+        return user_has_staff_role(request.user, allowed_roles)
+
+
+class StaffRoleAccessMixin:
+    """Mixin that provides explicit role maps for APIViews and ViewSets."""
+
+    read_staff_roles = STAFF_READ_ROLES
+    write_staff_roles = STAFF_WRITE_ROLES
+    action_staff_roles = {}
+    method_staff_roles = {}
+
+    def get_allowed_staff_roles(self, request):
+        """Resolve allowed staff roles for the current request."""
+        action = getattr(self, 'action', None)
+        if action and action in self.action_staff_roles:
+            return self.action_staff_roles[action]
+
+        if request.method in self.method_staff_roles:
+            return self.method_staff_roles[request.method]
+
+        if request.method in permissions.SAFE_METHODS:
+            return self.read_staff_roles
+
+        return self.write_staff_roles
 
 
 class IsOwnData(permissions.BasePermission):
@@ -103,4 +176,3 @@ class ReadOnly(permissions.BasePermission):
     def has_permission(self, request, view):
         """Allow only safe methods."""
         return request.method in permissions.SAFE_METHODS
-

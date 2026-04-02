@@ -5,7 +5,7 @@ from rest_framework import generics
 from rest_framework.permissions import IsAuthenticated
 
 from apps.content.models import Dua
-from apps.common.permissions import IsPilgrim
+from apps.common.permissions import HasPilgrimProfile
 from apps.api.serializers.trips import DuaSerializer
 
 
@@ -19,7 +19,7 @@ class DuaListView(generics.ListAPIView):
     - category: Filter by category (optional)
     """
     
-    permission_classes = [IsAuthenticated, IsPilgrim]
+    permission_classes = [IsAuthenticated, HasPilgrimProfile]
     serializer_class = DuaSerializer
     
     def get_queryset(self):
@@ -32,4 +32,3 @@ class DuaListView(generics.ListAPIView):
             queryset = queryset.filter(category=category)
         
         return queryset.order_by('category', 'id')
-

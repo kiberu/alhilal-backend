@@ -10,14 +10,21 @@ class DocumentSerializer(serializers.ModelSerializer):
     pilgrim_name = serializers.CharField(source='pilgrim.user.name', read_only=True)
     trip_name = serializers.CharField(source='trip.name', read_only=True, allow_null=True)
     booking_reference = serializers.CharField(source='booking.reference_number', read_only=True, allow_null=True)
+    required_for_travel = serializers.BooleanField(source='is_required_for_travel', read_only=True)
+    missing_item = serializers.BooleanField(source='is_missing_for_travel', read_only=True)
+    is_expired = serializers.BooleanField(read_only=True)
+    is_expiring_soon = serializers.BooleanField(read_only=True)
+    support_next_step = serializers.SerializerMethodField()
     
     class Meta:
         model = Document
         fields = [
             'id', 'pilgrim', 'pilgrim_name', 'document_type', 'title', 'document_number',
             'issuing_country', 'file_public_id', 'file_format', 'file_url', 'issue_date', 'expiry_date',
-            'status', 'rejection_reason', 'notes', 'trip', 'trip_name', 'booking', 
-            'booking_reference', 'uploaded_by', 'created_at', 'updated_at'
+            'status', 'rejection_reason', 'notes', 'trip', 'trip_name', 'booking',
+            'booking_reference', 'uploaded_by', 'required_for_travel', 'missing_item',
+            'is_expired', 'is_expiring_soon', 'support_next_step', 'reviewed_at',
+            'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'pilgrim_name', 'trip_name', 'booking_reference', 'created_at', 'updated_at']
     
@@ -27,19 +34,34 @@ class DocumentSerializer(serializers.ModelSerializer):
             return signed_delivery(obj.file_public_id, expires_in=600, file_format=obj.file_format)
         return None
 
+    def get_support_next_step(self, obj):
+        """Return the support-guided next step for this document."""
+        return obj.get_support_next_step()
+
 
 class PilgrimDocumentSerializer(serializers.ModelSerializer):
     """Simplified serializer for pilgrims to view their own documents via mobile app."""
     
     file_url = serializers.SerializerMethodField()
     trip_name = serializers.CharField(source='trip.name', read_only=True, allow_null=True)
+    booking_reference = serializers.CharField(source='booking.reference_number', read_only=True, allow_null=True)
+    verification_status = serializers.CharField(source='status', read_only=True)
+    required_for_travel = serializers.BooleanField(source='is_required_for_travel', read_only=True)
+    missing_item = serializers.BooleanField(source='is_missing_for_travel', read_only=True)
+    is_expired = serializers.BooleanField(read_only=True)
+    is_expiring_soon = serializers.BooleanField(read_only=True)
+    support_next_step = serializers.SerializerMethodField()
+    last_reviewed_at = serializers.DateTimeField(source='reviewed_at', read_only=True, allow_null=True)
+    last_changed_at = serializers.DateTimeField(source='updated_at', read_only=True)
     
     class Meta:
         model = Document
         fields = [
             'id', 'document_type', 'title', 'document_number', 'issuing_country',
-            'file_url', 'file_format', 'issue_date', 'expiry_date', 'status', 'trip', 'trip_name',
-            'created_at', 'updated_at'
+            'file_url', 'file_format', 'issue_date', 'expiry_date', 'status', 'verification_status',
+            'required_for_travel', 'missing_item', 'is_expired', 'is_expiring_soon',
+            'support_next_step', 'trip', 'trip_name', 'booking_reference', 'last_reviewed_at',
+            'last_changed_at', 'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'trip_name', 'file_format', 'created_at', 'updated_at']
     
@@ -48,6 +70,36 @@ class PilgrimDocumentSerializer(serializers.ModelSerializer):
         if obj.file_public_id:
             return signed_delivery(obj.file_public_id, expires_in=600, file_format=obj.file_format)
         return None
+
+    def get_support_next_step(self, obj):
+        """Return the support-guided next step for this document."""
+        return obj.get_support_next_step()
+
+
+class DocumentCenterSerializer(serializers.Serializer):
+    """Read-only document-center serializer for mobile truth surfaces."""
+
+    id = serializers.CharField()
+    document_type = serializers.CharField()
+    title = serializers.CharField()
+    document_number = serializers.CharField(allow_blank=True, allow_null=True)
+    issuing_country = serializers.CharField(allow_blank=True, allow_null=True)
+    file_url = serializers.URLField(allow_null=True)
+    file_format = serializers.CharField(allow_blank=True, allow_null=True)
+    issue_date = serializers.DateField(allow_null=True)
+    expiry_date = serializers.DateField(allow_null=True)
+    status = serializers.CharField()
+    verification_status = serializers.CharField()
+    required_for_travel = serializers.BooleanField()
+    missing_item = serializers.BooleanField()
+    is_expired = serializers.BooleanField()
+    is_expiring_soon = serializers.BooleanField()
+    support_next_step = serializers.CharField()
+    trip = serializers.CharField(allow_blank=True, allow_null=True)
+    trip_name = serializers.CharField(allow_blank=True, allow_null=True)
+    booking_reference = serializers.CharField(allow_blank=True, allow_null=True)
+    last_reviewed_at = serializers.DateTimeField(allow_null=True)
+    last_changed_at = serializers.DateTimeField(allow_null=True)
 
 
 class DocumentCreateSerializer(serializers.ModelSerializer):
@@ -93,4 +145,3 @@ class DocumentUpdateSerializer(serializers.ModelSerializer):
                     'rejection_reason': 'Rejection reason is required when rejecting a document.'
                 })
         return data
-

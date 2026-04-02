@@ -1,4 +1,5 @@
 import { API_BASE_URL, REQUEST_TIMEOUT, MAX_RETRIES, RETRY_DELAY } from './config';
+import { AuthStorage } from '@/lib/storage';
 
 export interface ApiResponse<T = any> {
   success: boolean;
@@ -6,6 +7,7 @@ export interface ApiResponse<T = any> {
   message?: string;
   error?: string;
   errors?: Record<string, string[]>;
+  status?: number;
 }
 
 export class ApiClient {
@@ -13,6 +15,7 @@ export class ApiClient {
   private timeout = REQUEST_TIMEOUT;
   private maxRetries = MAX_RETRIES;
   private retryDelay = RETRY_DELAY;
+  private refreshPromise: Promise<string | null> | null = null;
 
   private buildURL(endpoint: string, params?: Record<string, any>): string {
     const url = new URL(endpoint, this.baseURL);
@@ -32,14 +35,16 @@ export class ApiClient {
     data?: any, 
     params?: any, 
     retry = 0, 
-    token?: string
+    token?: string,
+    allowAuthRetry = true,
   ): Promise<ApiResponse<T>> {
     try {
       const url = this.buildURL(endpoint, params);
       const isFormData = data instanceof FormData;
       const headers: HeadersInit = {};
       if (!isFormData) headers['Content-Type'] = 'application/json';
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const authToken = token ?? await AuthStorage.getAccessToken();
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
 
       // React Native may not support AbortSignal.timeout; use AbortController if available
       let res: Response;
@@ -68,32 +73,79 @@ export class ApiClient {
       const contentType = res.headers.get('content-type');
       const payload = contentType && contentType.includes('application/json') ? await res.json() : await res.text();
 
+      if (res.status === 401 && allowAuthRetry && !endpoint.includes('auth/refresh/')) {
+        const refreshedToken = await this.refreshAccessToken();
+        if (refreshedToken) {
+          return this.request<T>(method, endpoint, data, params, retry, refreshedToken, false);
+        }
+      }
+
       if (!res.ok) {
         const message = typeof payload === 'object' ? (payload.message || payload.error || payload.detail) : String(payload || 'Request failed');
-        
-        // Note: Auto-logout on 401/403 removed for pilgrims
-        // Pilgrim tokens have very long expiration and should only be cleared on manual logout
-        // If you get a 401, it's likely a backend issue, not token expiration
-        
-        return { success: false, error: message };
+        return { success: false, error: message, status: res.status };
       }
 
       // Handle different response formats
       if (typeof payload === 'object' && payload) {
         // If it's already in ApiResponse format
-        if ('success' in payload) return payload as ApiResponse<T>;
+        if ('success' in payload) return { ...(payload as ApiResponse<T>), status: res.status };
         // Otherwise wrap it
-        return { success: true, data: payload as T };
+        return { success: true, data: payload as T, status: res.status };
       }
-      return { success: true, data: payload as T };
+      return { success: true, data: payload as T, status: res.status };
     } catch (e: any) {
       // Handle network errors with retry logic
       if (retry < this.maxRetries && !e.message?.includes('abort')) {
         await this.sleep(this.retryDelay * (retry + 1));
-        return this.request<T>(method, endpoint, data, params, retry + 1, token);
+        return this.request<T>(method, endpoint, data, params, retry + 1, token, allowAuthRetry);
       }
-      return { success: false, error: e?.message || 'Network error' };
+      return { success: false, error: e?.message || 'Network error', status: 0 };
     }
+  }
+
+  private async refreshAccessToken(): Promise<string | null> {
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    this.refreshPromise = (async () => {
+      const refreshToken = await AuthStorage.getRefreshToken();
+      if (!refreshToken) {
+        return null;
+      }
+
+      try {
+        const response = await fetch(this.buildURL('auth/refresh/'), {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ refresh: refreshToken }),
+        });
+
+        if (!response.ok) {
+          if (response.status === 401 || response.status === 400) {
+            await AuthStorage.clearAll();
+          }
+          return null;
+        }
+
+        const payload = await response.json();
+        const nextAccessToken = payload?.access;
+        if (!nextAccessToken) {
+          return null;
+        }
+
+        await AuthStorage.updateAccessToken(nextAccessToken);
+        return nextAccessToken;
+      } catch {
+        return null;
+      } finally {
+        this.refreshPromise = null;
+      }
+    })();
+
+    return this.refreshPromise;
   }
 
   get<T>(endpoint: string, params?: any, token?: string) { 
@@ -117,10 +169,9 @@ export class ApiClient {
   }
 
   /**
-   * Note: Unauthorized callback removed
-   * Pilgrim tokens have very long expiration (365 days) and should only be cleared on manual logout
+   * The client silently refreshes pilgrim access tokens and only clears the
+   * session when the refresh token is definitively invalid.
    */
 }
 
 export const apiClient = new ApiClient();
-

@@ -57,15 +57,14 @@ class Command(BaseCommand):
         """Clear existing data (except superusers)"""
         from apps.trips.models import Trip
         from apps.bookings.models import Booking
-        from apps.pilgrims.models import Passport, Visa
+        from apps.pilgrims.models import Document
         from apps.content.models import Dua
         
         self.stdout.write('🗑️  Clearing existing data...')
         
         Trip.objects.all().delete()
         Booking.objects.all().delete()
-        Passport.objects.all().delete()
-        Visa.objects.all().delete()
+        Document.objects.all().delete()
         Dua.objects.all().delete()
         Account.objects.filter(is_superuser=False).delete()
         
@@ -120,7 +119,7 @@ class Command(BaseCommand):
     def create_pilgrims(self):
         """Create sample pilgrims with profiles and passports"""
         from apps.accounts.models import PilgrimProfile
-        from apps.pilgrims.models import Passport
+        from apps.pilgrims.models import Document
         
         self.stdout.write('🧳 Creating pilgrims...')
         
@@ -183,16 +182,22 @@ class Command(BaseCommand):
             if created:
                 profile = PilgrimProfile.objects.create(
                     user=user,
+                    full_name=data['name'],
+                    phone=data['phone'],
+                    passport_number=passport_number,
                     dob=dob,
                     nationality=nationality,
                     emergency_name=f'{data["name"].split()[0]} Emergency',
                     emergency_phone=f'+25670{random.randint(1000000, 9999999)}'
                 )
                 
-                Passport.objects.create(
+                Document.objects.create(
                     pilgrim=profile,
-                    number=passport_number,
-                    country=nationality,
+                    document_type='PASSPORT',
+                    title=f'Passport - {nationality}',
+                    document_number=passport_number,
+                    issuing_country=nationality,
+                    file_public_id=f'documents/passport_{passport_number.lower()}',
                     expiry_date=date.today() + timedelta(days=365*3)  # 3 years
                 )
                 
@@ -210,10 +215,15 @@ class Command(BaseCommand):
             ChecklistItem, EmergencyContact, TripFAQ
         )
         from apps.bookings.models import Booking
-        from apps.pilgrims.models import Visa
+        from apps.pilgrims.models import Document
         from apps.accounts.models import PilgrimProfile
+        from apps.common.models import Currency
         
         self.stdout.write('✈️  Creating trips...')
+        ugx_currency, _ = Currency.objects.get_or_create(
+            code='UGX',
+            defaults={'name': 'Ugandan Shilling', 'symbol': 'USh'}
+        )
         
         # Trip 1: Umrah 2025 - May (Upcoming)
         trip1, created = Trip.objects.get_or_create(
@@ -236,7 +246,7 @@ class Command(BaseCommand):
                 trip=trip1,
                 name='Gold Package',
                 price_minor_units=5000000,  # 50,000 UGX
-                currency='UGX',
+                currency=ugx_currency,
                 capacity=50,
                 visibility='PUBLIC'
             )
@@ -245,7 +255,7 @@ class Command(BaseCommand):
                 trip=trip1,
                 name='Premium Package',
                 price_minor_units=8000000,  # 80,000 UGX
-                currency='UGX',
+                currency=ugx_currency,
                 capacity=30,
                 visibility='PUBLIC'
             )
@@ -458,14 +468,18 @@ class Command(BaseCommand):
                     room_assignment=f'Room {201 + i}'
                 )
                 
-                # Create visa for booked pilgrims
-                Visa.objects.create(
+                # Create visa document for booked pilgrims
+                Document.objects.create(
                     pilgrim=pilgrim,
+                    booking=booking,
                     trip=trip1,
+                    document_type='VISA',
+                    title=f'Visa - {trip1.name}',
+                    file_public_id=f'documents/visa_{booking.reference_number.lower()}',
                     status='PENDING'
                 )
             
-            self.stdout.write(f'     ✓ Created {len(pilgrims)} bookings and visas')
+            self.stdout.write(f'     ✓ Created {len(pilgrims)} bookings and visa documents')
             
             # Trip Update
             TripUpdate.objects.create(
@@ -553,4 +567,3 @@ class Command(BaseCommand):
         
         self.stdout.write(f'   ✓ Created {count} duas')
         self.stdout.write('')
-

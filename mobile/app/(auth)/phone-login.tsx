@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Modal,
   Pressable,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, BorderRadius, Typography, Shadow } from '@/constants/theme';
 import { AlHilalLogo } from '@/components/AlHilalLogo';
+import type { OTPFallback } from '@/lib/api/types';
 
 // Country type
 interface Country {
@@ -40,12 +42,13 @@ export default function PhoneLoginScreen() {
   const { requestOTP } = useAuth();
   const colorScheme = useColorScheme();
   
-  // Default to Kenya
+  // Default to Uganda
   const [selectedCountry, setSelectedCountry] = useState<Country>(COUNTRIES[0]);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [fallback, setFallback] = useState<OTPFallback | null>(null);
 
   // Handle phone number input - remove leading zeros and non-digits
   const handlePhoneChange = (text: string) => {
@@ -71,12 +74,19 @@ export default function PhoneLoginScreen() {
     setIsLoading(true);
     try {
       const result = await requestOTP(fullPhoneNumber);
+      setFallback(result.fallback || null);
       
       if (result.success) {
         // Navigate to OTP verification screen
         router.push({
           pathname: '/(auth)/verify-otp',
-          params: { phone: fullPhoneNumber }
+          params: {
+            phone: fullPhoneNumber,
+            supportPhone: result.fallback?.supportPhone || '',
+            supportWhatsApp: result.fallback?.supportWhatsApp || '',
+            fallbackMessage: result.fallback?.message || '',
+            retryAfterSeconds: String(result.retryAfterSeconds || 60),
+          }
         });
       } else {
         setError(result.error || 'Failed to send OTP. Please try again.');
@@ -177,9 +187,47 @@ export default function PhoneLoginScreen() {
           <View style={styles.infoContainer}>
             <Ionicons name="shield-checkmark" size={16} color={colors.mutedForeground} />
             <Text style={[styles.infoText, { color: colors.mutedForeground }]}>
-              We'll send you a one-time password to verify your number
+              We&apos;ll send you a one-time password to verify your number
             </Text>
           </View>
+
+          {fallback && (fallback.supportPhone || fallback.supportWhatsApp || fallback.message) ? (
+            <View style={[styles.supportCard, { backgroundColor: colors.card }, Shadow.small]}>
+              <View style={styles.supportHeader}>
+                <Ionicons name="help-buoy" size={18} color={colors.primary} />
+                <Text style={[styles.supportTitle, { color: colors.text }]}>
+                  Having trouble receiving the code?
+                </Text>
+              </View>
+              {fallback.message ? (
+                <Text style={[styles.supportText, { color: colors.mutedForeground }]}>
+                  {fallback.message}
+                </Text>
+              ) : null}
+              <View style={styles.supportActions}>
+                {fallback.supportPhone ? (
+                  <TouchableOpacity
+                    style={[styles.supportButton, { borderColor: colors.border }]}
+                    onPress={() => Linking.openURL(`tel:${fallback.supportPhone}`)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="call-outline" size={16} color={colors.primary} />
+                    <Text style={[styles.supportButtonText, { color: colors.primary }]}>Call Support</Text>
+                  </TouchableOpacity>
+                ) : null}
+                {fallback.supportWhatsApp ? (
+                  <TouchableOpacity
+                    style={[styles.supportButton, { borderColor: colors.border }]}
+                    onPress={() => Linking.openURL(`https://wa.me/${fallback.supportWhatsApp.replace(/\D/g, '')}`)}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="logo-whatsapp" size={16} color={colors.primary} />
+                    <Text style={[styles.supportButtonText, { color: colors.primary }]}>WhatsApp</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+            </View>
+          ) : null}
         </View>
       </ScrollView>
 
@@ -353,6 +401,44 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.sm,
     textAlign: 'center',
     lineHeight: 20,
+  },
+  supportCard: {
+    marginTop: Spacing.lg,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    gap: Spacing.sm,
+  },
+  supportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  supportTitle: {
+    flex: 1,
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  supportText: {
+    fontSize: Typography.fontSize.sm,
+    lineHeight: 20,
+  },
+  supportActions: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    flexWrap: 'wrap',
+  },
+  supportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    borderWidth: 1,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  supportButtonText: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.medium,
   },
   // Modal Styles
   modalOverlay: {

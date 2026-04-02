@@ -13,7 +13,7 @@ class TestPilgrimJourney:
     def test_complete_pilgrim_flow(self, api_client, trip, trip_package, flight, hotel):
         """Test complete flow: OTP → JWT → Access API."""
         from apps.accounts.models import OTPCode
-        from apps.pilgrims.models import Passport
+        from apps.pilgrims.models import Document
         from apps.bookings.models import Booking
         from datetime import date, timedelta
         
@@ -31,7 +31,7 @@ class TestPilgrimJourney:
         # Step 2: Verify OTP
         response = api_client.post('/api/v1/auth/verify-otp/', {
             'phone': phone,
-            'code': otp.code
+            'otp': otp.code
         })
         assert response.status_code == status.HTTP_200_OK
         access_token = response.data['access']
@@ -46,10 +46,13 @@ class TestPilgrimJourney:
         # Step 4: Create passport via admin (simulated)
         from django.contrib.auth import get_user_model
         user = get_user_model().objects.get(id=user_id)
-        passport = Passport.objects.create(
+        passport = Document.objects.create(
             pilgrim=user.pilgrim_profile,
-            number="PP8888888",
-            country="UG",
+            document_type="PASSPORT",
+            title="Passport - Uganda",
+            document_number="PP8888888",
+            issuing_country="UG",
+            file_public_id="documents/passport_otp",
             expiry_date=date.today() + timedelta(days=365)
         )
         
@@ -63,20 +66,20 @@ class TestPilgrimJourney:
         # Step 6: Check bookings
         response = api_client.get('/api/v1/me/bookings/')
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data['results']) == 1
+        assert len(response.data) == 1
         
         # Step 7: List trips (should see the trip now)
-        response = api_client.get('/api/v1/trips/')
+        response = api_client.get('/api/v1/me/trips/')
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['results']) == 1
         
         # Step 8: Get trip details
-        response = api_client.get(f'/api/v1/trips/{trip.id}/')
+        response = api_client.get(f'/api/v1/me/trips/{trip.id}/')
         assert response.status_code == status.HTTP_200_OK
         assert response.data['code'] == trip.code
         
         # Step 9: Get package details
-        response = api_client.get(f'/api/v1/packages/{trip_package.id}/')
+        response = api_client.get(f'/api/v1/me/packages/{trip_package.id}/')
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['flights']) == 1
         assert len(response.data['hotels']) == 1
@@ -89,7 +92,7 @@ class TestPilgrimJourney:
             text_en="Test"
         )
         
-        response = api_client.get('/api/v1/duas/')
+        response = api_client.get('/api/v1/me/duas/')
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['results']) >= 1
 
@@ -142,7 +145,7 @@ class TestBookingValidation:
         # Try to create second booking
         from django.contrib.auth import get_user_model
         from apps.accounts.models import PilgrimProfile
-        from apps.pilgrims.models import Passport
+        from apps.pilgrims.models import Document
         from datetime import date, timedelta
         
         user2 = get_user_model().objects.create_user(
@@ -151,10 +154,13 @@ class TestBookingValidation:
             role="PILGRIM"
         )
         profile2 = PilgrimProfile.objects.create(user=user2)
-        Passport.objects.create(
+        Document.objects.create(
             pilgrim=profile2,
-            number="QQ6666666",
-            country="UG",
+            document_type="PASSPORT",
+            title="Second Passport",
+            document_number="QQ6666666",
+            issuing_country="UG",
+            file_public_id="documents/second_passport",
             expiry_date=date.today() + timedelta(days=365)
         )
         
@@ -166,4 +172,3 @@ class TestBookingValidation:
         
         with pytest.raises(ValidationError):
             booking2.clean()
-

@@ -322,7 +322,7 @@ class TestPilgrimDocumentViewSet:
         )
         
         api_client.force_authenticate(user=pilgrim_user)
-        response = api_client.get('/api/v1/me/documents')
+        response = api_client.get('/api/v1/me/documents/')
         
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 2
@@ -339,7 +339,7 @@ class TestPilgrimDocumentViewSet:
         )
         
         api_client.force_authenticate(user=pilgrim_user)
-        response = api_client.get(f'/api/v1/me/documents/{doc.id}')
+        response = api_client.get(f'/api/v1/me/documents/{doc.id}/')
         
         assert response.status_code == status.HTTP_200_OK
         assert response.data['title'] == 'My Passport'
@@ -356,13 +356,13 @@ class TestPilgrimDocumentViewSet:
         )
         
         api_client.force_authenticate(user=pilgrim_user)
-        response = api_client.get(f'/api/v1/me/documents/{doc.id}')
+        response = api_client.get(f'/api/v1/me/documents/{doc.id}/')
         
         assert response.status_code == status.HTTP_404_NOT_FOUND
     
     def test_list_documents_unauthorized(self, api_client):
         """Test listing documents without authentication."""
-        response = api_client.get('/api/v1/me/documents')
+        response = api_client.get('/api/v1/me/documents/')
         
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
     
@@ -376,7 +376,7 @@ class TestPilgrimDocumentViewSet:
         )
         
         api_client.force_authenticate(user=staff_user)
-        response = api_client.get('/api/v1/me/documents')
+        response = api_client.get('/api/v1/me/documents/')
         
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data) == 1

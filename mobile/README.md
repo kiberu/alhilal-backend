@@ -1,50 +1,50 @@
-# Welcome to your Expo app 👋
+# Al Hilal Mobile App
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+`apps/mobile` is the pilgrim support app for the period before travel, during the journey, and after return.
 
-## Get started
+## Phase 3 Support Notes
 
-1. Install dependencies
+- Default development API base: `http://localhost:8000/api/v1/`
+- Auth and profile:
+  - `POST /api/v1/auth/request-otp/`
+  - `POST /api/v1/auth/verify-otp/`
+  - `POST /api/v1/auth/refresh/`
+  - `GET /api/v1/me/`
+- Journey data:
+  - `GET /api/v1/me/bookings/`
+  - `GET /api/v1/me/documents/`
+  - `GET /api/v1/me/trips/`
+  - `GET /api/v1/me/trips/{trip_id}/milestones/`
+  - `GET /api/v1/me/trips/{trip_id}/resources/`
+  - `GET /api/v1/me/trips/{trip_id}/readiness/`
+  - `GET /api/v1/me/trips/{trip_id}/daily-program/`
+  - `GET/POST /api/v1/me/trips/{trip_id}/feedback/`
+  - `GET/PUT /api/v1/me/notification-preferences/`
+  - `GET/POST /api/v1/me/devices/`
+  - `PATCH/DELETE /api/v1/me/devices/{device_id}/`
+  - `GET /api/v1/public/trips/`
 
-   ```bash
-   npm install
-   ```
+## Phase 3 Defaults
 
-2. Start the app
+- SQLite is the required offline read model for cache-first pilgrim support surfaces.
+- Notification/device plumbing is provider-agnostic by default.
+- The document center is intentionally read-only in Phase 3. Status, expiry, review state, and support next steps are shown in-app, while replacement handoff stays with Al Hilal support.
 
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Local Commands
 
 ```bash
-npm run reset-project
+cd apps/mobile
+npm ci
+npm run start
+npm run web
+npx eslint lib/api/config.ts lib/api/services/auth.ts lib/api/services/documents.ts app/my-documents.tsx
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Verified on April 2, 2026
 
-## Learn more
+- The Phase 1 mobile contract slice linted with `0` errors.
 
-To learn more about developing your project with Expo, look at the following resources:
+## Known Gaps
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- Broader workspace lint and TypeScript debt still exists in booking, profile, theme, and auth screens outside the Phase 1 contract slice.
+- The Phase 3 support foundation still needs full contract, mobile, offline, and Maestro evidence before it can count as a phase exit.

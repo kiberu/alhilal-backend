@@ -11,15 +11,19 @@ from apps.api.serializers import (
     AdminUserDetailSerializer,
     AdminUserCreateSerializer,
 )
-from apps.common.permissions import IsStaff
+from apps.common.permissions import ADMIN_ONLY_ROLES, StaffActionRolePermission, StaffRoleAccessMixin
 
 
-class AdminUserListView(APIView):
+class AdminUserListView(StaffRoleAccessMixin, APIView):
     """
     GET /admin/users - List all users
     POST /admin/users - Create a new user
     """
-    permission_classes = [IsAuthenticated, IsStaff]
+    permission_classes = [IsAuthenticated, StaffActionRolePermission]
+    method_staff_roles = {
+        'GET': ADMIN_ONLY_ROLES,
+        'POST': ADMIN_ONLY_ROLES,
+    }
 
     def get(self, request):
         """List all users with optional filtering."""
@@ -93,13 +97,18 @@ class AdminUserListView(APIView):
         }, status=status.HTTP_201_CREATED)
 
 
-class AdminUserDetailView(APIView):
+class AdminUserDetailView(StaffRoleAccessMixin, APIView):
     """
     GET /admin/users/:id - Get user details
     PATCH /admin/users/:id - Update user
     DELETE /admin/users/:id - Delete user
     """
-    permission_classes = [IsAuthenticated, IsStaff]
+    permission_classes = [IsAuthenticated, StaffActionRolePermission]
+    method_staff_roles = {
+        'GET': ADMIN_ONLY_ROLES,
+        'PATCH': ADMIN_ONLY_ROLES,
+        'DELETE': ADMIN_ONLY_ROLES,
+    }
 
     def get_object(self, user_id):
         """Get user by ID."""
@@ -191,11 +200,14 @@ class AdminUserDetailView(APIView):
         }, status=status.HTTP_200_OK)
 
 
-class AdminUserChangePasswordView(APIView):
+class AdminUserChangePasswordView(StaffRoleAccessMixin, APIView):
     """
     POST /admin/users/:id/change-password - Change user password (admin)
     """
-    permission_classes = [IsAuthenticated, IsStaff]
+    permission_classes = [IsAuthenticated, StaffActionRolePermission]
+    method_staff_roles = {
+        'POST': ADMIN_ONLY_ROLES,
+    }
 
     def post(self, request, user_id):
         """Change user password."""
@@ -207,11 +219,11 @@ class AdminUserChangePasswordView(APIView):
                 'error': 'User not found'
             }, status=status.HTTP_404_NOT_FOUND)
         
-        # Only superusers can change other users' passwords
-        if not request.user.is_superuser:
+        # Keep Django superusers protected from ordinary admin-role staff.
+        if user.is_superuser and not request.user.is_superuser:
             return Response({
                 'success': False,
-                'error': 'Only superusers can change other users\' passwords'
+                'error': 'You do not have permission to change this password'
             }, status=status.HTTP_403_FORBIDDEN)
         
         new_password = request.data.get('newPassword')
@@ -229,4 +241,3 @@ class AdminUserChangePasswordView(APIView):
             'success': True,
             'message': 'Password changed successfully'
         })
-

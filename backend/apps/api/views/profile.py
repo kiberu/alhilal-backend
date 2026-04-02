@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 
 from apps.bookings.models import Booking
 from apps.accounts.models import PilgrimProfile
-from apps.common.permissions import IsPilgrim
+from apps.common.permissions import HasPilgrimProfile
 from apps.api.serializers.profile import (
     PilgrimProfileSerializer,
     BookingSummarySerializer
@@ -26,7 +26,7 @@ class MeView(generics.RetrieveAPIView):
     Works for both pilgrims and staff with pilgrim profiles.
     """
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasPilgrimProfile]
     serializer_class = PilgrimProfileSerializer
     
     def get_object(self):
@@ -49,7 +49,7 @@ class UpdateProfileView(APIView):
     Works for both pilgrims and staff with pilgrim profiles.
     """
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasPilgrimProfile]
     
     def put(self, request):
         """Update pilgrim profile."""
@@ -132,7 +132,7 @@ class MyBookingsView(generics.ListAPIView):
     Works for both pilgrims and staff with pilgrim profiles.
     """
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasPilgrimProfile]
     serializer_class = PilgrimBookingDetailSerializer
     pagination_class = None  # Disable pagination for user's own bookings
     
@@ -160,7 +160,7 @@ class MyBookingDetailView(generics.RetrieveAPIView):
     Works for both pilgrims and staff with pilgrim profiles.
     """
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasPilgrimProfile]
     serializer_class = PilgrimBookingDetailSerializer
     lookup_field = 'id'
     
@@ -188,7 +188,7 @@ class CreateBookingView(APIView):
     Staff users need a pilgrim profile to create bookings.
     """
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasPilgrimProfile]
     
     def post(self, request):
         """Create a new booking."""
@@ -216,6 +216,5 @@ class CreateBookingView(APIView):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
-
 
 

@@ -10,9 +10,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.bookings.models import Booking, Payment
 from apps.api.serializers.admin import AdminBookingListSerializer, AdminBookingDetailSerializer, AdminPaymentSerializer
+from apps.common.permissions import StaffActionRolePermission, StaffRoleAccessMixin, user_has_staff_role
 
 
-class AdminBookingViewSet(viewsets.ModelViewSet):
+class AdminBookingViewSet(StaffRoleAccessMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing bookings (staff only).
     
@@ -23,7 +24,7 @@ class AdminBookingViewSet(viewsets.ModelViewSet):
     destroy: DELETE /bookings/:id - Cancel/delete booking
     """
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StaffActionRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'payment_status', 'package', 'package__trip']
     search_fields = ['reference_number', 'pilgrim__user__name', 'pilgrim__user__phone']
@@ -33,8 +34,8 @@ class AdminBookingViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Return bookings based on staff permission."""
         user = self.request.user
-        
-        if not user.is_staff:
+
+        if not user_has_staff_role(user, self.get_allowed_staff_roles(self.request)):
             return Booking.objects.none()
         
         queryset = Booking.objects.all().select_related(
@@ -92,12 +93,6 @@ class AdminBookingViewSet(viewsets.ModelViewSet):
     
     def create(self, request, *args, **kwargs):
         """Create a new booking."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff members can create bookings.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -106,33 +101,15 @@ class AdminBookingViewSet(viewsets.ModelViewSet):
     
     def update(self, request, *args, **kwargs):
         """Update a booking."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff members can update bookings.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         return super().update(request, *args, **kwargs)
     
     def destroy(self, request, *args, **kwargs):
         """Delete/cancel a booking."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff members can delete bookings.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         return super().destroy(request, *args, **kwargs)
     
     @action(detail=False, methods=['post'], url_path='bulk/convert-eoi')
     def bulk_convert_eoi(self, request):
         """Convert multiple EOI bookings to BOOKED."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff members can perform bulk actions.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         booking_ids = request.data.get('ids', [])
         updated = Booking.objects.filter(
             id__in=booking_ids,
@@ -144,12 +121,6 @@ class AdminBookingViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='bulk/cancel')
     def bulk_cancel(self, request):
         """Cancel multiple bookings."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff members can perform bulk actions.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         booking_ids = request.data.get('ids', [])
         updated = Booking.objects.filter(
             id__in=booking_ids
@@ -160,12 +131,6 @@ class AdminBookingViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='bulk/assign-rooms')
     def bulk_assign_rooms(self, request):
         """Bulk assign rooms to bookings."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff members can perform bulk actions.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         assignments = request.data.get('assignments', [])
         updated = 0
         
@@ -184,12 +149,6 @@ class AdminBookingViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], url_path='payments')
     def add_payment(self, request, pk=None):
         """Add a payment to a booking."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff members can add payments.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         booking = self.get_object()
         serializer = AdminPaymentSerializer(
             data=request.data,
@@ -207,12 +166,6 @@ class AdminBookingViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='payments/list')
     def list_payments(self, request, pk=None):
         """List all payments for a booking."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff members can view payments.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         booking = self.get_object()
         payments = booking.payments.all()
         serializer = AdminPaymentSerializer(payments, many=True)
@@ -223,4 +176,3 @@ class AdminBookingViewSet(viewsets.ModelViewSet):
             'package_price': booking.package.price_minor_units,
             'balance': (booking.package.price_minor_units or 0) - booking.amount_paid_minor_units,
         }, status=status.HTTP_200_OK)
-

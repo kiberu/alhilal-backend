@@ -1,265 +1,218 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-  StyleSheet,
+  ActivityIndicator,
+  Image,
+  RefreshControl,
   ScrollView,
-  View,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  Image,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, Spacing, Typography, BorderRadius, Shadow } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
+import * as WebBrowser from 'expo-web-browser';
 
-const categories = [
-  { id: 'all', name: 'All Topics', icon: 'grid' },
-  { id: 'basics', name: 'Basics', icon: 'book' },
-  { id: 'rituals', name: 'Rituals', icon: 'moon' },
-  { id: 'duas', name: 'Duas', icon: 'chatbubble' },
-  { id: 'history', name: 'History', icon: 'time' },
-];
-
-const lessons = [
-  {
-    id: 1,
-    title: 'Introduction to Umrah',
-    subtitle: 'Essential knowledge for first-time pilgrims',
-    category: 'basics',
-    duration: '12:45',
-    thumbnail: require('@/assets/alhilal-assets/Kaaba-hero1.jpg'),
-    views: '2.5K',
-    completed: false,
-  },
-  {
-    id: 2,
-    title: 'How to Perform Tawaf',
-    subtitle: 'Step-by-step guide to circumambulation',
-    category: 'rituals',
-    duration: '18:20',
-    thumbnail: require('@/assets/alhilal-assets/about-image.jpg'),
-    views: '3.2K',
-    completed: true,
-  },
-  {
-    id: 3,
-    title: 'Sa\'i Between Safa and Marwah',
-    subtitle: 'Understanding the significance and method',
-    category: 'rituals',
-    duration: '15:30',
-    thumbnail: require('@/assets/alhilal-assets/Kaaba-hero.jpg'),
-    views: '1.8K',
-    completed: false,
-  },
-  {
-    id: 4,
-    title: 'Essential Duas for Umrah',
-    subtitle: 'Important supplications during pilgrimage',
-    category: 'duas',
-    duration: '22:15',
-    thumbnail: require('@/assets/alhilal-assets/Kaaba-hero1.jpg'),
-    views: '4.1K',
-    completed: false,
-  },
-  {
-    id: 5,
-    title: 'History of the Kaaba',
-    subtitle: 'From Prophet Ibrahim to today',
-    category: 'history',
-    duration: '25:40',
-    thumbnail: require('@/assets/alhilal-assets/about-image.jpg'),
-    views: '2.9K',
-    completed: false,
-  },
-];
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { BorderRadius, Colors, Shadow, Spacing, Typography } from '@/constants/theme';
+import { ContentService, type PublicVideoFeed, type PublicVideoItem } from '@/lib/api/services/content';
 
 export default function LessonsScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  const [selectedCategory, setSelectedCategory] = useState('all');
 
-  const handleCategoryPress = (categoryId: string) => {
-    setSelectedCategory(categoryId);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  const [feed, setFeed] = useState<PublicVideoFeed | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState('');
+
+  const loadVideos = useCallback(async (forceRefresh = false) => {
+    try {
+      setError('');
+      if (forceRefresh) {
+        setRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+
+      const response = await ContentService.getPublicVideos(forceRefresh);
+      if (response.success && response.data) {
+        setFeed(response.data);
+      } else {
+        setError(response.error || 'Unable to load lesson videos right now.');
+      }
+    } catch (loadError: any) {
+      setError(loadError?.message || 'Unable to load lesson videos right now.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadVideos();
+  }, [loadVideos]);
+
+  const handleOpenVideo = async (video: PublicVideoItem) => {
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await WebBrowser.openBrowserAsync(video.youtubeUrl);
   };
 
-  const handleLessonPress = (lessonId: number) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    // TODO: Navigate to video player
+  const formatPublishedAt = (value: string | null) => {
+    if (!value) {
+      return 'Recently added';
+    }
+
+    try {
+      return new Intl.DateTimeFormat('en-UG', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      }).format(new Date(value));
+    } catch {
+      return 'Recently added';
+    }
   };
 
-  const filteredLessons =
-    selectedCategory === 'all'
-      ? lessons
-      : lessons.filter((lesson) => lesson.category === selectedCategory);
+  const formatSyncedAt = (value: string | null | undefined) => {
+    if (!value) {
+      return 'Waiting for the first channel sync';
+    }
+
+    try {
+      return `Synced ${new Intl.DateTimeFormat('en-UG', {
+        day: 'numeric',
+        month: 'short',
+        hour: 'numeric',
+        minute: '2-digit',
+      }).format(new Date(value))}`;
+    } catch {
+      return 'Channel sync available';
+    }
+  };
+
+  if (loading && !feed) {
+    return (
+      <SafeAreaView style={[styles.loadingScreen, { backgroundColor: colors.background }]} edges={['top']}>
+        <LinearGradient colors={[colors.primary, '#A8024E']} style={styles.loadingCard}>
+          <ActivityIndicator size="large" color="#fff" />
+          <Text style={styles.loadingTitle}>Loading lesson videos</Text>
+          <Text style={styles.loadingText}>
+            Fetching the latest lessons from Al Hilal&apos;s YouTube feed.
+          </Text>
+        </LinearGradient>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <View style={styles.header}>
-        <View>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Umrah Lessons</Text>
-          <Text style={[styles.headerSubtitle, { color: colors.mutedForeground }]}>
-            Learn the rituals step by step
-          </Text>
-        </View>
-        <TouchableOpacity
-          onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
-        >
-          <Ionicons name="search" size={24} color={colors.text} />
-        </TouchableOpacity>
-      </View>
-
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void loadVideos(true)}
+            tintColor={colors.primary}
+          />
+        }
       >
-        {/* Categories */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.categoriesScroll}
-        >
-          {categories.map((category) => (
-            <TouchableOpacity
-              key={category.id}
-              style={[
-                styles.categoryChip,
-                selectedCategory === category.id && {
-                  backgroundColor: colors.primary,
-                },
-                selectedCategory !== category.id && {
-                  backgroundColor: colors.muted,
-                },
-              ]}
-              onPress={() => handleCategoryPress(category.id)}
-              activeOpacity={0.7}
-            >
-              <Ionicons
-                name={category.icon as any}
-                size={18}
-                color={
-                  selectedCategory === category.id
-                    ? colors.primaryForeground
-                    : colors.text
-                }
-              />
-              <Text
-                style={[
-                  styles.categoryText,
-                  selectedCategory === category.id && {
-                    color: colors.primaryForeground,
-                  },
-                  selectedCategory !== category.id && {
-                    color: colors.text,
-                  },
-                ]}
-              >
-                {category.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-
-        {/* Progress Overview */}
-        <View style={[styles.progressCard, { backgroundColor: colors.card }, Shadow.medium]}>
-          <LinearGradient
-            colors={[colors.primary, '#A8024E']}
-            style={styles.progressGradient}
+        <View style={styles.header}>
+          <View>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Umrah Lessons</Text>
+            <Text style={[styles.headerSubtitle, { color: colors.mutedForeground }]}>
+              Stream official guidance without downloading large files.
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => void loadVideos(true)}
+            activeOpacity={0.7}
+            style={[styles.refreshButton, { backgroundColor: colors.muted }]}
           >
-            <View style={styles.progressContent}>
-              <View style={styles.progressLeft}>
-                <Ionicons name="trophy" size={32} color={colors.gold} />
-                <View style={styles.progressInfo}>
-                  <Text style={styles.progressTitle}>Your Progress</Text>
-                  <Text style={styles.progressSubtitle}>
-                    {lessons.filter((l) => l.completed).length} of {lessons.length} completed
-                  </Text>
-                </View>
+            <Ionicons name="refresh" size={20} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={[styles.syncCard, { backgroundColor: colors.card }, Shadow.medium]}>
+          <LinearGradient colors={[colors.primary, '#A8024E']} style={styles.syncGradient}>
+            <View style={styles.syncRow}>
+              <View style={styles.syncInfo}>
+                <Text style={styles.syncTitle}>Channel Sync</Text>
+                <Text style={styles.syncSubtitle}>{formatSyncedAt(feed?.syncedAt)}</Text>
               </View>
-              <View style={styles.progressPercentage}>
-                <Text style={styles.progressNumber}>
-                  {Math.round((lessons.filter((l) => l.completed).length / lessons.length) * 100)}%
-                </Text>
+              <View style={styles.syncBadge}>
+                <Text style={styles.syncBadgeText}>{feed?.items.length || 0} videos</Text>
               </View>
             </View>
-            <View style={styles.progressBar}>
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    width: `${(lessons.filter((l) => l.completed).length / lessons.length) * 100}%`,
-                    backgroundColor: colors.gold,
-                  },
-                ]}
-              />
-            </View>
+            <Text style={styles.syncDescription}>
+              Videos open in YouTube so pilgrims can keep streaming with familiar controls while we avoid hosting heavy media in-app.
+            </Text>
           </LinearGradient>
         </View>
 
-        {/* Lessons List */}
-        <View style={styles.lessonsSection}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {selectedCategory === 'all' ? 'All Lessons' : categories.find((c) => c.id === selectedCategory)?.name}
-          </Text>
+        {error ? (
+          <View
+            style={[
+              styles.errorBanner,
+              {
+                backgroundColor: colorScheme === 'dark' ? '#4C1D1D' : '#FEE2E2',
+                borderLeftColor: colors.error,
+              },
+            ]}
+          >
+            <Ionicons name="alert-circle" size={18} color={colors.error} />
+            <Text style={[styles.errorBannerText, { color: colors.error }]}>{error}</Text>
+          </View>
+        ) : null}
 
-          {filteredLessons.map((lesson) => (
+        <View style={styles.videoSection}>
+          {(feed?.items || []).map((video) => (
             <TouchableOpacity
-              key={lesson.id}
-              style={[styles.lessonCard, { backgroundColor: colors.card }, Shadow.small]}
-              onPress={() => handleLessonPress(lesson.id)}
+              key={video.videoId}
+              style={[styles.videoCard, { backgroundColor: colors.card }, Shadow.small]}
               activeOpacity={0.9}
+              onPress={() => void handleOpenVideo(video)}
             >
-              <View style={styles.thumbnailContainer}>
-                <Image source={lesson.thumbnail} style={styles.thumbnail} resizeMode="cover" />
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.7)']}
-                  style={styles.thumbnailGradient}
-                >
-                  <View style={styles.playButton}>
-                    <Ionicons name="play" size={24} color="#FFFFFF" />
-                  </View>
-                  <View style={styles.durationBadge}>
-                    <Ionicons name="time" size={12} color="#FFFFFF" />
-                    <Text style={styles.duration}>{lesson.duration}</Text>
-                  </View>
-                </LinearGradient>
-                {lesson.completed && (
-                  <View style={[styles.completedBadge, { backgroundColor: colors.success }]}>
-                    <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+              <View style={styles.thumbnailWrapper}>
+                {video.thumbnailUrl ? (
+                  <Image source={{ uri: video.thumbnailUrl }} style={styles.thumbnail} resizeMode="cover" />
+                ) : (
+                  <View style={[styles.thumbnailFallback, { backgroundColor: colors.muted }]}>
+                    <Ionicons name="logo-youtube" size={28} color={colors.primary} />
                   </View>
                 )}
-              </View>
-
-              <View style={styles.lessonInfo}>
-                <Text style={[styles.lessonTitle, { color: colors.text }]} numberOfLines={2}>
-                  {lesson.title}
-                </Text>
-                <Text style={[styles.lessonSubtitle, { color: colors.mutedForeground }]} numberOfLines={1}>
-                  {lesson.subtitle}
-                </Text>
-                <View style={styles.lessonMeta}>
-                  <View style={styles.metaItem}>
-                    <Ionicons name="eye-outline" size={14} color={colors.mutedForeground} />
-                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-                      {lesson.views}
-                    </Text>
-                  </View>
-                  <View style={styles.metaItem}>
-                    <Ionicons name="bookmark-outline" size={14} color={colors.mutedForeground} />
-                    <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
-                      Save
-                    </Text>
-                  </View>
+                <View style={styles.playBadge}>
+                  <Ionicons name="play" size={14} color="#fff" />
                 </View>
+              </View>
+              <View style={styles.videoBody}>
+                <Text style={[styles.videoTitle, { color: colors.text }]} numberOfLines={2}>
+                  {video.title}
+                </Text>
+                <Text style={[styles.videoMeta, { color: colors.mutedForeground }]}>
+                  {video.channelTitle || 'Al Hilal Travels'} · {formatPublishedAt(video.publishedAt)}
+                </Text>
+                <Text style={[styles.videoDescription, { color: colors.mutedForeground }]} numberOfLines={3}>
+                  {video.description || 'Open this lesson to continue learning on YouTube.'}
+                </Text>
               </View>
             </TouchableOpacity>
           ))}
-        </View>
 
-        <View style={{ height: 100 }} />
+          {feed && feed.items.length === 0 ? (
+            <View style={[styles.emptyState, { backgroundColor: colors.card }, Shadow.small]}>
+              <Ionicons name="videocam-outline" size={28} color={colors.primary} />
+              <Text style={[styles.emptyTitle, { color: colors.text }]}>No videos published yet</Text>
+              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
+                Once the YouTube channel or playlist is configured in admin settings, videos will appear here automatically.
+              </Text>
+            </View>
+          ) : null}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -269,188 +222,174 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-  },
-  headerTitle: {
-    fontSize: Typography.fontSize['2xl'],
-    fontWeight: Typography.fontWeight.bold,
-  },
-  headerSubtitle: {
-    fontSize: Typography.fontSize.sm,
-    marginTop: 2,
-  },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
+    padding: Spacing.md,
+    paddingBottom: Spacing['2xl'],
+    gap: Spacing.lg,
+  },
+  loadingScreen: {
+    flex: 1,
+    justifyContent: 'center',
     padding: Spacing.lg,
   },
-  categoriesScroll: {
-    gap: Spacing.sm,
-    marginBottom: Spacing.lg,
-  },
-  categoryChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderRadius: BorderRadius.full,
-  },
-  categoryText: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semibold,
-  },
-  progressCard: {
+  loadingCard: {
     borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
-    marginBottom: Spacing.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    gap: Spacing.md,
   },
-  progressGradient: {
-    padding: Spacing.lg,
+  loadingTitle: {
+    color: '#fff',
+    fontSize: Typography.fontSize.xl,
+    fontWeight: Typography.fontWeight.bold,
   },
-  progressContent: {
+  loadingText: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: Typography.fontSize.base,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: Spacing.md,
   },
-  progressLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  progressInfo: {
-    gap: 4,
-  },
-  progressTitle: {
-    color: '#FFFFFF',
-    fontSize: Typography.fontSize.base,
+  headerTitle: {
+    fontSize: Typography.fontSize['3xl'],
     fontWeight: Typography.fontWeight.bold,
   },
-  progressSubtitle: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: Typography.fontSize.xs,
+  headerSubtitle: {
+    marginTop: Spacing.xs,
+    fontSize: Typography.fontSize.sm,
+    lineHeight: 20,
   },
-  progressPercentage: {
-    width: 56,
-    height: 56,
+  refreshButton: {
+    width: 40,
+    height: 40,
     borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  progressNumber: {
-    color: '#FFFFFF',
-    fontSize: Typography.fontSize.xl,
-    fontWeight: Typography.fontWeight.black,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: BorderRadius.full,
+  syncCard: {
+    borderRadius: BorderRadius.xl,
     overflow: 'hidden',
   },
-  progressFill: {
-    height: '100%',
-    borderRadius: BorderRadius.full,
+  syncGradient: {
+    padding: Spacing.lg,
+    gap: Spacing.sm,
   },
-  lessonsSection: {
+  syncRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     gap: Spacing.md,
   },
-  sectionTitle: {
-    fontSize: Typography.fontSize.lg,
+  syncInfo: {
+    flex: 1,
+  },
+  syncTitle: {
+    color: '#fff',
+    fontSize: Typography.fontSize.xl,
     fontWeight: Typography.fontWeight.bold,
-    marginBottom: Spacing.sm,
   },
-  lessonCard: {
-    borderRadius: BorderRadius.lg,
+  syncSubtitle: {
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: Typography.fontSize.sm,
+    marginTop: Spacing.xs,
+  },
+  syncBadge: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  syncBadgeText: {
+    color: '#fff',
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  syncDescription: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: Typography.fontSize.sm,
+    lineHeight: 20,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    borderLeftWidth: 4,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  videoSection: {
+    gap: Spacing.md,
+  },
+  videoCard: {
+    borderRadius: BorderRadius.xl,
     overflow: 'hidden',
-    marginBottom: Spacing.md,
   },
-  thumbnailContainer: {
-    width: '100%',
-    height: 200,
+  thumbnailWrapper: {
     position: 'relative',
+    height: 190,
   },
   thumbnail: {
     width: '100%',
     height: '100%',
   },
-  thumbnailGradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: '50%',
-    justifyContent: 'flex-end',
-    padding: Spacing.md,
-  },
-  playButton: {
-    position: 'absolute',
-    top: '30%',
-    left: '50%',
-    transform: [{ translateX: -28 }, { translateY: -28 }],
-    width: 56,
-    height: 56,
-    borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+  thumbnailFallback: {
+    width: '100%',
+    height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  durationBadge: {
-    flexDirection: 'row',
+  playBadge: {
+    position: 'absolute',
+    right: Spacing.md,
+    bottom: Spacing.md,
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.full,
+    backgroundColor: 'rgba(0,0,0,0.65)',
     alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: 4,
-    borderRadius: BorderRadius.sm,
+    justifyContent: 'center',
   },
-  duration: {
-    color: '#FFFFFF',
-    fontSize: Typography.fontSize.xs,
+  videoBody: {
+    padding: Spacing.md,
+    gap: Spacing.xs,
+  },
+  videoTitle: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.semibold,
+    lineHeight: 24,
+  },
+  videoMeta: {
+    fontSize: Typography.fontSize.sm,
+  },
+  videoDescription: {
+    fontSize: Typography.fontSize.sm,
+    lineHeight: 20,
+  },
+  emptyState: {
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  emptyTitle: {
+    fontSize: Typography.fontSize.lg,
     fontWeight: Typography.fontWeight.semibold,
   },
-  completedBadge: {
-    position: 'absolute',
-    top: Spacing.md,
-    right: Spacing.md,
-    width: 32,
-    height: 32,
-    borderRadius: BorderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lessonInfo: {
-    padding: Spacing.md,
-  },
-  lessonTitle: {
-    fontSize: Typography.fontSize.base,
-    fontWeight: Typography.fontWeight.bold,
-    marginBottom: 4,
-  },
-  lessonSubtitle: {
+  emptyText: {
     fontSize: Typography.fontSize.sm,
-    marginBottom: Spacing.md,
-  },
-  lessonMeta: {
-    flexDirection: 'row',
-    gap: Spacing.lg,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaText: {
-    fontSize: Typography.fontSize.xs,
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
-

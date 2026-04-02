@@ -10,11 +10,13 @@ import {
   Plane,
   Users,
   FileText,
+  MessageSquare,
   ChevronLeft,
   ChevronRight,
   Settings,
   LogOut,
   Shield,
+  Star,
 } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 
@@ -23,6 +25,8 @@ const navigation = [
   { name: "Trips", href: "/dashboard/trips", icon: Plane },
   { name: "Bookings", href: "/dashboard/bookings", icon: FileText },
   { name: "Pilgrims", href: "/dashboard/pilgrims", icon: Users },
+  { name: "Leads", href: "/dashboard/leads", icon: MessageSquare },
+  { name: "Feedback", href: "/dashboard/feedback", icon: Star },
   { name: "Users", href: "/dashboard/users", icon: Shield },
 ]
 

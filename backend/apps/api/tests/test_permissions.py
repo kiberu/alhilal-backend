@@ -17,7 +17,7 @@ class TestDataScoping:
         # Create another pilgrim with booking
         from apps.accounts.models import PilgrimProfile
         from apps.bookings.models import Booking
-        from apps.pilgrims.models import Passport
+        from apps.pilgrims.models import Document
         from datetime import date, timedelta
         
         other_user = Account.objects.create_user(
@@ -28,10 +28,13 @@ class TestDataScoping:
         other_profile = PilgrimProfile.objects.create(user=other_user)
         
         # Create passport and booking for other user
-        Passport.objects.create(
+        Document.objects.create(
             pilgrim=other_profile,
-            number="ZZ7777777",
-            country="KE",
+            document_type="PASSPORT",
+            title="Other Passport",
+            document_number="ZZ7777777",
+            issuing_country="KE",
+            file_public_id="documents/other_passport",
             expiry_date=date.today() + timedelta(days=365)
         )
         
@@ -45,14 +48,14 @@ class TestDataScoping:
         response = authenticated_client.get('/api/v1/me/bookings/')
         
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data['results']) == 1
-        assert response.data['results'][0]['trip']['code'] == 'UMRAH2025'
+        assert len(response.data) == 1
+        assert response.data[0]['trip_code'] == 'UMRAH2025'
     
-    def test_pilgrim_cannot_see_other_pilgrims_visas(self, authenticated_client, visa):
-        """Test that pilgrims cannot see other pilgrims' visas."""
+    def test_pilgrim_cannot_see_other_pilgrims_documents(self, authenticated_client, visa):
+        """Test that pilgrims cannot see other pilgrims' documents."""
         # Create another pilgrim with visa
         from apps.accounts.models import PilgrimProfile
-        from apps.pilgrims.models import Visa
+        from apps.pilgrims.models import Document
         
         other_user = Account.objects.create_user(
             phone="+256700000004",
@@ -61,22 +64,23 @@ class TestDataScoping:
         )
         other_profile = PilgrimProfile.objects.create(user=other_user)
         
-        Visa.objects.create(
+        other_visa = Document.objects.create(
             pilgrim=other_profile,
+            document_type="VISA",
+            title=f"Visa - {visa.trip.name}",
+            document_number="OTHER-VISA",
+            file_public_id="documents/other_visa",
             trip=visa.trip,
-            status="APPROVED"
+            status="VERIFIED"
         )
         
-        # Current user should only see their own visa
-        response = authenticated_client.get('/api/v1/me/visas/')
+        response = authenticated_client.get(f'/api/v1/me/documents/{other_visa.id}/')
         
-        assert response.status_code == status.HTTP_200_OK
-        assert len(response.data['results']) == 1
-        assert response.data['results'][0]['status'] == 'PENDING'
+        assert response.status_code == status.HTTP_404_NOT_FOUND
     
     def test_pilgrim_cannot_access_trips_without_booking(self, authenticated_client, trip):
         """Test that pilgrims cannot access trips they don't have bookings for."""
-        response = authenticated_client.get('/api/v1/trips/')
+        response = authenticated_client.get('/api/v1/me/trips/')
         
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['results']) == 0  # No booking for this trip
@@ -97,9 +101,9 @@ class TestIsPilgrimPermission:
         endpoints = [
             '/api/v1/me/',
             '/api/v1/me/bookings/',
-            '/api/v1/me/visas/',
-            '/api/v1/trips/',
-            '/api/v1/duas/',
+            '/api/v1/me/documents/',
+            '/api/v1/me/trips/',
+            '/api/v1/me/duas/',
         ]
         
         for endpoint in endpoints:
@@ -116,12 +120,11 @@ class TestAuthenticationRequired:
         endpoints = [
             '/api/v1/me/',
             '/api/v1/me/bookings/',
-            '/api/v1/me/visas/',
-            '/api/v1/trips/',
-            '/api/v1/duas/',
+            '/api/v1/me/documents/',
+            '/api/v1/me/trips/',
+            '/api/v1/me/duas/',
         ]
         
         for endpoint in endpoints:
             response = api_client.get(endpoint)
             assert response.status_code == status.HTTP_401_UNAUTHORIZED
-

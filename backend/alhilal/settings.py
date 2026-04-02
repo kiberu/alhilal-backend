@@ -2,6 +2,7 @@
 Django settings for alhilal project.
 """
 import os
+import sys
 from pathlib import Path
 from datetime import timedelta
 import environ
@@ -36,6 +37,14 @@ env = environ.Env(
     AFRICASTALKING_API_KEY=(str, ''),
     AFRICASTALKING_SENDER_ID=(str, ''),
     SMS_ENABLED=(bool, False),
+    YOUTUBE_DATA_API_KEY=(str, ''),
+    EMAIL_BACKEND=(str, 'django.core.mail.backends.console.EmailBackend'),
+    EMAIL_HOST=(str, ''),
+    EMAIL_PORT=(int, 587),
+    EMAIL_USE_TLS=(bool, True),
+    EMAIL_HOST_USER=(str, ''),
+    EMAIL_HOST_PASSWORD=(str, ''),
+    DEFAULT_FROM_EMAIL=(str, 'webmaster@localhost'),
 )
 
 # Read .env file
@@ -46,6 +55,7 @@ SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = env('DEBUG')
+RUNNING_TESTS = 'pytest' in sys.modules or any(arg in sys.argv for arg in ['test', 'pytest'])
 
 # ALLOWED_HOSTS configuration
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=[])
@@ -96,8 +106,8 @@ INSTALLED_APPS = [
     'apps.common',
 ]
 
-# Debug toolbar (only in development)
-if DEBUG:
+# Debug toolbar (only in interactive development, never during tests)
+if DEBUG and not RUNNING_TESTS:
     INSTALLED_APPS += ['debug_toolbar']
 
 MIDDLEWARE = [
@@ -114,7 +124,7 @@ MIDDLEWARE = [
     'simple_history.middleware.HistoryRequestMiddleware',
 ]
 
-if DEBUG:
+if DEBUG and not RUNNING_TESTS:
     MIDDLEWARE.insert(0, 'debug_toolbar.middleware.DebugToolbarMiddleware')
 
 ROOT_URLCONF = 'alhilal.urls'
@@ -139,7 +149,6 @@ WSGI_APPLICATION = 'alhilal.wsgi.application'
 
 # Database
 # Railway provides DATABASE_URL automatically, use it if available
-import sys
 
 # During collectstatic, we don't need a real database connection
 if 'collectstatic' in sys.argv:
@@ -215,6 +224,16 @@ cloudinary.config(
     api_secret=env('CLOUDINARY_API_SECRET'),
     secure=True
 )
+
+# Email configuration
+EMAIL_BACKEND = env('EMAIL_BACKEND')
+EMAIL_HOST = env('EMAIL_HOST')
+EMAIL_PORT = env('EMAIL_PORT')
+EMAIL_USE_TLS = env('EMAIL_USE_TLS')
+EMAIL_HOST_USER = env('EMAIL_HOST_USER')
+EMAIL_HOST_PASSWORD = env('EMAIL_HOST_PASSWORD')
+DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL')
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
@@ -401,6 +420,7 @@ AFRICASTALKING_USERNAME = env('AFRICASTALKING_USERNAME')
 AFRICASTALKING_API_KEY = env('AFRICASTALKING_API_KEY')
 AFRICASTALKING_SENDER_ID = env('AFRICASTALKING_SENDER_ID')
 SMS_ENABLED = env('SMS_ENABLED')
+YOUTUBE_DATA_API_KEY = env('YOUTUBE_DATA_API_KEY')
 
 # Initialize Africa's Talking if credentials are provided
 if AFRICASTALKING_API_KEY and AFRICASTALKING_API_KEY != '':
@@ -440,7 +460,7 @@ if not DEBUG:
     SECURE_HSTS_PRELOAD = True
 
 # Debug toolbar configuration
-if DEBUG:
+if DEBUG and not RUNNING_TESTS:
     INTERNAL_IPS = ['127.0.0.1', 'localhost']
     import socket
     hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
@@ -479,4 +499,3 @@ LOGGING = {
         },
     },
 }
-

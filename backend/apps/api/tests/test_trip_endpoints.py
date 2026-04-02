@@ -9,11 +9,11 @@ from django.utils import timezone
 
 @pytest.mark.django_db
 class TestTripListEndpoint:
-    """Tests for /api/v1/trips endpoint."""
+    """Tests for /api/v1/me/trips endpoint."""
     
     def test_list_trips_with_booking(self, authenticated_client, booking):
         """Test listing trips where user has bookings."""
-        response = authenticated_client.get('/api/v1/trips/')
+        response = authenticated_client.get('/api/v1/me/trips/')
         
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['results']) == 1
@@ -21,33 +21,33 @@ class TestTripListEndpoint:
     
     def test_list_trips_no_bookings(self, authenticated_client, trip):
         """Test that trips without bookings are not shown."""
-        response = authenticated_client.get('/api/v1/trips/')
+        response = authenticated_client.get('/api/v1/me/trips/')
         
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['results']) == 0  # No booking for this trip
     
     def test_list_trips_filter_upcoming(self, authenticated_client, booking):
         """Test filtering upcoming trips."""
-        response = authenticated_client.get('/api/v1/trips/?when=upcoming')
+        response = authenticated_client.get('/api/v1/me/trips/?when=upcoming')
         
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['results']) == 1
     
     def test_list_trips_unauthenticated(self, api_client):
         """Test that unauthenticated users cannot access trips."""
-        response = api_client.get('/api/v1/trips/')
+        response = api_client.get('/api/v1/me/trips/')
         
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.django_db
 class TestTripDetailEndpoint:
-    """Tests for /api/v1/trips/{id} endpoint."""
+    """Tests for /api/v1/me/trips/{id} endpoint."""
     
     def test_get_trip_detail(self, authenticated_client, booking):
         """Test getting trip details."""
         trip_id = booking.package.trip.id
-        response = authenticated_client.get(f'/api/v1/trips/{trip_id}/')
+        response = authenticated_client.get(f'/api/v1/me/trips/{trip_id}/')
         
         assert response.status_code == status.HTTP_200_OK
         assert response.data['code'] == 'UMRAH2025'
@@ -56,14 +56,14 @@ class TestTripDetailEndpoint:
     
     def test_get_trip_detail_no_access(self, authenticated_client, trip):
         """Test that user cannot access trips they don't have bookings for."""
-        response = authenticated_client.get(f'/api/v1/trips/{trip.id}/')
+        response = authenticated_client.get(f'/api/v1/me/trips/{trip.id}/')
         
         assert response.status_code == status.HTTP_404_NOT_FOUND
 
 
 @pytest.mark.django_db
 class TestTripItineraryEndpoint:
-    """Tests for /api/v1/trips/{id}/itinerary endpoint."""
+    """Tests for /api/v1/me/trips/{id}/itinerary endpoint."""
     
     def test_get_itinerary(self, authenticated_client, booking):
         """Test getting trip itinerary."""
@@ -83,7 +83,7 @@ class TestTripItineraryEndpoint:
             location="Makkah"
         )
         
-        response = authenticated_client.get(f'/api/v1/trips/{trip.id}/itinerary/')
+        response = authenticated_client.get(f'/api/v1/me/trips/{trip.id}/itinerary/')
         
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['results']) == 2
@@ -93,7 +93,7 @@ class TestTripItineraryEndpoint:
 
 @pytest.mark.django_db
 class TestTripUpdatesEndpoint:
-    """Tests for /api/v1/trips/{id}/updates endpoint."""
+    """Tests for /api/v1/me/trips/{id}/updates endpoint."""
     
     def test_get_trip_updates(self, authenticated_client, booking):
         """Test getting trip updates."""
@@ -108,7 +108,7 @@ class TestTripUpdatesEndpoint:
             publish_at=timezone.now() - timezone.timedelta(hours=1)
         )
         
-        response = authenticated_client.get(f'/api/v1/trips/{trip.id}/updates/')
+        response = authenticated_client.get(f'/api/v1/me/trips/{trip.id}/updates/')
         
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['results']) == 1
@@ -129,7 +129,7 @@ class TestTripUpdatesEndpoint:
             publish_at=timezone.now() - timezone.timedelta(hours=1)
         )
         
-        response = authenticated_client.get(f'/api/v1/trips/{trip.id}/updates/')
+        response = authenticated_client.get(f'/api/v1/me/trips/{trip.id}/updates/')
         
         assert response.status_code == status.HTTP_200_OK
         assert len(response.data['results']) == 1
@@ -137,7 +137,7 @@ class TestTripUpdatesEndpoint:
 
 @pytest.mark.django_db
 class TestTripEssentialsEndpoint:
-    """Tests for /api/v1/trips/{id}/essentials endpoint."""
+    """Tests for /api/v1/me/trips/{id}/essentials endpoint."""
     
     def test_get_essentials(self, authenticated_client, booking):
         """Test getting trip essentials."""
@@ -174,7 +174,7 @@ class TestTripEssentialsEndpoint:
             order=1
         )
         
-        response = authenticated_client.get(f'/api/v1/trips/{trip.id}/essentials/')
+        response = authenticated_client.get(f'/api/v1/me/trips/{trip.id}/essentials/')
         
         assert response.status_code == status.HTTP_200_OK
         assert 'sections' in response.data
@@ -185,4 +185,3 @@ class TestTripEssentialsEndpoint:
         assert len(response.data['checklist']) == 1
         assert len(response.data['contacts']) == 1
         assert len(response.data['faqs']) == 1
-

@@ -14,24 +14,18 @@ from apps.accounts.models import Account, PilgrimProfile
 from apps.trips.models import Trip
 from apps.bookings.models import Booking
 from apps.pilgrims.models import Document
+from apps.common.permissions import STAFF_READ_ROLES, StaffActionRolePermission, StaffRoleAccessMixin
 
 
-class DashboardStatsView(APIView):
+class DashboardStatsView(StaffRoleAccessMixin, APIView):
     """
     Get dashboard statistics overview.
     Returns key metrics for trips, bookings, pilgrims, and visas.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StaffActionRolePermission]
+    method_staff_roles = {'GET': STAFF_READ_ROLES}
 
     def get(self, request):
-        user = request.user
-
-        if not user.is_staff:
-            return Response(
-                {'error': 'Only staff members can access dashboard statistics.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
         try:
             # Trip statistics
             total_trips = Trip.objects.count()
@@ -96,22 +90,15 @@ class DashboardStatsView(APIView):
             )
 
 
-class DashboardActivityView(APIView):
+class DashboardActivityView(StaffRoleAccessMixin, APIView):
     """
     Get recent activity feed.
     Returns the latest bookings, visa updates, and trip changes.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StaffActionRolePermission]
+    method_staff_roles = {'GET': STAFF_READ_ROLES}
 
     def get(self, request):
-        user = request.user
-
-        if not user.is_staff:
-            return Response(
-                {'error': 'Only staff members can access dashboard activity.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
         try:
             activities = []
             
@@ -145,22 +132,15 @@ class DashboardActivityView(APIView):
             )
 
 
-class DashboardUpcomingTripsView(APIView):
+class DashboardUpcomingTripsView(StaffRoleAccessMixin, APIView):
     """
     Get upcoming trips with booking counts.
     Returns trips starting within the next 90 days.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StaffActionRolePermission]
+    method_staff_roles = {'GET': STAFF_READ_ROLES}
 
     def get(self, request):
-        user = request.user
-
-        if not user.is_staff:
-            return Response(
-                {'error': 'Only staff members can access upcoming trips.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-
         try:
             # Get trips starting within next 90 days
             today = timezone.now().date()
@@ -210,4 +190,3 @@ class DashboardUpcomingTripsView(APIView):
                 {'error': f'Failed to fetch upcoming trips: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-

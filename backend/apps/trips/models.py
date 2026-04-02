@@ -12,17 +12,37 @@ class Trip(models.Model):
         ('PUBLIC', 'Public'),
         ('PRIVATE', 'Private'),
     ]
+
+    STATUS_CHOICES = [
+        ('DRAFT', 'Draft'),
+        ('PLANNING', 'Planning'),
+        ('OPEN_FOR_SALES', 'Open For Sales'),
+        ('PREPARATION', 'Preparation'),
+        ('VISA_IN_PROGRESS', 'Visa In Progress'),
+        ('TICKETING', 'Ticketing'),
+        ('READY_TO_TRAVEL', 'Ready To Travel'),
+        ('IN_JOURNEY', 'In Journey'),
+        ('RETURNED', 'Returned'),
+        ('POST_TRIP', 'Post Trip'),
+        ('ARCHIVED', 'Archived'),
+        ('CANCELLED', 'Cancelled'),
+    ]
     
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     code = models.CharField(max_length=24, unique=True)
+    family_code = models.CharField(max_length=40, blank=True, default="")
+    commercial_month_label = models.CharField(max_length=80, blank=True, default="")
     name = models.CharField(max_length=120)
     slug = models.SlugField(max_length=180, unique=True, blank=True, null=True)
     excerpt = models.CharField(max_length=280, blank=True, default="")
     seo_title = models.CharField(max_length=120, blank=True, default="")
     seo_description = models.CharField(max_length=180, blank=True, default="")
     cities = models.JSONField(default=list)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
+    sales_open_date = models.DateField(null=True, blank=True)
     start_date = models.DateField()
     end_date = models.DateField()
+    default_nights = models.PositiveIntegerField(null=True, blank=True)
     cover_image = models.URLField(max_length=500, null=True, blank=True, help_text='URL to cover image (Cloudinary)')
     visibility = models.CharField(max_length=7, choices=VISIBILITY_CHOICES, default='PUBLIC')
     featured = models.BooleanField(default=False, help_text='Display trip prominently on app homepage')
@@ -41,6 +61,13 @@ class Trip(models.Model):
     
     def __str__(self):
         return f"{self.code} - {self.name}"
+
+    @property
+    def computed_nights(self):
+        """Return marketed nights or derive from the trip date window."""
+        if self.default_nights is not None:
+            return self.default_nights
+        return max((self.end_date - self.start_date).days, 0)
 
     def save(self, *args, **kwargs):
         """Normalize a stable public slug before saving."""
@@ -69,13 +96,31 @@ class TripPackage(models.Model):
         ('PUBLIC', 'Public'),
         ('PRIVATE', 'Private'),
     ]
+
+    STATUS_CHOICES = [
+        ('DRAFT', 'Draft'),
+        ('SELLING', 'Selling'),
+        ('WAITLIST', 'Waitlist'),
+        ('CLOSED', 'Closed'),
+        ('IN_OPERATION', 'In Operation'),
+        ('COMPLETED', 'Completed'),
+        ('CANCELLED', 'Cancelled'),
+    ]
     
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name='packages')
+    package_code = models.CharField(max_length=32, blank=True, default="")
     name = models.CharField(max_length=40)
+    start_date_override = models.DateField(null=True, blank=True)
+    end_date_override = models.DateField(null=True, blank=True)
+    nights = models.PositiveIntegerField(null=True, blank=True)
     price_minor_units = models.IntegerField(null=True, blank=True)
     currency = models.ForeignKey('common.Currency', on_delete=models.PROTECT, related_name='packages', null=True, blank=True)
     capacity = models.IntegerField(null=True, blank=True)
+    sales_target = models.PositiveIntegerField(null=True, blank=True)
+    hotel_booking_month = models.CharField(max_length=20, blank=True, default="")
+    airline_booking_month = models.CharField(max_length=20, blank=True, default="")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='DRAFT')
     visibility = models.CharField(max_length=7, choices=VISIBILITY_CHOICES, default='PUBLIC')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -90,6 +135,33 @@ class TripPackage(models.Model):
     
     def __str__(self):
         return f"{self.trip.code} - {self.name}"
+
+    @property
+    def effective_start_date(self):
+        """Return the package start date, falling back to the parent trip."""
+        return self.start_date_override or self.trip.start_date
+
+    @property
+    def effective_end_date(self):
+        """Return the package end date, falling back to the parent trip."""
+        return self.end_date_override or self.trip.end_date
+
+    @property
+    def effective_nights(self):
+        """Return marketed nights or derive from the effective date window."""
+        if self.nights is not None:
+            return self.nights
+        return max((self.effective_end_date - self.effective_start_date).days, 0)
+
+    def clean(self):
+        """Validate package-specific travel dates."""
+        from django.core.exceptions import ValidationError
+
+        if bool(self.start_date_override) != bool(self.end_date_override):
+            raise ValidationError("Both package start and end date overrides must be set together")
+
+        if self.start_date_override and self.end_date_override and self.end_date_override <= self.start_date_override:
+            raise ValidationError("Package end date override must be after the start date override")
 
 
 class PackageFlight(models.Model):
@@ -127,11 +199,13 @@ class PackageFlight(models.Model):
         """Validate flight dates are within trip dates."""
         from django.core.exceptions import ValidationError
         
-        trip = self.package.trip
-        if self.dep_dt.date() < trip.start_date or self.dep_dt.date() > trip.end_date:
-            raise ValidationError(f"Flight departure must be within trip dates ({trip.start_date} to {trip.end_date})")
-        if self.arr_dt.date() < trip.start_date or self.arr_dt.date() > trip.end_date:
-            raise ValidationError(f"Flight arrival must be within trip dates ({trip.start_date} to {trip.end_date})")
+        package_start = self.package.effective_start_date
+        package_end = self.package.effective_end_date
+
+        if self.dep_dt.date() < package_start or self.dep_dt.date() > package_end:
+            raise ValidationError(f"Flight departure must be within package dates ({package_start} to {package_end})")
+        if self.arr_dt.date() < package_start or self.arr_dt.date() > package_end:
+            raise ValidationError(f"Flight arrival must be within package dates ({package_start} to {package_end})")
         if self.arr_dt <= self.dep_dt:
             raise ValidationError("Arrival time must be after departure time")
 
@@ -163,11 +237,13 @@ class PackageHotel(models.Model):
         """Validate hotel dates are within trip dates."""
         from django.core.exceptions import ValidationError
         
-        trip = self.package.trip
-        if self.check_in < trip.start_date or self.check_in > trip.end_date:
-            raise ValidationError(f"Check-in must be within trip dates ({trip.start_date} to {trip.end_date})")
-        if self.check_out < trip.start_date or self.check_out > trip.end_date:
-            raise ValidationError(f"Check-out must be within trip dates ({trip.start_date} to {trip.end_date})")
+        package_start = self.package.effective_start_date
+        package_end = self.package.effective_end_date
+
+        if self.check_in < package_start or self.check_in > package_end:
+            raise ValidationError(f"Check-in must be within package dates ({package_start} to {package_end})")
+        if self.check_out < package_start or self.check_out > package_end:
+            raise ValidationError(f"Check-out must be within package dates ({package_start} to {package_end})")
         if self.check_out <= self.check_in:
             raise ValidationError("Check-out must be after check-in")
 
@@ -358,3 +434,141 @@ class TripFAQ(models.Model):
     
     def __str__(self):
         return f"{self.trip.code} - {self.question[:50]}"
+
+
+class TripMilestone(models.Model):
+    """Operational milestones for trips and packages."""
+
+    MILESTONE_TYPE_CHOICES = [
+        ('HOTEL_CONTRACTED', 'Hotel Contracted'),
+        ('AIRLINE_BLOCKED', 'Airline Blocked'),
+        ('DOC_COLLECTION_OPEN', 'Document Collection Open'),
+        ('DOC_VALIDATION_COMPLETE', 'Document Validation Complete'),
+        ('DARASA_ONE', 'Darasa One'),
+        ('DARASA_TWO', 'Darasa Two'),
+        ('VISA_SUBMISSION', 'Visa Submission'),
+        ('VISA_ISSUING', 'Visa Issuing'),
+        ('PAYMENT_TARGET_90', 'Payment Target 90'),
+        ('TICKETS_BOOKED', 'Tickets Booked'),
+        ('TICKETS_ISSUED', 'Tickets Issued'),
+        ('SEND_OFF_DINNER', 'Send Off Dinner'),
+        ('TRAVEL_READY_PASS', 'Travel Ready Pass'),
+        ('DEPARTURE_ASSEMBLY', 'Departure Assembly'),
+        ('ARRIVAL_MADINAH', 'Arrival Madinah'),
+        ('TRANSFER_MAKKAH', 'Transfer Makkah'),
+        ('SECOND_UMRAH', 'Second Umrah'),
+        ('RETURN_TRANSFER', 'Return Transfer'),
+        ('ARRIVAL_HOME', 'Arrival Home'),
+        ('POST_TRIP_SURVEY', 'Post Trip Survey'),
+        ('POST_TRIP_CURRICULUM_START', 'Post Trip Curriculum Start'),
+    ]
+
+    STATUS_CHOICES = [
+        ('NOT_STARTED', 'Not Started'),
+        ('SCHEDULED', 'Scheduled'),
+        ('ON_TRACK', 'On Track'),
+        ('AT_RISK', 'At Risk'),
+        ('BLOCKED', 'Blocked'),
+        ('DONE', 'Done'),
+        ('CANCELLED', 'Cancelled'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name='milestones')
+    package = models.ForeignKey(TripPackage, on_delete=models.CASCADE, related_name='milestones', null=True, blank=True)
+    milestone_type = models.CharField(max_length=32, choices=MILESTONE_TYPE_CHOICES)
+    title = models.CharField(max_length=160, blank=True, default="")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='NOT_STARTED')
+    target_date = models.DateField(null=True, blank=True)
+    actual_date = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True, default="")
+    owner = models.ForeignKey('accounts.Account', on_delete=models.SET_NULL, null=True, blank=True, related_name='owned_trip_milestones')
+    is_public = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'trip_milestones'
+        verbose_name = 'Trip Milestone'
+        verbose_name_plural = 'Trip Milestones'
+        ordering = ['target_date', 'order', 'created_at']
+        indexes = [
+            models.Index(fields=['trip', 'status']),
+            models.Index(fields=['trip', 'milestone_type']),
+            models.Index(fields=['package']),
+        ]
+
+    def __str__(self):
+        label = self.title or self.get_milestone_type_display()
+        return f"{self.trip.code} - {label}"
+
+    def clean(self):
+        """Ensure package milestones stay attached to the selected trip."""
+        from django.core.exceptions import ValidationError
+
+        if self.package and self.package.trip_id != self.trip_id:
+            raise ValidationError("Milestone package must belong to the selected trip")
+
+
+class TripResource(models.Model):
+    """Pilgrim-facing resources such as guides, checklists, and daily programs."""
+
+    RESOURCE_TYPE_CHOICES = [
+        ('UMRAH_GUIDE', 'Umrah Guide'),
+        ('DUA_BOOKLET', 'Dua Booklet'),
+        ('DAILY_PROGRAM', 'Daily Program'),
+        ('CHECKLIST', 'Checklist'),
+        ('POST_TRIP_MODULE', 'Post Trip Module'),
+        ('OTHER', 'Other'),
+    ]
+
+    VIEWER_MODE_CHOICES = [
+        ('VIEW_ONLY', 'View Only'),
+        ('DOWNLOADABLE', 'Downloadable'),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    trip = models.ForeignKey(Trip, on_delete=models.CASCADE, related_name='resources')
+    package = models.ForeignKey(TripPackage, on_delete=models.CASCADE, related_name='resources', null=True, blank=True)
+    title = models.CharField(max_length=200)
+    description = models.TextField(blank=True, default="")
+    resource_type = models.CharField(max_length=20, choices=RESOURCE_TYPE_CHOICES)
+    order = models.PositiveIntegerField(default=0)
+    file_public_id = models.CharField(max_length=160)
+    file_format = models.CharField(max_length=10, null=True, blank=True)
+    file_url = models.URLField(null=True, blank=True)
+    viewer_mode = models.CharField(max_length=20, choices=VIEWER_MODE_CHOICES, default='VIEW_ONLY')
+    metadata = models.JSONField(default=dict, blank=True)
+    is_pinned = models.BooleanField(default=False)
+    published_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'trip_resources'
+        verbose_name = 'Trip Resource'
+        verbose_name_plural = 'Trip Resources'
+        ordering = ['-is_pinned', 'order', 'title']
+        indexes = [
+            models.Index(fields=['trip', 'resource_type']),
+            models.Index(fields=['package']),
+            models.Index(fields=['published_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.trip.code} - {self.title}"
+
+    @property
+    def is_published(self):
+        """Return whether the resource should be visible to pilgrims."""
+        from django.utils import timezone
+
+        return bool(self.published_at and self.published_at <= timezone.now())
+
+    def clean(self):
+        """Ensure package-scoped resources stay within the selected trip."""
+        from django.core.exceptions import ValidationError
+
+        if self.package and self.package.trip_id != self.trip_id:
+            raise ValidationError("Resource package must belong to the selected trip")

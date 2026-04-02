@@ -10,12 +10,13 @@ from rest_framework import filters
 
 from apps.trips.models import ItineraryItem
 from apps.api.serializers.admin import AdminItineraryItemSerializer
+from apps.common.permissions import StaffActionRolePermission, StaffRoleAccessMixin, user_has_staff_role
 
 
-class AdminItineraryItemViewSet(viewsets.ModelViewSet):
+class AdminItineraryItemViewSet(StaffRoleAccessMixin, viewsets.ModelViewSet):
     """ViewSet for managing itinerary items."""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StaffActionRolePermission]
     serializer_class = AdminItineraryItemSerializer
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['trip']
@@ -23,19 +24,13 @@ class AdminItineraryItemViewSet(viewsets.ModelViewSet):
     ordering = ['day_index', 'start_time']
     
     def get_queryset(self):
-        if not self.request.user.is_staff:
+        if not user_has_staff_role(self.request.user, self.get_allowed_staff_roles(self.request)):
             return ItineraryItem.objects.none()
         return ItineraryItem.objects.all().select_related('trip')
     
     @action(detail=False, methods=['post'])
     def reorder(self, request):
         """Reorder itinerary items."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff can reorder items.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         item_ids = request.data.get('itemIds', [])
         
         if not item_ids:
@@ -52,4 +47,3 @@ class AdminItineraryItemViewSet(viewsets.ModelViewSet):
             'success': True,
             'reordered': len(item_ids)
         })
-

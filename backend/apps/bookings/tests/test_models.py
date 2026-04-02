@@ -33,13 +33,16 @@ class TestBookingModel:
     
     def test_booking_checks_passport_expiry(self, pilgrim_user, trip_package):
         """Test that booking checks passport expiry against trip dates."""
-        from apps.pilgrims.models import Passport
+        from apps.pilgrims.models import Document
         
         # Create expired passport
-        Passport.objects.create(
+        Document.objects.create(
             pilgrim=pilgrim_user.pilgrim_profile,
-            number="XX9999999",
-            country="UG",
+            document_type="PASSPORT",
+            title="Expired Passport",
+            document_number="XX9999999",
+            issuing_country="UG",
+            file_public_id="documents/expired_passport",
             expiry_date=date.today() - timedelta(days=1)  # Expired
         )
         
@@ -70,7 +73,7 @@ class TestBookingModel:
         # Try to create second booking (should fail)
         from django.contrib.auth import get_user_model
         from apps.accounts.models import PilgrimProfile
-        from apps.pilgrims.models import Passport
+        from apps.pilgrims.models import Document
         
         user2 = get_user_model().objects.create_user(
             phone="+256700000002",
@@ -78,10 +81,13 @@ class TestBookingModel:
             role="PILGRIM"
         )
         profile2 = PilgrimProfile.objects.create(user=user2)
-        Passport.objects.create(
+        Document.objects.create(
             pilgrim=profile2,
-            number="YY8888888",
-            country="UG",
+            document_type="PASSPORT",
+            title="Passport 2",
+            document_number="YY8888888",
+            issuing_country="UG",
+            file_public_id="documents/passport_2",
             expiry_date=date.today() + timedelta(days=365)
         )
         
@@ -111,7 +117,7 @@ class TestBookingModel:
         """Test booking string representation."""
         assert "Test Pilgrim" in str(booking)
         assert "UMRAH2025" in str(booking)
-        assert "BOOKED" in str(booking)
+        assert "BK-" in str(booking)
     
     def test_booking_history(self, booking):
         """Test booking audit trail."""
@@ -134,4 +140,3 @@ class TestBookingModel:
         
         with pytest.raises(Exception):  # IntegrityError from database constraint
             duplicate_booking.save()
-

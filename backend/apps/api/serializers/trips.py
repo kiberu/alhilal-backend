@@ -5,16 +5,20 @@ from rest_framework import serializers
 from apps.trips.models import (
     Trip, TripPackage, PackageFlight, PackageHotel,
     ItineraryItem, TripUpdate, TripGuideSection,
-    ChecklistItem, EmergencyContact, TripFAQ
+    ChecklistItem, EmergencyContact, TripFAQ,
+    TripMilestone, TripResource
 )
 from apps.bookings.models import Booking
 from apps.content.models import Dua
+from apps.pilgrims.models import PilgrimReadiness
 
 
 class TripListSerializer(serializers.ModelSerializer):
     """Serializer for trip list."""
     
     packages_count = serializers.SerializerMethodField()
+    starting_price_minor_units = serializers.SerializerMethodField()
+    starting_price_currency = serializers.SerializerMethodField()
     
     class Meta:
         model = Trip
@@ -27,16 +31,34 @@ class TripListSerializer(serializers.ModelSerializer):
             'seo_title',
             'seo_description',
             'cities',
+            'commercial_month_label',
+            'status',
+            'default_nights',
+            'starting_price_minor_units',
+            'starting_price_currency',
             'start_date',
             'end_date',
             'cover_image',
             'featured',
             'packages_count',
+            'updated_at',
         ]
     
     def get_packages_count(self, obj):
         """Get count of available packages."""
         return obj.packages.filter(visibility='PUBLIC').count()
+
+    def get_starting_price_minor_units(self, obj):
+        """Return the lowest truthful public package price."""
+        package = obj.packages.filter(visibility='PUBLIC', price_minor_units__isnull=False).order_by('price_minor_units').select_related('currency').first()
+        return package.price_minor_units if package else None
+
+    def get_starting_price_currency(self, obj):
+        """Return the currency for the lowest truthful public package price."""
+        package = obj.packages.filter(visibility='PUBLIC', price_minor_units__isnull=False).order_by('price_minor_units').select_related('currency').first()
+        if not package or not package.currency:
+            return None
+        return package.currency.code
 
 
 class TripDetailSerializer(serializers.ModelSerializer):
@@ -47,9 +69,10 @@ class TripDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trip
         fields = [
-            'id', 'code', 'name', 'cities',
+            'id', 'code', 'family_code', 'commercial_month_label', 'name', 'cities',
+            'status', 'sales_open_date', 'default_nights',
             'start_date', 'end_date', 'visibility',
-            'packages_count'
+            'packages_count', 'updated_at'
         ]
     
     def get_packages_count(self, obj):
@@ -86,12 +109,17 @@ class TripPackageSerializer(serializers.ModelSerializer):
     flights = FlightSerializer(many=True, read_only=True)
     hotels = HotelSerializer(many=True, read_only=True)
     currency = serializers.CharField(source='currency.code', read_only=True)
+    start_date = serializers.DateField(source='effective_start_date', read_only=True)
+    end_date = serializers.DateField(source='effective_end_date', read_only=True)
+    nights = serializers.IntegerField(source='effective_nights', read_only=True)
     
     class Meta:
         model = TripPackage
         fields = [
-            'id', 'name', 'price_minor_units', 'currency',
-            'capacity', 'flights', 'hotels'
+            'id', 'package_code', 'name', 'start_date', 'end_date', 'nights',
+            'price_minor_units', 'currency', 'capacity', 'sales_target',
+            'hotel_booking_month', 'airline_booking_month', 'status',
+            'flights', 'hotels'
         ]
 
 
@@ -104,7 +132,7 @@ class ItineraryItemSerializer(serializers.ModelSerializer):
         model = ItineraryItem
         fields = [
             'id', 'day_index', 'start_time', 'end_time',
-            'title', 'location', 'notes', 'attach_url_signed'
+            'title', 'location', 'notes', 'attach_url_signed', 'updated_at'
         ]
     
     def get_attach_url_signed(self, obj):
@@ -119,15 +147,16 @@ class ItineraryItemSerializer(serializers.ModelSerializer):
 class TripUpdateSerializer(serializers.ModelSerializer):
     """Serializer for trip updates."""
     
+    trip_id = serializers.CharField(source='trip.id', read_only=True)
     package_name = serializers.CharField(source='package.name', read_only=True, allow_null=True)
     attach_url_signed = serializers.SerializerMethodField()
     
     class Meta:
         model = TripUpdate
         fields = [
-            'id', 'title', 'body_md', 'urgency', 'pinned',
+            'id', 'trip_id', 'title', 'body_md', 'urgency', 'pinned',
             'publish_at', 'package_name', 'attach_url_signed',
-            'created_at'
+            'created_at', 'updated_at'
         ]
     
     def get_attach_url_signed(self, obj):
@@ -170,6 +199,94 @@ class ChecklistItemSerializer(serializers.ModelSerializer):
         ]
 
 
+class TripMilestoneSerializer(serializers.ModelSerializer):
+    """Serializer for public or pilgrim-visible milestones."""
+
+    package_name = serializers.CharField(source='package.name', read_only=True, allow_null=True)
+
+    class Meta:
+        model = TripMilestone
+        fields = [
+            'id', 'milestone_type', 'title', 'status',
+            'target_date', 'actual_date', 'notes', 'package_name', 'updated_at'
+        ]
+
+
+class TripResourceSerializer(serializers.ModelSerializer):
+    """Serializer for pilgrim-facing trip resources."""
+
+    package_name = serializers.CharField(source='package.name', read_only=True, allow_null=True)
+    file_url_signed = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TripResource
+        fields = [
+            'id', 'title', 'description', 'resource_type', 'viewer_mode',
+            'is_pinned', 'published_at', 'file_format', 'metadata',
+            'package_name', 'file_url_signed', 'updated_at'
+        ]
+
+    def get_file_url_signed(self, obj):
+        """Get signed URL for the resource file."""
+        if not obj.file_public_id:
+            return None
+
+        from apps.common.cloudinary import signed_delivery
+        return signed_delivery(obj.file_public_id, expires_in=600)
+
+
+class PilgrimTripReadinessSerializer(serializers.ModelSerializer):
+    """Serializer for a pilgrim's travel-readiness state."""
+
+    booking_reference = serializers.CharField(source='booking.reference_number', read_only=True)
+    package_name = serializers.CharField(source='package.name', read_only=True)
+    trip_code = serializers.CharField(source='trip.code', read_only=True)
+    payment_target_percent = serializers.IntegerField(default=PilgrimReadiness.PAYMENT_TARGET_PERCENT, read_only=True)
+    checks = serializers.SerializerMethodField()
+    missing_items = serializers.SerializerMethodField()
+    blockers = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PilgrimReadiness
+        fields = [
+            'id',
+            'booking_reference',
+            'trip_code',
+            'package_name',
+            'status',
+            'ready_for_travel',
+            'payment_progress_percent',
+            'payment_target_percent',
+            'validated_at',
+            'checks',
+            'missing_items',
+            'blockers',
+            'updated_at',
+        ]
+
+    def get_checks(self, obj):
+        """Return the component checks that make up the readiness pass."""
+        return {
+            'profile_complete': obj.profile_complete,
+            'passport_valid': obj.passport_valid,
+            'visa_verified': obj.visa_verified,
+            'documents_complete': obj.documents_complete,
+            'payment_target_met': obj.payment_target_met,
+            'ticket_issued': obj.ticket_issued,
+            'darasa_one_completed': obj.darasa_one_completed,
+            'darasa_two_completed': obj.darasa_two_completed,
+            'send_off_completed': obj.send_off_completed,
+        }
+
+    def get_missing_items(self, obj):
+        """Return the outstanding requirements for the pilgrim."""
+        return obj.get_missing_requirements()
+
+    def get_blockers(self, obj):
+        """Return explicit blockers that need staff intervention."""
+        return obj.get_blockers()
+
+
 class EmergencyContactSerializer(serializers.ModelSerializer):
     """Serializer for emergency contacts."""
     
@@ -193,6 +310,8 @@ class TripEssentialsSerializer(serializers.Serializer):
     checklist = ChecklistItemSerializer(many=True)
     contacts = EmergencyContactSerializer(many=True)
     faqs = TripFAQSerializer(many=True)
+    milestones = TripMilestoneSerializer(many=True)
+    resources = TripResourceSerializer(many=True)
 
 
 class DuaSerializer(serializers.ModelSerializer):
@@ -215,14 +334,15 @@ class PublicTripDetailSerializer(serializers.ModelSerializer):
     guide_sections = GuideSectionSerializer(many=True, read_only=True)
     emergency_contacts = EmergencyContactSerializer(many=True, read_only=True)
     has_itinerary = serializers.SerializerMethodField()
+    milestones = serializers.SerializerMethodField()
     
     class Meta:
         model = Trip
         fields = [
-            'id', 'code', 'name', 'slug', 'excerpt', 'seo_title', 'seo_description',
-            'cities', 'start_date', 'end_date',
+            'id', 'code', 'family_code', 'commercial_month_label', 'name', 'slug', 'excerpt', 'seo_title', 'seo_description',
+            'cities', 'status', 'default_nights', 'start_date', 'end_date',
             'cover_image', 'featured', 'packages', 'itinerary',
-            'has_itinerary', 'faqs', 'guide_sections', 'emergency_contacts'
+            'has_itinerary', 'faqs', 'guide_sections', 'emergency_contacts', 'milestones'
         ]
     
     def get_packages(self, obj):
@@ -238,6 +358,11 @@ class PublicTripDetailSerializer(serializers.ModelSerializer):
     def get_has_itinerary(self, obj):
         """Check if trip has itinerary."""
         return obj.itinerary_items.exists()
+
+    def get_milestones(self, obj):
+        """Return only public milestones that can support truthful proof on the website."""
+        milestones = obj.milestones.filter(is_public=True).order_by('target_date', 'order', 'created_at')
+        return TripMilestoneSerializer(milestones, many=True).data
 
 
 # ==================== Booking Serializers ====================
@@ -310,6 +435,7 @@ class PilgrimBookingDetailSerializer(serializers.ModelSerializer):
     """Serializer for viewing booking details by pilgrims."""
     
     package_id = serializers.CharField(source='package.id', read_only=True)
+    trip_id = serializers.CharField(source='package.trip.id', read_only=True)
     trip_name = serializers.CharField(source='package.trip.name', read_only=True)
     trip_code = serializers.CharField(source='package.trip.code', read_only=True)
     trip_date = serializers.DateField(source='package.trip.start_date', read_only=True)
@@ -321,7 +447,7 @@ class PilgrimBookingDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Booking
         fields = [
-            'id', 'reference_number', 'package_id', 'trip_name', 'trip_code', 'trip_date',
+            'id', 'reference_number', 'package_id', 'trip_id', 'trip_name', 'trip_code', 'trip_date',
             'package_name', 'package_price', 'currency_code', 'status',
             'payment_status', 'amount_paid_minor_units', 'balance_due',
             'special_needs', 'ticket_number', 'room_assignment',

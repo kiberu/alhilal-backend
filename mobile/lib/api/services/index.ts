@@ -18,5 +18,25 @@ export type {
   TripFAQ,
   TripGuideSection,
   EmergencyContact,
+  TripMilestone,
+  TripResource,
+  TripReadiness,
+  TripReadinessChecks,
   PaginatedResponse,
 } from './trips';
+
+export { SupportService } from './support';
+export type {
+  NotificationPreferences,
+  DeviceInstallation,
+  TripSupportUpdate,
+  DailyProgram,
+  DailyProgramDay,
+  DailyProgramItem,
+  TripFeedback,
+  TripFeedbackState,
+  TripFeedbackPayload,
+} from './support';
+
+export { ContentService } from './content';
+export type { PublicVideoFeed, PublicVideoItem } from './content';

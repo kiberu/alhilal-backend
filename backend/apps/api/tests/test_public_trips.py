@@ -7,7 +7,7 @@ from django.utils import timezone
 from datetime import timedelta
 from apps.trips.models import (
     Trip, TripPackage, ItineraryItem, TripFAQ,
-    PackageHotel, EmergencyContact, TripGuideSection
+    PackageHotel, EmergencyContact, TripGuideSection, TripMilestone
 )
 from apps.common.models import Currency
 
@@ -50,6 +50,8 @@ class TestPublicTripListView:
         assert response.data['results'][0]['featured'] is True
         assert response.data['results'][0]['cover_image'] == 'https://example.com/image.jpg'
         assert response.data['results'][0]['packages_count'] == 1
+        assert response.data['results'][0]['starting_price_minor_units'] == 180000
+        assert response.data['results'][0]['starting_price_currency'] == 'USD'
     
     def test_list_public_trips_no_auth_required(self, api_client, currency_usd):
         """Test that no authentication is required."""
@@ -310,7 +312,23 @@ class TestPublicTripDetailView:
             phone='+256700123456',
             hours='24/7'
         )
-        
+        TripMilestone.objects.create(
+            trip=trip,
+            milestone_type='DARASA_ONE',
+            title='First Darasa',
+            status='SCHEDULED',
+            target_date=trip.start_date - timedelta(days=20),
+            is_public=True,
+        )
+        TripMilestone.objects.create(
+            trip=trip,
+            milestone_type='VISA_SUBMISSION',
+            title='Internal Milestone',
+            status='AT_RISK',
+            target_date=trip.start_date - timedelta(days=10),
+            is_public=False,
+        )
+
         response = api_client.get(f'/api/v1/public/trips/{trip.id}/')
         
         assert response.status_code == status.HTTP_200_OK
@@ -326,6 +344,8 @@ class TestPublicTripDetailView:
         assert len(response.data['faqs']) == 1
         assert len(response.data['guide_sections']) == 1
         assert len(response.data['emergency_contacts']) == 1
+        assert len(response.data['milestones']) == 1
+        assert response.data['milestones'][0]['title'] == 'First Darasa'
     
     def test_get_trip_detail_no_auth_required(self, api_client, currency_usd):
         """Test that no authentication is required."""

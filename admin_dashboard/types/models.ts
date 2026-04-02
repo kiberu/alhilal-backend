@@ -37,6 +37,114 @@ export interface StaffProfile {
   updated_at: string
 }
 
+/** Platform-wide operational settings */
+export interface PlatformSettings {
+  otpSupportPhone: string
+  otpSupportWhatsApp: string
+  otpFallbackMessage: string
+  mobileSupportPhone: string
+  mobileSupportWhatsApp: string
+  mobileSupportEmail: string
+  mobileSupportMessage: string
+  notificationProviderEnabled: boolean
+  notificationProviderName: string
+  notificationProviderNotes: string
+  leadNotificationToEmail: string
+  leadNotificationCcEmail: string
+  youtubeChannelId: string
+  youtubePlaylistId: string
+  youtubeCacheSyncedAt?: string | null
+  updatedAt: string
+}
+
+export type FeedbackStatus = "DRAFT" | "SUBMITTED"
+
+export interface TripFeedback {
+  id: string
+  pilgrim: string
+  pilgrimName: string
+  booking: string
+  bookingReference: string
+  trip: string
+  tripCode: string
+  tripName: string
+  status: FeedbackStatus
+  overallRating?: number | null
+  supportRating?: number | null
+  accommodationRating?: number | null
+  transportRating?: number | null
+  highlights?: string
+  improvements?: string
+  testimonialOptIn: boolean
+  followUpRequested: boolean
+  reviewNotes?: string
+  reviewedBy?: string | null
+  reviewedByName?: string | null
+  reviewedAt?: string | null
+  submittedAt?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TripFeedbackFilters extends PaginationParams {
+  status?: FeedbackStatus
+  trip?: string
+  follow_up_requested?: boolean
+  testimonial_opt_in?: boolean
+  search?: string
+}
+
+export type LeadStatus = "NEW" | "CONTACTED" | "QUALIFIED" | "CLOSED"
+export type LeadInterestType = "CONSULTATION" | "GUIDE_REQUEST"
+
+export interface Lead {
+  id: string
+  name: string
+  phone: string
+  email?: string | null
+  interestType: LeadInterestType
+  travelWindow?: string
+  notes?: string
+  trip?: string | null
+  tripCode?: string | null
+  tripName?: string | null
+  source: string
+  pagePath: string
+  contextLabel: string
+  ctaLabel: string
+  campaign?: string
+  referrer?: string
+  utmSource?: string
+  utmMedium?: string
+  utmCampaign?: string
+  utmContent?: string
+  utmTerm?: string
+  status: LeadStatus
+  assignedTo?: string | null
+  assignedToName?: string | null
+  followUpNotes?: string
+  contactedAt?: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+export interface LeadFilters extends PaginationParams {
+  status?: LeadStatus
+  interest_type?: LeadInterestType
+  source?: string
+  trip?: string
+  search?: string
+  created_after?: string
+  created_before?: string
+}
+
+export interface UpdateLeadData {
+  status?: LeadStatus
+  assignedTo?: string | null
+  followUpNotes?: string
+  contactedAt?: string | null
+}
+
 /** User with Staff Profile (for Admin Management) */
 export interface User {
   id: string
@@ -156,6 +264,48 @@ export interface CreatePilgrimData {
   medicalConditions?: string
 }
 
+/** Pilgrim Travel Readiness */
+export type ReadinessStatus =
+  | "NOT_STARTED"
+  | "IN_PROGRESS"
+  | "READY_FOR_REVIEW"
+  | "READY_FOR_TRAVEL"
+  | "BLOCKED"
+
+export interface PilgrimReadiness {
+  id: string
+  pilgrim: string
+  pilgrim_name: string
+  booking: string
+  booking_reference: string
+  trip: string
+  trip_code: string
+  package: string
+  package_name: string
+  status: ReadinessStatus
+  ready_for_travel: boolean
+  profile_complete: boolean
+  passport_valid: boolean
+  visa_verified: boolean
+  documents_complete: boolean
+  payment_target_met: boolean
+  payment_progress_percent: number
+  ticket_issued: boolean
+  darasa_one_completed: boolean
+  darasa_two_completed: boolean
+  send_off_completed: boolean
+  requires_follow_up: boolean
+  blocking_reason?: string
+  validation_notes?: string
+  validated_by?: string | null
+  validated_by_name?: string | null
+  validated_at?: string | null
+  missing_items: string[]
+  blockers: string[]
+  created_at: string
+  updated_at: string
+}
+
 /** Passport */
 export interface Passport {
   id: string
@@ -191,11 +341,29 @@ export interface Visa {
 
 /** Trip Visibility */
 export type TripVisibility = "PUBLIC" | "PRIVATE" | "ARCHIVED"
+export type TripOperationalStatus =
+  | "DRAFT"
+  | "PLANNING"
+  | "OPEN_FOR_SALES"
+  | "PREPARATION"
+  | "VISA_IN_PROGRESS"
+  | "TICKETING"
+  | "READY_TO_TRAVEL"
+  | "IN_JOURNEY"
+  | "RETURNED"
+  | "POST_TRIP"
+  | "ARCHIVED"
+  | "CANCELLED"
 
 /** Trip */
 export interface Trip {
   id: string
   code: string
+  familyCode?: string
+  commercialMonthLabel?: string
+  status?: TripOperationalStatus
+  salesOpenDate?: string
+  defaultNights?: number | null
   name: string
   slug?: string
   excerpt?: string
@@ -214,15 +382,31 @@ export interface Trip {
 
 /** Package Visibility */
 export type PackageVisibility = "PUBLIC" | "PRIVATE"
+export type PackageOperationalStatus =
+  | "DRAFT"
+  | "SELLING"
+  | "WAITLIST"
+  | "CLOSED"
+  | "IN_OPERATION"
+  | "COMPLETED"
+  | "CANCELLED"
 
 /** Trip Package */
 export interface TripPackage {
   id: string
   trip: string // Trip ID
+  package_code?: string
   name: string
+  start_date_override?: string | null
+  end_date_override?: string | null
+  nights?: number | null
   price_minor_units: number
   currency: Currency | null
   capacity: number
+  sales_target?: number | null
+  hotel_booking_month?: string
+  airline_booking_month?: string
+  status?: PackageOperationalStatus
   visibility: PackageVisibility
   created_at: string
   updated_at: string

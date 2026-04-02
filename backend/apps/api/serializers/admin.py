@@ -5,12 +5,14 @@ These serializers are for the admin dashboard and include full CRUD operations.
 from rest_framework import serializers
 from apps.trips.models import (
     Trip, TripPackage, PackageFlight, PackageHotel, ItineraryItem,
-    TripUpdate, TripGuideSection, ChecklistItem, EmergencyContact, TripFAQ
+    TripUpdate, TripGuideSection, ChecklistItem, EmergencyContact, TripFAQ,
+    TripMilestone, TripResource
 )
 from apps.bookings.models import Booking, Payment
 from apps.accounts.models import Account, PilgrimProfile, StaffProfile
 from apps.content.models import Dua
-from apps.common.models import Currency
+from apps.common.models import Currency, WebsiteLead
+from apps.pilgrims.models import PilgrimReadiness, TripFeedback
 
 
 # ============================================================================
@@ -43,8 +45,10 @@ class AdminTripPackageListSerializer(serializers.ModelSerializer):
     class Meta:
         model = TripPackage
         fields = [
-            'id', 'name', 'price_minor_units', 'currency', 'currency_id',
-            'capacity', 'visibility', 'created_at', 'updated_at'
+            'id', 'package_code', 'name', 'start_date_override', 'end_date_override',
+            'nights', 'price_minor_units', 'currency', 'currency_id',
+            'capacity', 'sales_target', 'hotel_booking_month', 'airline_booking_month',
+            'status', 'visibility', 'created_at', 'updated_at'
         ]
 
 
@@ -56,7 +60,8 @@ class AdminTripListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trip
         fields = [
-            'id', 'code', 'name', 'slug', 'excerpt', 'seo_title', 'seo_description',
+            'id', 'code', 'family_code', 'commercial_month_label', 'status',
+            'sales_open_date', 'default_nights', 'name', 'slug', 'excerpt', 'seo_title', 'seo_description',
             'cities', 'start_date', 'end_date', 'cover_image', 'featured',
             'visibility', 'created_at', 'updated_at', 'packages'
         ]
@@ -67,6 +72,11 @@ class AdminTripListSerializer(serializers.ModelSerializer):
         return {
             'id': str(data['id']),
             'code': data['code'],
+            'familyCode': data.get('family_code'),
+            'commercialMonthLabel': data.get('commercial_month_label'),
+            'status': data.get('status'),
+            'salesOpenDate': data.get('sales_open_date'),
+            'defaultNights': data.get('default_nights'),
             'name': data['name'],
             'slug': data.get('slug'),
             'excerpt': data.get('excerpt'),
@@ -91,14 +101,18 @@ class AdminTripDetailSerializer(serializers.ModelSerializer):
     booking_stats = serializers.SerializerMethodField()
     itinerary = serializers.SerializerMethodField()
     guide_sections = serializers.SerializerMethodField()
+    milestones = serializers.SerializerMethodField()
+    resources = serializers.SerializerMethodField()
     
     class Meta:
         model = Trip
         fields = [
-            'id', 'code', 'name', 'slug', 'excerpt', 'seo_title', 'seo_description',
+            'id', 'code', 'family_code', 'commercial_month_label', 'status',
+            'sales_open_date', 'default_nights', 'name', 'slug', 'excerpt', 'seo_title', 'seo_description',
             'cities', 'start_date', 'end_date', 'cover_image', 'featured',
             'visibility', 'operator_notes', 'created_at', 'updated_at',
-            'packages', 'booking_stats', 'itinerary', 'guide_sections'
+            'packages', 'booking_stats', 'itinerary', 'guide_sections',
+            'milestones', 'resources'
         ]
         extra_kwargs = {
             'id': {'read_only': True},
@@ -152,6 +166,43 @@ class AdminTripDetailSerializer(serializers.ModelSerializer):
             'content': section.content_md,
             'order': section.order
         } for section in sections]
+
+    def get_milestones(self, obj):
+        """Get milestones for this trip."""
+        milestones = TripMilestone.objects.filter(trip=obj).select_related('package', 'owner').order_by('target_date', 'order', 'created_at')
+        return [{
+            'id': str(milestone.id),
+            'packageId': str(milestone.package_id) if milestone.package_id else None,
+            'packageName': milestone.package.name if milestone.package_id else None,
+            'milestoneType': milestone.milestone_type,
+            'title': milestone.title,
+            'status': milestone.status,
+            'targetDate': milestone.target_date,
+            'actualDate': milestone.actual_date,
+            'notes': milestone.notes,
+            'ownerId': str(milestone.owner_id) if milestone.owner_id else None,
+            'ownerName': milestone.owner.name if milestone.owner_id else None,
+            'isPublic': milestone.is_public,
+            'order': milestone.order,
+        } for milestone in milestones]
+
+    def get_resources(self, obj):
+        """Get trip resources."""
+        resources = TripResource.objects.filter(trip=obj).select_related('package').order_by('-is_pinned', 'order', 'title')
+        return [{
+            'id': str(resource.id),
+            'packageId': str(resource.package_id) if resource.package_id else None,
+            'packageName': resource.package.name if resource.package_id else None,
+            'title': resource.title,
+            'description': resource.description,
+            'resourceType': resource.resource_type,
+            'viewerMode': resource.viewer_mode,
+            'isPinned': resource.is_pinned,
+            'publishedAt': resource.published_at,
+            'fileFormat': resource.file_format,
+            'metadata': resource.metadata,
+            'order': resource.order,
+        } for resource in resources]
     
     def to_representation(self, instance):
         """Convert to frontend format (camelCase)."""
@@ -159,6 +210,11 @@ class AdminTripDetailSerializer(serializers.ModelSerializer):
         return {
             'id': str(data['id']),
             'code': data['code'],
+            'familyCode': data.get('family_code'),
+            'commercialMonthLabel': data.get('commercial_month_label'),
+            'status': data.get('status'),
+            'salesOpenDate': data.get('sales_open_date'),
+            'defaultNights': data.get('default_nights'),
             'name': data['name'],
             'slug': data.get('slug'),
             'excerpt': data.get('excerpt'),
@@ -177,6 +233,8 @@ class AdminTripDetailSerializer(serializers.ModelSerializer):
             'bookingStats': data['booking_stats'],
             'itinerary': data['itinerary'],
             'guideSections': data['guide_sections'],
+            'milestones': data['milestones'],
+            'resources': data['resources'],
         }
     
     def to_internal_value(self, data):
@@ -184,6 +242,10 @@ class AdminTripDetailSerializer(serializers.ModelSerializer):
         # Map camelCase keys to snake_case
         mapped_data = {}
         field_mapping = {
+            'familyCode': 'family_code',
+            'commercialMonthLabel': 'commercial_month_label',
+            'salesOpenDate': 'sales_open_date',
+            'defaultNights': 'default_nights',
             'startDate': 'start_date',
             'endDate': 'end_date',
             'coverImage': 'cover_image',
@@ -492,6 +554,324 @@ class AdminPilgrimDetailSerializer(serializers.ModelSerializer):
         return super().to_internal_value(mapped_data)
 
 
+class AdminPilgrimReadinessSerializer(serializers.ModelSerializer):
+    """Serializer for staff management of pilgrim travel readiness."""
+
+    pilgrim_name = serializers.CharField(source='pilgrim.full_name', read_only=True)
+    booking_reference = serializers.CharField(source='booking.reference_number', read_only=True)
+    trip_code = serializers.CharField(source='trip.code', read_only=True)
+    package_name = serializers.CharField(source='package.name', read_only=True)
+    validated_by_name = serializers.CharField(source='validated_by.name', read_only=True)
+    missing_items = serializers.SerializerMethodField()
+    blockers = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PilgrimReadiness
+        fields = [
+            'id',
+            'pilgrim',
+            'pilgrim_name',
+            'booking',
+            'booking_reference',
+            'trip',
+            'trip_code',
+            'package',
+            'package_name',
+            'status',
+            'ready_for_travel',
+            'profile_complete',
+            'passport_valid',
+            'visa_verified',
+            'documents_complete',
+            'payment_target_met',
+            'payment_progress_percent',
+            'ticket_issued',
+            'darasa_one_completed',
+            'darasa_two_completed',
+            'send_off_completed',
+            'requires_follow_up',
+            'blocking_reason',
+            'validation_notes',
+            'validated_by',
+            'validated_by_name',
+            'validated_at',
+            'missing_items',
+            'blockers',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = [
+            'id',
+            'pilgrim',
+            'pilgrim_name',
+            'trip',
+            'trip_code',
+            'package',
+            'package_name',
+            'status',
+            'ready_for_travel',
+            'profile_complete',
+            'passport_valid',
+            'visa_verified',
+            'documents_complete',
+            'payment_target_met',
+            'payment_progress_percent',
+            'ticket_issued',
+            'requires_follow_up',
+            'blocking_reason',
+            'validated_by',
+            'validated_by_name',
+            'validated_at',
+            'missing_items',
+            'blockers',
+            'created_at',
+            'updated_at',
+        ]
+
+    def validate_booking(self, booking):
+        """A readiness record is one-to-one with a booking."""
+        if self.instance is None and hasattr(booking, 'readiness'):
+            raise serializers.ValidationError("This booking already has a readiness record")
+        return booking
+
+    def create(self, validated_data):
+        """Create a readiness record and compute its derived state."""
+        readiness = super().create(validated_data)
+        readiness.refresh_status(save=True)
+        return readiness
+
+    def update(self, instance, validated_data):
+        """Update manual readiness fields, then recompute the derived state."""
+        readiness = super().update(instance, validated_data)
+        readiness.refresh_status(save=True)
+        return readiness
+
+    def get_missing_items(self, obj):
+        """Return outstanding readiness requirements."""
+        return obj.get_missing_requirements()
+
+    def get_blockers(self, obj):
+        """Return explicit blockers for this pilgrim."""
+        return obj.get_blockers()
+
+
+class AdminWebsiteLeadSerializer(serializers.ModelSerializer):
+    """Serializer for staff management of website leads."""
+
+    trip_code = serializers.CharField(source='trip.code', read_only=True)
+    trip_name = serializers.CharField(source='trip.name', read_only=True)
+    assigned_to_name = serializers.CharField(source='assigned_to.name', read_only=True)
+
+    class Meta:
+        model = WebsiteLead
+        fields = [
+            'id',
+            'name',
+            'phone',
+            'email',
+            'interest_type',
+            'travel_window',
+            'notes',
+            'trip',
+            'trip_code',
+            'trip_name',
+            'source',
+            'page_path',
+            'context_label',
+            'cta_label',
+            'campaign',
+            'referrer',
+            'utm_source',
+            'utm_medium',
+            'utm_campaign',
+            'utm_content',
+            'utm_term',
+            'status',
+            'assigned_to',
+            'assigned_to_name',
+            'follow_up_notes',
+            'contacted_at',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'trip_code', 'trip_name', 'assigned_to_name', 'created_at', 'updated_at']
+
+    def validate_assigned_to(self, value):
+        """Assigned lead owners must be staff users."""
+        if value is None:
+            return value
+        if value.role != 'STAFF' or not value.is_staff:
+            raise serializers.ValidationError('Assigned user must be a staff account.')
+        return value
+
+    def to_representation(self, instance):
+        """Convert to frontend camelCase format."""
+        data = super().to_representation(instance)
+        return {
+            'id': str(data['id']),
+            'name': data['name'],
+            'phone': data['phone'],
+            'email': data.get('email'),
+            'interestType': data['interest_type'],
+            'travelWindow': data.get('travel_window'),
+            'notes': data.get('notes'),
+            'trip': str(data['trip']) if data.get('trip') else None,
+            'tripCode': data.get('trip_code'),
+            'tripName': data.get('trip_name'),
+            'source': data['source'],
+            'pagePath': data['page_path'],
+            'contextLabel': data['context_label'],
+            'ctaLabel': data['cta_label'],
+            'campaign': data.get('campaign'),
+            'referrer': data.get('referrer'),
+            'utmSource': data.get('utm_source'),
+            'utmMedium': data.get('utm_medium'),
+            'utmCampaign': data.get('utm_campaign'),
+            'utmContent': data.get('utm_content'),
+            'utmTerm': data.get('utm_term'),
+            'status': data['status'],
+            'assignedTo': str(data['assigned_to']) if data.get('assigned_to') else None,
+            'assignedToName': data.get('assigned_to_name'),
+            'followUpNotes': data.get('follow_up_notes'),
+            'contactedAt': data.get('contacted_at'),
+            'createdAt': data.get('created_at'),
+            'updatedAt': data.get('updated_at'),
+        }
+
+    def to_internal_value(self, data):
+        """Convert from frontend camelCase to backend snake_case."""
+        mapped_data = {}
+        field_mapping = {
+            'interestType': 'interest_type',
+            'travelWindow': 'travel_window',
+            'pagePath': 'page_path',
+            'contextLabel': 'context_label',
+            'ctaLabel': 'cta_label',
+            'utmSource': 'utm_source',
+            'utmMedium': 'utm_medium',
+            'utmCampaign': 'utm_campaign',
+            'utmContent': 'utm_content',
+            'utmTerm': 'utm_term',
+            'assignedTo': 'assigned_to',
+            'followUpNotes': 'follow_up_notes',
+            'contactedAt': 'contacted_at',
+        }
+
+        for key, value in data.items():
+            if key in ['id', 'tripCode', 'tripName', 'assignedToName', 'createdAt', 'updatedAt']:
+                continue
+            mapped_data[field_mapping.get(key, key)] = value
+
+        return super().to_internal_value(mapped_data)
+
+
+class AdminTripFeedbackSerializer(serializers.ModelSerializer):
+    """Serializer for staff review of post-trip pilgrim feedback."""
+
+    pilgrim_name = serializers.CharField(source='pilgrim.full_name', read_only=True)
+    booking_reference = serializers.CharField(source='booking.reference_number', read_only=True)
+    trip_code = serializers.CharField(source='trip.code', read_only=True)
+    trip_name = serializers.CharField(source='trip.name', read_only=True)
+    reviewed_by_name = serializers.CharField(source='reviewed_by.name', read_only=True)
+
+    class Meta:
+        model = TripFeedback
+        fields = [
+            'id',
+            'pilgrim',
+            'pilgrim_name',
+            'booking',
+            'booking_reference',
+            'trip',
+            'trip_code',
+            'trip_name',
+            'status',
+            'overall_rating',
+            'support_rating',
+            'accommodation_rating',
+            'transport_rating',
+            'highlights',
+            'improvements',
+            'testimonial_opt_in',
+            'follow_up_requested',
+            'review_notes',
+            'reviewed_by',
+            'reviewed_by_name',
+            'reviewed_at',
+            'submitted_at',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = [
+            'id',
+            'pilgrim',
+            'pilgrim_name',
+            'booking',
+            'booking_reference',
+            'trip',
+            'trip_code',
+            'trip_name',
+            'status',
+            'overall_rating',
+            'support_rating',
+            'accommodation_rating',
+            'transport_rating',
+            'highlights',
+            'improvements',
+            'testimonial_opt_in',
+            'follow_up_requested',
+            'reviewed_by_name',
+            'submitted_at',
+            'created_at',
+            'updated_at',
+        ]
+
+    def to_representation(self, instance):
+        """Convert to the admin dashboard's camelCase payload."""
+        data = super().to_representation(instance)
+        return {
+            'id': str(data['id']),
+            'pilgrim': str(data['pilgrim']),
+            'pilgrimName': data.get('pilgrim_name'),
+            'booking': str(data['booking']),
+            'bookingReference': data.get('booking_reference'),
+            'trip': str(data['trip']),
+            'tripCode': data.get('trip_code'),
+            'tripName': data.get('trip_name'),
+            'status': data.get('status'),
+            'overallRating': data.get('overall_rating'),
+            'supportRating': data.get('support_rating'),
+            'accommodationRating': data.get('accommodation_rating'),
+            'transportRating': data.get('transport_rating'),
+            'highlights': data.get('highlights'),
+            'improvements': data.get('improvements'),
+            'testimonialOptIn': data.get('testimonial_opt_in'),
+            'followUpRequested': data.get('follow_up_requested'),
+            'reviewNotes': data.get('review_notes'),
+            'reviewedBy': str(data['reviewed_by']) if data.get('reviewed_by') else None,
+            'reviewedByName': data.get('reviewed_by_name'),
+            'reviewedAt': data.get('reviewed_at'),
+            'submittedAt': data.get('submitted_at'),
+            'createdAt': data.get('created_at'),
+            'updatedAt': data.get('updated_at'),
+        }
+
+    def to_internal_value(self, data):
+        """Convert admin dashboard camelCase input back to backend fields."""
+        mapped_data = {}
+        field_mapping = {
+            'reviewNotes': 'review_notes',
+            'reviewedBy': 'reviewed_by',
+            'reviewedAt': 'reviewed_at',
+        }
+
+        for key, value in data.items():
+            mapped_key = field_mapping.get(key, key)
+            mapped_data[mapped_key] = value
+
+        return super().to_internal_value(mapped_data)
+
+
 # ============================================================================
 # DUA SERIALIZERS (Admin)
 # ============================================================================
@@ -558,9 +938,24 @@ class AdminPackageSerializer(serializers.ModelSerializer):
     class Meta:
         model = TripPackage
         fields = [
-            'id', 'trip', 'name', 'price_minor_units', 'currency', 'currency_id',
-            'capacity', 'visibility', 'created_at', 'updated_at'
+            'id', 'trip', 'package_code', 'name', 'start_date_override', 'end_date_override',
+            'nights', 'price_minor_units', 'currency', 'currency_id',
+            'capacity', 'sales_target', 'hotel_booking_month', 'airline_booking_month',
+            'status', 'visibility', 'created_at', 'updated_at'
         ]
+
+    def validate(self, attrs):
+        """Require complete package date overrides when provided."""
+        start_date = attrs.get('start_date_override', getattr(self.instance, 'start_date_override', None))
+        end_date = attrs.get('end_date_override', getattr(self.instance, 'end_date_override', None))
+
+        if bool(start_date) != bool(end_date):
+            raise serializers.ValidationError("Both package start and end date overrides must be set together")
+
+        if start_date and end_date and end_date <= start_date:
+            raise serializers.ValidationError("Package end date override must be after the start date override")
+
+        return attrs
 
 
 class AdminPackageFlightSerializer(serializers.ModelSerializer):
@@ -665,6 +1060,53 @@ class AdminTripFAQSerializer(serializers.ModelSerializer):
             'id', 'trip', 'question', 'answer', 'order',
             'created_at', 'updated_at'
         ]
+
+
+class AdminTripMilestoneSerializer(serializers.ModelSerializer):
+    """Serializer for trip milestone CRUD (admin)."""
+
+    owner_name = serializers.CharField(source='owner.name', read_only=True)
+
+    class Meta:
+        model = TripMilestone
+        fields = [
+            'id', 'trip', 'package', 'milestone_type', 'title', 'status',
+            'target_date', 'actual_date', 'notes', 'owner', 'owner_name',
+            'is_public', 'order', 'created_at', 'updated_at'
+        ]
+
+    def validate(self, attrs):
+        """Ensure package milestones stay within the selected trip."""
+        trip = attrs.get('trip', getattr(self.instance, 'trip', None))
+        package = attrs.get('package', getattr(self.instance, 'package', None))
+
+        if package and trip and package.trip_id != trip.id:
+            raise serializers.ValidationError("Milestone package must belong to the selected trip")
+
+        return attrs
+
+
+class AdminTripResourceSerializer(serializers.ModelSerializer):
+    """Serializer for trip resource CRUD (admin)."""
+
+    class Meta:
+        model = TripResource
+        fields = [
+            'id', 'trip', 'package', 'title', 'description', 'resource_type',
+            'order', 'file_public_id', 'file_format', 'file_url',
+            'viewer_mode', 'metadata', 'is_pinned', 'published_at',
+            'created_at', 'updated_at'
+        ]
+
+    def validate(self, attrs):
+        """Ensure package resources stay within the selected trip."""
+        trip = attrs.get('trip', getattr(self.instance, 'trip', None))
+        package = attrs.get('package', getattr(self.instance, 'package', None))
+
+        if package and trip and package.trip_id != trip.id:
+            raise serializers.ValidationError("Resource package must belong to the selected trip")
+
+        return attrs
 
 
 # ============================================================================

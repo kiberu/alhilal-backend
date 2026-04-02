@@ -57,7 +57,7 @@ export class AuthService {
   }
 
   /**
-   * POST /auth/staff/refresh
+   * POST /auth/refresh/
    * Refresh access token using refresh token.
    */
   static async refresh(): Promise<ApiResponse<AuthResponse>> {
@@ -66,32 +66,36 @@ export class AuthService {
       throw { message: "No refresh token available", status: 401 }
     }
     
-    const response = await apiClient.post<AuthResponse>(
+    const response = await apiClient.post<{ access: string }>(
       API_ENDPOINTS.AUTH.REFRESH,
-      { refreshToken }
+      { refresh: refreshToken }
     )
     
     // Update access token if refresh successful
     if (response.success && response.data) {
-      apiClient.setAuthToken(response.data.accessToken, false)
+      apiClient.setAuthToken(response.data.access, false)
     }
     
-    return response
+    return {
+      success: response.success,
+      data: response.data
+        ? ({
+            accessToken: response.data.access,
+          } as AuthResponse)
+        : undefined,
+      error: response.error,
+      message: response.message,
+    }
   }
 
   /**
-   * POST /auth/staff/logout
-   * Logout and invalidate refresh token.
+   * Client-side logout.
+   * Refresh token invalidation is not part of the current backend contract.
    */
   static async logout(authToken?: string): Promise<ApiResponse<void>> {
-    const response = await apiClient.post<void>(
-      API_ENDPOINTS.AUTH.LOGOUT,
-      undefined,
-      undefined,
-      authToken
-    )
+    void authToken
     apiClient.clearAuthToken()
-    return response
+    return { success: true }
   }
 
   /**
@@ -123,23 +127,14 @@ export class AuthService {
   }
 
   /**
-   * POST /auth/staff/change-password
-   * Change staff password.
+   * Staff self-service password change is scheduled for a later phase.
    */
   static async changePassword(
     data: ChangePasswordData,
     authToken?: string
   ): Promise<ApiResponse<void>> {
-    const payload = {
-      oldPassword: data.currentPassword,
-      newPassword: data.newPassword
-    }
-    return apiClient.post<void>(
-      API_ENDPOINTS.AUTH.CHANGE_PASSWORD,
-      payload,
-      undefined,
-      authToken
-    )
+    void data
+    void authToken
+    throw { message: "Staff self-service password change is not available until Phase 4.", status: 501 }
   }
 }
-

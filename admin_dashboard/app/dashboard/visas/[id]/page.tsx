@@ -140,7 +140,11 @@ export default function VisaDetailsPage() {
               View Document
             </Button>
           )}
-          <Button variant="outline" size="sm" onClick={() => toast.info("Edit functionality coming soon")}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => toast.info("Visa updates are managed through the pilgrim document workflow.")}
+          >
             <Edit className="mr-2 h-4 w-4" />
             Edit
           </Button>
@@ -260,4 +264,3 @@ export default function VisaDetailsPage() {
     </div>
   )
 }
-

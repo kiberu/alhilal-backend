@@ -10,21 +10,24 @@ from rest_framework import filters
 
 from apps.trips.models import (
     TripUpdate, TripGuideSection, ChecklistItem, 
-    EmergencyContact, TripFAQ
+    EmergencyContact, TripFAQ, TripMilestone, TripResource
 )
 from apps.api.serializers.admin import (
     AdminTripUpdateSerializer,
     AdminTripGuideSectionSerializer,
     AdminChecklistItemSerializer,
     AdminEmergencyContactSerializer,
-    AdminTripFAQSerializer
+    AdminTripFAQSerializer,
+    AdminTripMilestoneSerializer,
+    AdminTripResourceSerializer
 )
+from apps.common.permissions import StaffActionRolePermission, StaffRoleAccessMixin, user_has_staff_role
 
 
-class AdminTripUpdateViewSet(viewsets.ModelViewSet):
+class AdminTripUpdateViewSet(StaffRoleAccessMixin, viewsets.ModelViewSet):
     """ViewSet for managing trip updates/announcements."""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StaffActionRolePermission]
     serializer_class = AdminTripUpdateSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['trip', 'package', 'urgency', 'pinned']
@@ -33,19 +36,13 @@ class AdminTripUpdateViewSet(viewsets.ModelViewSet):
     ordering = ['-pinned', '-publish_at']
     
     def get_queryset(self):
-        if not self.request.user.is_staff:
+        if not user_has_staff_role(self.request.user, self.get_allowed_staff_roles(self.request)):
             return TripUpdate.objects.none()
         return TripUpdate.objects.all().select_related('trip', 'package')
     
     @action(detail=True, methods=['post'])
     def toggle_pin(self, request, pk=None):
         """Toggle pin status of update."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff can pin updates.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         update = self.get_object()
         update.pinned = not update.pinned
         update.save()
@@ -56,10 +53,10 @@ class AdminTripUpdateViewSet(viewsets.ModelViewSet):
         })
 
 
-class AdminTripGuideSectionViewSet(viewsets.ModelViewSet):
+class AdminTripGuideSectionViewSet(StaffRoleAccessMixin, viewsets.ModelViewSet):
     """ViewSet for managing trip guide sections."""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StaffActionRolePermission]
     serializer_class = AdminTripGuideSectionSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['trip']
@@ -68,19 +65,13 @@ class AdminTripGuideSectionViewSet(viewsets.ModelViewSet):
     ordering = ['order']
     
     def get_queryset(self):
-        if not self.request.user.is_staff:
+        if not user_has_staff_role(self.request.user, self.get_allowed_staff_roles(self.request)):
             return TripGuideSection.objects.none()
         return TripGuideSection.objects.all().select_related('trip')
     
     @action(detail=False, methods=['post'])
     def reorder(self, request):
         """Reorder guide sections."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff can reorder sections.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         section_ids = request.data.get('sectionIds', [])
         
         if not section_ids:
@@ -98,10 +89,10 @@ class AdminTripGuideSectionViewSet(viewsets.ModelViewSet):
         })
 
 
-class AdminChecklistItemViewSet(viewsets.ModelViewSet):
+class AdminChecklistItemViewSet(StaffRoleAccessMixin, viewsets.ModelViewSet):
     """ViewSet for managing checklist items."""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StaffActionRolePermission]
     serializer_class = AdminChecklistItemSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['trip', 'package', 'category', 'is_required']
@@ -110,15 +101,15 @@ class AdminChecklistItemViewSet(viewsets.ModelViewSet):
     ordering = ['category', 'label']
     
     def get_queryset(self):
-        if not self.request.user.is_staff:
+        if not user_has_staff_role(self.request.user, self.get_allowed_staff_roles(self.request)):
             return ChecklistItem.objects.none()
         return ChecklistItem.objects.all().select_related('trip', 'package')
 
 
-class AdminEmergencyContactViewSet(viewsets.ModelViewSet):
+class AdminEmergencyContactViewSet(StaffRoleAccessMixin, viewsets.ModelViewSet):
     """ViewSet for managing emergency contacts."""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StaffActionRolePermission]
     serializer_class = AdminEmergencyContactSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['trip']
@@ -127,15 +118,15 @@ class AdminEmergencyContactViewSet(viewsets.ModelViewSet):
     ordering = ['label']
     
     def get_queryset(self):
-        if not self.request.user.is_staff:
+        if not user_has_staff_role(self.request.user, self.get_allowed_staff_roles(self.request)):
             return EmergencyContact.objects.none()
         return EmergencyContact.objects.all().select_related('trip')
 
 
-class AdminTripFAQViewSet(viewsets.ModelViewSet):
+class AdminTripFAQViewSet(StaffRoleAccessMixin, viewsets.ModelViewSet):
     """ViewSet for managing trip FAQs."""
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StaffActionRolePermission]
     serializer_class = AdminTripFAQSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['trip']
@@ -144,19 +135,13 @@ class AdminTripFAQViewSet(viewsets.ModelViewSet):
     ordering = ['order']
     
     def get_queryset(self):
-        if not self.request.user.is_staff:
+        if not user_has_staff_role(self.request.user, self.get_allowed_staff_roles(self.request)):
             return TripFAQ.objects.none()
         return TripFAQ.objects.all().select_related('trip')
     
     @action(detail=False, methods=['post'])
     def reorder(self, request):
         """Reorder FAQs."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff can reorder FAQs.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         faq_ids = request.data.get('faqIds', [])
         
         if not faq_ids:
@@ -173,3 +158,36 @@ class AdminTripFAQViewSet(viewsets.ModelViewSet):
             'reordered': len(faq_ids)
         })
 
+
+class AdminTripMilestoneViewSet(StaffRoleAccessMixin, viewsets.ModelViewSet):
+    """ViewSet for managing trip milestones."""
+
+    permission_classes = [IsAuthenticated, StaffActionRolePermission]
+    serializer_class = AdminTripMilestoneSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['trip', 'package', 'milestone_type', 'status', 'is_public']
+    search_fields = ['title', 'notes']
+    ordering_fields = ['target_date', 'actual_date', 'order', 'created_at']
+    ordering = ['target_date', 'order']
+
+    def get_queryset(self):
+        if not user_has_staff_role(self.request.user, self.get_allowed_staff_roles(self.request)):
+            return TripMilestone.objects.none()
+        return TripMilestone.objects.all().select_related('trip', 'package', 'owner')
+
+
+class AdminTripResourceViewSet(StaffRoleAccessMixin, viewsets.ModelViewSet):
+    """ViewSet for managing trip resources."""
+
+    permission_classes = [IsAuthenticated, StaffActionRolePermission]
+    serializer_class = AdminTripResourceSerializer
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_fields = ['trip', 'package', 'resource_type', 'viewer_mode', 'is_pinned']
+    search_fields = ['title', 'description', 'file_public_id']
+    ordering_fields = ['published_at', 'order', 'created_at']
+    ordering = ['-is_pinned', 'order']
+
+    def get_queryset(self):
+        if not user_has_staff_role(self.request.user, self.get_allowed_staff_roles(self.request)):
+            return TripResource.objects.none()
+        return TripResource.objects.all().select_related('trip', 'package')
