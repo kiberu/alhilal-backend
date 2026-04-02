@@ -19,6 +19,7 @@ import { Colors, Spacing, Typography, BorderRadius, Shadow } from '@/constants/t
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@/contexts/auth-context';
 import { AuthService } from '@/lib/api';
+import type { CompleteProfileData } from '@/lib/api/services/auth';
 
 const GENDERS = [
   { value: 'MALE', label: 'Male' },
@@ -53,9 +54,9 @@ export default function MyProfileScreen() {
     nationality: profile?.nationality || '',
     passport_number: profile?.passport_number || '',
     address: profile?.address || '',
-    emergency_name: profile?.emergency_contact?.name || '',
-    emergency_phone: profile?.emergency_contact?.phone || '',
-    emergency_relationship: profile?.emergency_contact?.relationship || '',
+    emergency_name: profile?.emergency_name || '',
+    emergency_phone: profile?.emergency_phone || '',
+    emergency_relationship: profile?.emergency_relationship || '',
   });
 
   // Redirect if not authenticated
@@ -63,7 +64,7 @@ export default function MyProfileScreen() {
     if (!isAuthenticated) {
       router.replace('/(auth)/login');
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, router]);
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -85,9 +86,9 @@ export default function MyProfileScreen() {
       nationality: profile?.nationality || '',
       passport_number: profile?.passport_number || '',
       address: profile?.address || '',
-      emergency_name: profile?.emergency_contact?.name || '',
-      emergency_phone: profile?.emergency_contact?.phone || '',
-      emergency_relationship: profile?.emergency_contact?.relationship || '',
+      emergency_name: profile?.emergency_name || '',
+      emergency_phone: profile?.emergency_phone || '',
+      emergency_relationship: profile?.emergency_relationship || '',
     });
     setIsEditing(false);
   };
@@ -102,14 +103,14 @@ export default function MyProfileScreen() {
       const updateData = {
         full_name: formData.full_name,
         dob: formData.dob.toISOString().split('T')[0],
-        gender: formData.gender,
+        gender: formData.gender || undefined,
         nationality: formData.nationality,
         passport_number: formData.passport_number || undefined,
         address: formData.address || undefined,
         emergency_name: formData.emergency_name || undefined,
         emergency_phone: formData.emergency_phone || undefined,
         emergency_relationship: formData.emergency_relationship || undefined,
-      };
+      } satisfies Partial<CompleteProfileData>;
 
       const response = await AuthService.updateProfile(updateData, accessToken);
 
@@ -601,4 +602,3 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
-

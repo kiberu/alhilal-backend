@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: Spacing.md,
-    paddingBottom: Spacing['2xl'],
+    paddingBottom: Spacing.xxl,
     gap: Spacing.lg,
   },
   loadingScreen: {

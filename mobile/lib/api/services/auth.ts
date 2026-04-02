@@ -17,7 +17,11 @@ export interface CompleteProfileData {
   gender?: 'MALE' | 'FEMALE' | 'OTHER';
   nationality?: string;
   passport_number?: string;
-  has_passport: boolean;
+  has_passport?: boolean;
+  address?: string;
+  emergency_name?: string;
+  emergency_phone?: string;
+  emergency_relationship?: string;
 }
 
 export class AuthService {
