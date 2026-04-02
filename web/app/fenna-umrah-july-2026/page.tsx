@@ -11,7 +11,9 @@ import { SiteLogo } from "@/components/site/site-logo";
 import { TrackedLink } from "@/components/site/tracked-link";
 import { SinglePageTemplate } from "@/components/site/templates";
 import { fennaCampaign } from "@/lib/content/fenna";
+import { analyticsEventNames } from "@/lib/gtag";
 import { generatePageMetadata } from "@/lib/seo-config";
+import { siteConfig } from "@/lib/site-config";
 import { buildBreadcrumbSchema, buildFaqSchema } from "@/lib/structured-data";
 
 export const metadata: Metadata = generatePageMetadata({
@@ -39,20 +41,20 @@ export default function FennaLandingPage() {
         actions={
           <>
             <TrackedLink
-              href="https://wa.me/256700773535"
+              href={siteConfig.social.whatsapp}
               newTab
-              action="fenna_landing_cta_click"
-              category="conversion"
-              label="fenna_whatsapp"
+              eventName={analyticsEventNames.ctaWhatsAppClick}
+              ctaLabel="fenna_whatsapp"
+              contextLabel="fenna_hero"
               className={buttonLinkClass("gold")}
             >
               Ask on WhatsApp
             </TrackedLink>
             <TrackedLink
               href="/contact"
-              action="fenna_landing_cta_click"
-              category="conversion"
-              label="fenna_consultation"
+              eventName={analyticsEventNames.ctaContactClick}
+              ctaLabel="fenna_consultation"
+              contextLabel="fenna_hero"
               className={buttonLinkClass("default")}
             >
               Talk to Al Hilal
@@ -79,9 +81,9 @@ export default function FennaLandingPage() {
             cta={
               <TrackedLink
                 href={fennaCampaign.journeyRoute}
-                action="fenna_landing_cta_click"
-                category="conversion"
-                label="fenna_detail_panel"
+                eventName={analyticsEventNames.ctaJourneyDetailClick}
+                ctaLabel="fenna_detail_panel"
+                contextLabel="fenna_support_panel"
                 className={buttonLinkClass("outline")}
               >
                 See journey details

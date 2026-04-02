@@ -1,36 +1,41 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Al Hilal Website
 
-## Getting Started
+`apps/web` is the public website for Hajj and Umrah information, trust building, and lead conversion.
 
-First, run the development server:
+## Current Role
+
+The website is the public discovery surface for:
+
+- trip and package exploration
+- guidance and educational content
+- Al Hilal brand trust
+- structured consultation capture
+- planning-guide slow-nurture capture
+- analytics-attributed CTA and lead conversion for the public website
+
+## Local Commands
 
 ```bash
+cd apps/web
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run build
+npm test -- --runInBand
+npm run test:e2e
+npm run test:links
+npm run test:lighthouse
+npm run qa:website
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Verified on April 2, 2026
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `npm run build` passed.
+- `npm test -- --runInBand` passed.
+- `npm run test:e2e` passed with 12 checks, including axe scans on the six primary public surfaces.
+- `npm run test:links` passed and verified 12 sitemap URLs plus 13 internal navigation targets.
+- `npm run test:lighthouse` passed with the homepage, journeys listing, journey detail, and contact pages all clearing the configured `85` score gate across performance, SEO, accessibility, and best practices.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Known Gaps
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Phase 2 website engineering is complete and is awaiting human sign-off plus upstream readiness-gate acceptance.
+- `GUIDE_REQUEST` remains a manual staff follow-up flow by design until a later phase introduces broader automation.

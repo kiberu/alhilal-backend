@@ -8,6 +8,7 @@ import { Section, SectionIntro } from "@/components/site/primitives";
 import { TrackedLink } from "@/components/site/tracked-link";
 import { SinglePageTemplate } from "@/components/site/templates";
 import { fennaCampaign } from "@/lib/content/fenna";
+import { analyticsEventNames } from "@/lib/gtag";
 import { generatePageMetadata } from "@/lib/seo-config";
 import { siteConfig } from "@/lib/site-config";
 import { buildBreadcrumbSchema } from "@/lib/structured-data";
@@ -37,18 +38,18 @@ export default function AboutPage() {
           <>
             <TrackedLink
               href={fennaCampaign.route}
-              action="about_fenna_click"
-              category="navigation"
-              label="about_fenna"
+              eventName={analyticsEventNames.ctaJourneyDetailClick}
+              ctaLabel="about_fenna"
+              contextLabel="about_hero"
               className={buttonLinkClass("gold")}
             >
               See July Fenna
             </TrackedLink>
             <TrackedLink
               href="/contact"
-              action="about_contact_click"
-              category="conversion"
-              label="about_contact"
+              eventName={analyticsEventNames.ctaContactClick}
+              ctaLabel="about_contact"
+              contextLabel="about_hero"
               className={buttonLinkClass("outline")}
             >
               Talk to Al Hilal

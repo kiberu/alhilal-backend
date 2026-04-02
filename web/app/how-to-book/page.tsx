@@ -3,11 +3,12 @@ import type { Metadata } from "next";
 
 import { buttonLinkClass } from "@/components/site/button-classes";
 import { InfoCard } from "@/components/site/cards";
-import { ConsultationForm } from "@/components/site/forms";
+import { ConsultationForm, GuideRequestForm } from "@/components/site/forms";
 import { JsonLd } from "@/components/site/json-ld";
 import { Section, SectionIntro } from "@/components/site/primitives";
 import { TrackedLink } from "@/components/site/tracked-link";
 import { SinglePageTemplate } from "@/components/site/templates";
+import { analyticsEventNames } from "@/lib/gtag";
 import { generatePageMetadata } from "@/lib/seo-config";
 import { buildBreadcrumbSchema, buildFaqSchema } from "@/lib/structured-data";
 
@@ -54,22 +55,22 @@ export default function HowToBookPage() {
         actions={
           <>
             <TrackedLink
-              href="/contact"
-              action="how_to_book_contact_click"
-              category="conversion"
-              label="how_to_book_contact"
+              href="#consultation-form"
+              eventName={analyticsEventNames.ctaConsultationClick}
+              ctaLabel="how_to_book_consultation"
+              contextLabel="how_to_book_hero"
               className={buttonLinkClass("gold")}
             >
-              Talk to Al Hilal
+              Start a consultation
             </TrackedLink>
             <TrackedLink
-              href="/journeys"
-              action="how_to_book_journeys_click"
-              category="navigation"
-              label="how_to_book_journeys"
+              href="#planning-guide-form"
+              eventName={analyticsEventNames.ctaPlanningGuideClick}
+              ctaLabel="how_to_book_planning_guide"
+              contextLabel="how_to_book_hero"
               className={buttonLinkClass("outline")}
             >
-              See journeys
+              Request the planning guide
             </TrackedLink>
           </>
         }
@@ -104,19 +105,33 @@ export default function HowToBookPage() {
       <Section className="mt-20 grid gap-6 xl:grid-cols-[1fr_0.95fr]">
         <div className="rounded-[2.25rem] border border-[color:var(--border-soft)] bg-white p-7 shadow-[0_24px_60px_rgba(39,28,33,0.07)]">
           <SectionIntro
-            eyebrow="What should be clear before you pay"
-            title="Know the practical details first."
-            description="Good booking conversations are easier when the important questions are already on the table."
+            eyebrow="Documents and timing"
+            title="Know the readiness expectations before money changes hands."
+            description="The booking page should make the seriousness of preparation clear: documents, timing, and support expectations all matter before a place is confirmed."
           />
 
-          <div className="mt-6 grid gap-4">
+          <div className="mt-6 grid gap-4 md:grid-cols-2">
             {[
-              "Which journey fits your dates and household best.",
-              "What is included, what is not, and what may still change.",
-              "Which documents you need and when they are needed.",
-              "Who Al Hilal should speak to if a sponsor or family member is involved.",
+              "Passport validity should be checked early, not after a package conversation has already become urgent.",
+              "Travel windows, sponsor approvals, and family decision-makers should be clear before package locking starts.",
+              "Payment planning should be honest about what is included, what is still pending, and when deadlines become serious.",
+              "Support works best when Al Hilal receives a clean summary of who is travelling, what help is needed, and which documents are already ready.",
             ].map((item) => (
               <div key={item} className="rounded-[1.5rem] bg-[color:var(--surface-tint)] px-4 py-4 text-sm leading-7 text-[color:var(--ink-soft)]">
+                {item}
+              </div>
+            ))}
+          </div>
+
+          <h2 className="mt-10 text-2xl font-bold tracking-[-0.04em] text-[color:var(--ink-strong)]">Support and seriousness expectations</h2>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            {[
+              "Consultations should lead to a real follow-up, not a mailbox-only dead end.",
+              "WhatsApp is useful for live questions, but structured enquiry helps the team prepare a better response.",
+              "First-timers and families should expect clearer guidance, not pressure to decide before the basics are understood.",
+              "If a sponsor abroad is involved, Al Hilal should know who approves payment, package changes, and document collection.",
+            ].map((item) => (
+              <div key={item} className="rounded-[1.6rem] border border-[color:var(--border-soft)] bg-[color:var(--surface-card)] px-5 py-5 text-sm leading-7 text-[color:var(--ink-soft)]">
                 {item}
               </div>
             ))}
@@ -133,13 +148,33 @@ export default function HowToBookPage() {
           </div>
         </div>
 
-        <div className="rounded-[2.25rem] border border-[color:var(--border-soft)] bg-[color:var(--surface-card)] p-7 shadow-[0_24px_60px_rgba(39,28,33,0.07)]">
-          <SectionIntro
-            eyebrow="Need help before you choose?"
-            title="Tell Al Hilal what you are trying to work out."
-            description="A short summary from you makes the first WhatsApp conversation more useful and easier to handle."
-          />
-          <ConsultationForm source="how_to_book" contextLabel="how_to_book" className="mt-6" />
+        <div className="grid gap-6">
+          <div id="consultation-form" className="rounded-[2.25rem] border border-[color:var(--border-soft)] bg-[color:var(--surface-card)] p-7 shadow-[0_24px_60px_rgba(39,28,33,0.07)]">
+            <SectionIntro
+              eyebrow="Need help before you choose?"
+              title="Tell Al Hilal what you are trying to work out."
+              description="A short summary from you makes the first follow-up more useful and easier to handle."
+            />
+            <ConsultationForm source="how_to_book" contextLabel="how_to_book_consultation" className="mt-6" />
+          </div>
+
+          <div id="planning-guide-form" className="rounded-[2.25rem] border border-[color:var(--border-soft)] bg-white p-7 shadow-[0_24px_60px_rgba(39,28,33,0.07)]">
+            <SectionIntro
+              eyebrow="Still planning?"
+              title="Use the slower path if you need a guide before you need a sales conversation."
+              description="The planning guide is the right secondary CTA here for visitors who need readiness help, not immediate booking pressure."
+            />
+            <GuideRequestForm source="how_to_book" contextLabel="how_to_book_planning_guide" className="mt-6" />
+            <TrackedLink
+              href="/journeys"
+              eventName={analyticsEventNames.ctaJourneysClick}
+              ctaLabel="how_to_book_browse_journeys"
+              contextLabel="how_to_book_planning_guide"
+              className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-maroon)]"
+            >
+              Or browse published journeys
+            </TrackedLink>
+          </div>
         </div>
       </Section>
     </main>

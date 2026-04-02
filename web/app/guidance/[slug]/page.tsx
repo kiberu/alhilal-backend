@@ -4,11 +4,13 @@ import type { Metadata } from "next";
 
 import { buttonLinkClass } from "@/components/site/button-classes";
 import { FeaturedCard, InfoCard } from "@/components/site/cards";
+import { GuideRequestForm } from "@/components/site/forms";
 import { JsonLd } from "@/components/site/json-ld";
 import { Eyebrow } from "@/components/site/primitives";
 import { TrackedLink } from "@/components/site/tracked-link";
 import { PostTemplate } from "@/components/site/templates";
 import { getGuidanceArticle } from "@/lib/content/guidance";
+import { analyticsEventNames } from "@/lib/gtag";
 import { generatePageMetadata } from "@/lib/seo-config";
 import { buildArticleSchema, buildBreadcrumbSchema } from "@/lib/structured-data";
 
@@ -43,6 +45,19 @@ export default async function GuidanceArticlePage({ params }: GuidancePageProps)
   if (!article) {
     notFound();
   }
+
+  const primaryEventName =
+    article.ctaHref === "/contact"
+      ? analyticsEventNames.ctaContactClick
+      : article.ctaHref === "/how-to-book"
+        ? analyticsEventNames.ctaHowToBookClick
+        : analyticsEventNames.ctaJourneyDetailClick;
+  const secondaryEventName =
+    article.secondaryCtaHref === "/journeys"
+      ? analyticsEventNames.ctaJourneysClick
+      : article.secondaryCtaHref === "/contact"
+        ? analyticsEventNames.ctaContactClick
+        : analyticsEventNames.ctaHowToBookClick;
 
   return (
     <main>
@@ -80,28 +95,31 @@ export default async function GuidanceArticlePage({ params }: GuidancePageProps)
               cta={
                 <TrackedLink
                   href={article.ctaHref}
-                  action="guidance_article_cta_click"
-                  category="conversion"
-                  label={article.slug}
+                  eventName={primaryEventName}
+                  ctaLabel="guidance_article_primary"
+                  contextLabel={article.slug}
+                  articleSlug={article.slug}
                   className={buttonLinkClass("gold")}
                 >
-                  See the related journey
+                  {article.ctaTitle}
                 </TrackedLink>
               }
             />
             <InfoCard
               icon={MessageCircle}
-              title="Need help deciding?"
-              description="If the guide answers part of your question, talk to Al Hilal directly for dates, fit, and booking help."
+              title="Need the slower path?"
+              description="Use the planning guide request if this article helped but you are still in the learning and timing stage."
             />
+            <GuideRequestForm source="guidance_article" contextLabel={`guidance_article_${article.slug}_planning_guide`} className="rounded-[2rem] border border-[color:var(--border-soft)] bg-white p-5 shadow-[0_20px_50px_rgba(39,28,33,0.06)]" />
             <TrackedLink
-              href="/contact"
-              action="guidance_article_contact_click"
-              category="conversion"
-              label={article.slug}
+              href={article.secondaryCtaHref}
+              eventName={secondaryEventName}
+              ctaLabel="guidance_article_secondary"
+              contextLabel={article.slug}
+              articleSlug={article.slug}
               className={buttonLinkClass("outline")}
             >
-              Talk to Al Hilal
+              {article.secondaryCtaTitle}
             </TrackedLink>
           </>
         }
@@ -126,6 +144,35 @@ export default async function GuidanceArticlePage({ params }: GuidancePageProps)
               ) : null}
             </section>
           ))}
+
+          <section className="rounded-[1.9rem] border border-[color:var(--border-soft)] bg-[color:var(--surface-card)] p-5">
+            <Eyebrow>Next step</Eyebrow>
+            <h2 className="mt-4 text-2xl font-bold leading-[1] tracking-[-0.04em] text-[color:var(--ink-strong)]">{article.ctaTitle}</h2>
+            <p className="mt-4 text-sm leading-7 text-[color:var(--ink-soft)]">{article.ctaDescription}</p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <TrackedLink
+                href={article.ctaHref}
+                eventName={primaryEventName}
+                ctaLabel="guidance_article_end_primary"
+                contextLabel={article.slug}
+                articleSlug={article.slug}
+                className={buttonLinkClass("gold")}
+              >
+                {article.ctaTitle}
+              </TrackedLink>
+              <TrackedLink
+                href={article.secondaryCtaHref}
+                eventName={secondaryEventName}
+                ctaLabel="guidance_article_end_secondary"
+                contextLabel={article.slug}
+                articleSlug={article.slug}
+                className={buttonLinkClass("outline")}
+              >
+                {article.secondaryCtaTitle}
+              </TrackedLink>
+            </div>
+            <p className="mt-4 text-sm leading-7 text-[color:var(--ink-soft)]">{article.secondaryCtaDescription}</p>
+          </section>
         </div>
       </PostTemplate>
     </main>

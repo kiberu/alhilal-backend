@@ -37,7 +37,7 @@ export function FrontPageTemplate({
   return (
     <Section className="pt-6 pb-12 md:pt-8 md:pb-14">
       <div className="overflow-hidden rounded-[2.8rem] border border-[color:var(--border-soft)] bg-white p-3 shadow-[0_32px_90px_rgba(39,28,33,0.09)]">
-        <div className="relative min-h-[34rem] overflow-hidden rounded-[2.2rem] bg-[color:var(--surface-muted)] md:min-h-[37rem]">
+        <div className="relative min-h-[27rem] overflow-hidden rounded-[2.2rem] bg-[color:var(--surface-muted)] md:min-h-[33rem]">
           <Image
             src={imageSrc}
             alt={imageAlt}
@@ -47,8 +47,8 @@ export function FrontPageTemplate({
             className="object-cover"
           />
           <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(18,14,18,0.14),rgba(18,14,18,0.28)_48%,rgba(18,14,18,0.56)_100%)]" />
-          <div className="absolute inset-4 flex flex-col justify-between md:inset-8">
-            <div className="w-full max-w-full rounded-[1.8rem] bg-[rgba(255,253,250,0.92)] p-5 shadow-[0_24px_55px_rgba(39,28,33,0.14)] backdrop-blur-md sm:max-w-[25rem] md:mt-4 md:max-w-[39rem] md:p-8">
+          <div className="absolute inset-4 flex flex-col justify-between md:inset-7">
+            <div className="w-full max-w-full rounded-[1.8rem] bg-[rgba(255,253,250,0.96)] p-5 shadow-[0_18px_36px_rgba(39,28,33,0.12)] sm:max-w-[25rem] md:mt-4 md:max-w-[39rem] md:p-8">
               <Eyebrow>{eyebrow}</Eyebrow>
               {supportLine ? (
                 <p className="mt-4 hidden text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--ink-muted)] sm:block">{supportLine}</p>
@@ -161,7 +161,7 @@ export function PostTemplate({
           <article className="rounded-[2.35rem] border border-[color:var(--border-soft)] bg-white p-7 shadow-[0_28px_75px_rgba(39,28,33,0.08)] md:p-9">
             {children}
           </article>
-          {stickyRail ? <aside className="space-y-5 xl:sticky xl:top-28">{stickyRail}</aside> : null}
+          {stickyRail ? <div className="space-y-5 xl:sticky xl:top-28">{stickyRail}</div> : null}
         </div>
       </Section>
     </>

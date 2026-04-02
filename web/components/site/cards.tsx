@@ -1,11 +1,19 @@
 import Image from "next/image";
-import Link from "next/link";
 import { ArrowRight, BookOpenText, CalendarDays, Clock3, MapPin, Wallet } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import { buttonLinkClass } from "@/components/site/button-classes";
 import { Eyebrow } from "@/components/site/primitives";
+import { TrackedLink } from "@/components/site/tracked-link";
 import type { GuidanceArticle } from "@/lib/content/guidance";
-import { formatCityList, formatDateRange, formatMoney } from "@/lib/format";
+import {
+  formatCityList,
+  formatDateRange,
+  formatMoney,
+  formatNightsLabel,
+  formatPackageCountLabel,
+  formatStatusLabel,
+} from "@/lib/format";
 import type { JourneyListItem } from "@/lib/trips";
 import { cn } from "@/lib/utils";
 
@@ -137,7 +145,10 @@ export function JourneyCard({
 }) {
   const imageSrc = journey.coverImage || FALLBACK_MEDIA;
   const summary = truncateText(journey.excerpt || "Dates, hotels, and support details for pilgrims leaving from Uganda.", variant === "featured" ? 180 : 100);
-  const priceMatch = journey.seoDescription.match(/UGX[\s0-9.,A-Za-z]*/i)?.[0];
+  const priceLabel = formatMoney(journey.startingPriceMinorUnits, journey.startingPriceCurrency || "UGX");
+  const statusLabel = formatStatusLabel(journey.status);
+  const nightsLabel = formatNightsLabel(journey.defaultNights);
+  const packageCountLabel = formatPackageCountLabel(journey.packagesCount);
 
   if (variant === "featured") {
     return (
@@ -162,9 +173,17 @@ export function JourneyCard({
               <span className="rounded-full bg-[color:var(--surface-tint)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-maroon)]">
                 {featuredLabel || "Featured departure"}
               </span>
-              {journey.packagesCount ? (
+              {journey.commercialMonthLabel ? (
+                <span className="rounded-full bg-white px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--ink-strong)]">
+                  {journey.commercialMonthLabel}
+                </span>
+              ) : null}
+              <span className="rounded-full bg-[color:var(--ink-strong)]/82 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
+                {statusLabel}
+              </span>
+              {packageCountLabel ? (
                 <span className="rounded-full bg-[color:var(--ink-strong)]/82 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-white">
-                  {journey.packagesCount} package{journey.packagesCount === 1 ? "" : "s"}
+                  {packageCountLabel}
                 </span>
               ) : null}
             </div>
@@ -180,21 +199,43 @@ export function JourneyCard({
                 <MapPin className="h-4 w-4 text-[color:var(--brand-maroon)]" />
                 {formatCityList(journey.cities)}
               </span>
-              {priceMatch ? (
+              {nightsLabel ? (
+                <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2">
+                  <CalendarDays className="h-4 w-4 text-[color:var(--brand-maroon)]" />
+                  {nightsLabel}
+                </span>
+              ) : null}
+              {priceLabel ? (
                 <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-2">
                   <Wallet className="h-4 w-4 text-[color:var(--brand-maroon)]" />
-                  {priceMatch}
+                  From {priceLabel}
                 </span>
               ) : null}
             </div>
             <p className="mt-5 text-sm leading-7 text-[color:var(--ink-soft)]">{summary}</p>
-            <Link
+            <div className="mt-auto flex flex-wrap gap-3 pt-6">
+              <TrackedLink
               href={`/journeys/${journey.slug}`}
-              className="mt-auto inline-flex items-center gap-2 pt-6 text-sm font-semibold text-[color:var(--brand-maroon)]"
+              eventName="cta_journey_detail_click"
+              ctaLabel="journey_card_primary"
+              contextLabel={`journey_card_${journey.slug}`}
+              journeySlug={journey.slug}
+              className={buttonLinkClass("gold")}
             >
               See dates and pricing
               <ArrowRight className="h-4 w-4" />
-            </Link>
+              </TrackedLink>
+              <TrackedLink
+                href="/contact"
+                eventName="cta_contact_click"
+                ctaLabel="journey_card_help"
+                contextLabel={`journey_card_${journey.slug}`}
+                journeySlug={journey.slug}
+                className={buttonLinkClass("outline")}
+              >
+                Need help choosing?
+              </TrackedLink>
+            </div>
           </div>
         </div>
       </article>
@@ -227,17 +268,56 @@ export function JourneyCard({
 
       <div className="flex flex-1 flex-col px-1 pb-1 pt-5">
         <div className="flex flex-wrap gap-2 text-sm text-[color:var(--ink-soft)]">
+          {journey.commercialMonthLabel ? (
+            <span className="inline-flex items-center gap-2 rounded-full bg-[color:var(--surface-tint)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--brand-maroon)]">
+              {journey.commercialMonthLabel}
+            </span>
+          ) : null}
+          <span className="inline-flex items-center gap-2 rounded-full bg-[color:var(--surface-tint)] px-3 py-2">
+            {statusLabel}
+          </span>
           <span className="inline-flex items-center gap-2 rounded-full bg-[color:var(--surface-tint)] px-3 py-2">
             <CalendarDays className="h-4 w-4 text-[color:var(--brand-maroon)]" />
             {formatDateRange(journey.startDate, journey.endDate)}
           </span>
+          {nightsLabel ? (
+            <span className="inline-flex items-center gap-2 rounded-full bg-[color:var(--surface-tint)] px-3 py-2">{nightsLabel}</span>
+          ) : null}
+          {packageCountLabel ? (
+            <span className="inline-flex items-center gap-2 rounded-full bg-[color:var(--surface-tint)] px-3 py-2">{packageCountLabel}</span>
+          ) : null}
+          {priceLabel ? (
+            <span className="inline-flex items-center gap-2 rounded-full bg-[color:var(--surface-tint)] px-3 py-2">
+              <Wallet className="h-4 w-4 text-[color:var(--brand-maroon)]" />
+              From {priceLabel}
+            </span>
+          ) : null}
         </div>
         <h3 className="mt-4 text-[1.55rem] font-bold leading-[1.02] tracking-[-0.05em] text-[color:var(--ink-strong)]">{journey.name}</h3>
         <p className="mt-4 text-sm leading-7 text-[color:var(--ink-soft)]">{summary}</p>
-        <Link href={`/journeys/${journey.slug}`} className="mt-auto inline-flex items-center gap-2 pt-5 text-sm font-semibold text-[color:var(--brand-maroon)]">
-          See dates and pricing
-          <ArrowRight className="h-4 w-4" />
-        </Link>
+        <div className="mt-auto flex flex-wrap gap-3 pt-5">
+          <TrackedLink
+            href={`/journeys/${journey.slug}`}
+            eventName="cta_journey_detail_click"
+            ctaLabel="journey_card_primary"
+            contextLabel={`journey_card_${journey.slug}`}
+            journeySlug={journey.slug}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-maroon)]"
+          >
+            See dates and pricing
+            <ArrowRight className="h-4 w-4" />
+          </TrackedLink>
+          <TrackedLink
+            href="/contact"
+            eventName="cta_contact_click"
+            ctaLabel="journey_card_help"
+            contextLabel={`journey_card_${journey.slug}`}
+            journeySlug={journey.slug}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--ink-soft)]"
+          >
+            Need help choosing?
+          </TrackedLink>
+        </div>
       </div>
     </article>
   );
@@ -284,10 +364,17 @@ export function PostCard({
             </div>
             <h3 className="mt-5 text-[1.9rem] font-bold leading-[0.98] tracking-[-0.05em] text-[color:var(--ink-strong)]">{article.title}</h3>
             <p className="mt-4 text-sm leading-7 text-[color:var(--ink-soft)]">{summary}</p>
-            <Link href={`/guidance/${article.slug}`} className="mt-auto inline-flex items-center gap-2 pt-5 text-sm font-semibold text-[color:var(--brand-maroon)]">
+            <TrackedLink
+              href={`/guidance/${article.slug}`}
+              eventName="cta_guidance_article_click"
+              ctaLabel="guidance_card_primary"
+              contextLabel={`guidance_card_${article.slug}`}
+              articleSlug={article.slug}
+              className="mt-auto inline-flex items-center gap-2 pt-5 text-sm font-semibold text-[color:var(--brand-maroon)]"
+            >
               Read this guide
               <ArrowRight className="h-4 w-4" />
-            </Link>
+            </TrackedLink>
           </div>
         </div>
       </article>
@@ -326,10 +413,17 @@ export function PostCard({
         </div>
         <h3 className="mt-4 text-[1.45rem] font-bold leading-[1.04] tracking-[-0.05em] text-[color:var(--ink-strong)]">{article.title}</h3>
         <p className="mt-4 text-sm leading-7 text-[color:var(--ink-soft)]">{summary}</p>
-        <Link href={`/guidance/${article.slug}`} className="mt-auto inline-flex items-center gap-2 pt-5 text-sm font-semibold text-[color:var(--brand-maroon)]">
+        <TrackedLink
+          href={`/guidance/${article.slug}`}
+          eventName="cta_guidance_article_click"
+          ctaLabel="guidance_card_primary"
+          contextLabel={`guidance_card_${article.slug}`}
+          articleSlug={article.slug}
+          className="mt-auto inline-flex items-center gap-2 pt-5 text-sm font-semibold text-[color:var(--brand-maroon)]"
+        >
           Read this guide
           <ArrowRight className="h-4 w-4" />
-        </Link>
+        </TrackedLink>
       </div>
     </article>
   );

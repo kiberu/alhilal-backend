@@ -1,20 +1,23 @@
 "use client";
 
-import { ArrowRight, Mail, MessageCircle } from "lucide-react";
+import { ArrowRight, CheckCircle2, Mail, MessageCircle } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-import { event } from "@/lib/gtag";
-import { siteConfig } from "@/lib/site-config";
+import { createWebsiteLead } from "@/lib/leads";
+import { analyticsEventNames, trackLeadState } from "@/lib/gtag";
 import { cn } from "@/lib/utils";
 
 type ConsultationFormProps = {
   source: string;
   contextLabel: string;
   tripName?: string;
+  tripId?: string;
   className?: string;
 };
 
-export function ConsultationForm({ source, contextLabel, tripName, className }: ConsultationFormProps) {
+export function ConsultationForm({ source, contextLabel, tripName, tripId, className }: ConsultationFormProps) {
+  const pathname = usePathname();
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -22,37 +25,76 @@ export function ConsultationForm({ source, contextLabel, tripName, className }: 
     travelWindow: "",
     notes: "",
   });
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleSubmit = (formEvent: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (formEvent: React.FormEvent<HTMLFormElement>) => {
     formEvent.preventDefault();
 
-    const message = [
-      "Assalamu alaikum,",
-      "",
-      `I would like help planning my Umrah or Hajj.`,
-      `Page: ${source}`,
-      `Context: ${contextLabel}`,
-      tripName ? `Journey: ${tripName}` : null,
-      `Name: ${formData.name}`,
-      `Phone: ${formData.phone}`,
-      formData.email ? `Email: ${formData.email}` : null,
-      formData.travelWindow ? `Travel window: ${formData.travelWindow}` : null,
-      formData.notes ? `Notes: ${formData.notes}` : null,
-    ]
-      .filter(Boolean)
-      .join("\n");
+    try {
+      setStatus("submitting");
+      setErrorMessage("");
+      trackLeadState(analyticsEventNames.leadSubmitStarted, {
+        pagePath: pathname,
+        source,
+        contextLabel,
+        ctaLabel: "consultation_form_submit",
+        interestType: "CONSULTATION",
+        tripId,
+      });
 
-    event({
-      action: `${source}_consultation_submit`,
-      category: "conversion",
-      label: tripName || contextLabel,
-    });
+      await createWebsiteLead({
+        name: formData.name,
+        phone: formData.phone,
+        email: formData.email,
+        interestType: "CONSULTATION",
+        travelWindow: formData.travelWindow,
+        notes: formData.notes,
+        tripId,
+        source,
+        contextLabel,
+        ctaLabel: "consultation_form_submit",
+      });
 
-    window.open(`https://wa.me/${siteConfig.whatsappNumber}?text=${encodeURIComponent(message)}`, "_blank");
+      trackLeadState(analyticsEventNames.leadSubmitSucceeded, {
+        pagePath: pathname,
+        source,
+        contextLabel,
+        ctaLabel: "consultation_form_submit",
+        interestType: "CONSULTATION",
+        tripId,
+      });
+      setStatus("success");
+    } catch (error) {
+      trackLeadState(analyticsEventNames.leadSubmitFailed, {
+        pagePath: pathname,
+        source,
+        contextLabel,
+        ctaLabel: "consultation_form_submit",
+        interestType: "CONSULTATION",
+        tripId,
+      });
+      setErrorMessage(error instanceof Error ? error.message : "We could not save your request. Please try again.")
+      setStatus("error");
+    }
   };
 
   const inputClassName =
     "w-full rounded-[1.5rem] border border-[color:var(--border-soft)] bg-[color:var(--surface-card)] px-4 py-3 text-sm text-[color:var(--ink-strong)] outline-none transition focus:border-[color:var(--brand-maroon)] focus:bg-white";
+
+  if (status === "success") {
+    return (
+      <div className={cn("rounded-[2rem] border border-[color:var(--border-soft)] bg-white p-5 shadow-[0_14px_32px_rgba(39,28,33,0.05)]", className)}>
+        <div className="inline-flex rounded-full bg-[color:var(--surface-tint)] p-3 text-[color:var(--brand-maroon)]">
+          <CheckCircle2 className="h-5 w-5" />
+        </div>
+        <h3 className="mt-4 text-xl font-bold tracking-[-0.04em] text-[color:var(--ink-strong)]">Your consultation request is saved.</h3>
+        <p className="mt-3 text-sm leading-7 text-[color:var(--ink-soft)]">
+          Al Hilal will review your details{tripName ? ` for ${tripName}` : ""} and follow up directly using the contact details you shared here. WhatsApp is optional now, not required.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className={cn("grid gap-4", className)}>
@@ -107,12 +149,16 @@ export function ConsultationForm({ source, contextLabel, tripName, className }: 
           className={`${inputClassName} min-h-[140px] resize-y`}
         />
       </label>
+      {status === "error" ? (
+        <p className="rounded-[1.4rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</p>
+      ) : null}
       <button
         type="submit"
+        disabled={status === "submitting"}
         className="inline-flex items-center justify-center gap-2 rounded-full bg-[color:var(--brand-maroon)] px-6 py-3.5 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(151,2,70,0.22)] transition hover:-translate-y-0.5 hover:bg-[color:var(--brand-maroon-deep)]"
       >
         <MessageCircle className="h-4 w-4" />
-        Ask on WhatsApp
+        {status === "submitting" ? "Saving request..." : "Request follow-up"}
         <ArrowRight className="h-4 w-4" />
       </button>
     </form>
@@ -121,32 +167,83 @@ export function ConsultationForm({ source, contextLabel, tripName, className }: 
 
 type GuideRequestFormProps = {
   source: string;
+  contextLabel?: string;
+  tripId?: string;
   className?: string;
 };
 
-export function GuideRequestForm({ source, className }: GuideRequestFormProps) {
+export function GuideRequestForm({ source, contextLabel, tripId, className }: GuideRequestFormProps) {
+  const pathname = usePathname();
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleSubmit = (formEvent: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (formEvent: React.FormEvent<HTMLFormElement>) => {
     formEvent.preventDefault();
 
-    event({
-      action: `${source}_guide_request`,
-      category: "nurture",
-      label: email,
-    });
+    try {
+      setStatus("submitting");
+      setErrorMessage("");
+      trackLeadState(analyticsEventNames.leadSubmitStarted, {
+        pagePath: pathname,
+        source,
+        contextLabel: contextLabel || `${source}_guide_request`,
+        ctaLabel: "guide_request_form_submit",
+        interestType: "GUIDE_REQUEST",
+        tripId,
+      });
 
-    const subject = encodeURIComponent("Please send me the Al Hilal planning guide");
-    const body = encodeURIComponent(
-      `Assalamu alaikum,\n\nPlease send me the Al Hilal planning guide.\n\nName: ${name}\nEmail: ${email}\nSource: ${source}\n`,
-    );
+      await createWebsiteLead({
+        name,
+        phone: "",
+        email,
+        interestType: "GUIDE_REQUEST",
+        tripId,
+        source,
+        contextLabel: contextLabel || `${source}_guide_request`,
+        ctaLabel: "guide_request_form_submit",
+      });
 
-    window.location.href = `mailto:${siteConfig.email}?subject=${subject}&body=${body}`;
+      trackLeadState(analyticsEventNames.leadSubmitSucceeded, {
+        pagePath: pathname,
+        source,
+        contextLabel: contextLabel || `${source}_guide_request`,
+        ctaLabel: "guide_request_form_submit",
+        interestType: "GUIDE_REQUEST",
+        tripId,
+      });
+      setStatus("success");
+    } catch (error) {
+      trackLeadState(analyticsEventNames.leadSubmitFailed, {
+        pagePath: pathname,
+        source,
+        contextLabel: contextLabel || `${source}_guide_request`,
+        ctaLabel: "guide_request_form_submit",
+        interestType: "GUIDE_REQUEST",
+        tripId,
+      });
+      setErrorMessage(error instanceof Error ? error.message : "We could not save your request. Please try again.")
+      setStatus("error");
+    }
   };
 
   const inputClassName =
     "w-full rounded-[1.5rem] border border-[color:var(--border-soft)] bg-[color:var(--surface-card)] px-4 py-3 text-sm text-[color:var(--ink-strong)] outline-none transition focus:border-[color:var(--brand-maroon)] focus:bg-white";
+
+  if (status === "success") {
+    return (
+      <div className={cn("rounded-[2rem] border border-[color:var(--border-soft)] bg-white p-5 shadow-[0_14px_32px_rgba(39,28,33,0.05)]", className)}>
+        <div className="inline-flex rounded-full bg-[color:var(--surface-tint)] p-3 text-[color:var(--brand-maroon)]">
+          <CheckCircle2 className="h-5 w-5" />
+        </div>
+        <h3 className="mt-4 text-xl font-bold tracking-[-0.04em] text-[color:var(--ink-strong)]">Planning guide request saved.</h3>
+        <p className="mt-3 text-sm leading-7 text-[color:var(--ink-soft)]">
+          The team will send the planning guide manually using the details you shared here and may follow up if timing or support needs need clarification.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={handleSubmit} className={cn("grid gap-4", className)}>
@@ -171,12 +268,16 @@ export function GuideRequestForm({ source, className }: GuideRequestFormProps) {
           className={inputClassName}
         />
       </label>
+      {status === "error" ? (
+        <p className="rounded-[1.4rem] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">{errorMessage}</p>
+      ) : null}
       <button
         type="submit"
+        disabled={status === "submitting"}
         className="inline-flex items-center justify-center gap-2 rounded-full border border-[color:var(--border-soft)] bg-white px-6 py-3.5 text-sm font-semibold text-[color:var(--brand-maroon)] shadow-[0_14px_32px_rgba(39,28,33,0.05)] transition hover:-translate-y-0.5 hover:border-[color:var(--brand-maroon)]"
       >
         <Mail className="h-4 w-4" />
-        Send me the planning guide
+        {status === "submitting" ? "Saving request..." : "Request the planning guide"}
       </button>
     </form>
   );

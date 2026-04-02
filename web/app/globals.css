@@ -20,7 +20,7 @@
   --gold-deep: #d4871d;
   --ink-strong: #22181d;
   --ink-soft: #5d5056;
-  --ink-muted: #93828a;
+  --ink-muted: #6b5961;
   --border-soft: rgba(79, 47, 59, 0.12);
   --border-strong: rgba(79, 47, 59, 0.22);
 }
@@ -66,5 +66,12 @@
   ::selection {
     background: rgba(151, 2, 70, 0.14);
     color: var(--ink-strong);
+  }
+}
+
+@layer utilities {
+  .deferred-section {
+    content-visibility: auto;
+    contain-intrinsic-size: 1px 960px;
   }
 }

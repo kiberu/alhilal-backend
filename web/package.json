@@ -4,9 +4,20 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:test": "next dev --hostname 127.0.0.1 --port 3100",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "start:test": "next start --hostname 127.0.0.1 --port 3100",
+    "lint": "eslint",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:e2e": "playwright test",
+    "mock:public-api": "node tests/e2e/mock-public-api.mjs",
+    "serve:qa": "concurrently -k -s first \"npm run mock:public-api\" \"NEXT_PUBLIC_API_URL=http://127.0.0.1:4010/api/v1/ API_URL_INTERNAL=http://127.0.0.1:4010/api/v1/ npm run start:test\"",
+    "test:links": "npm run build && start-server-and-test \"npm run serve:qa\" http://127.0.0.1:3100 \"node tests/qa/check-links.mjs\"",
+    "test:lighthouse": "npm run build && start-server-and-test \"npm run serve:qa\" http://127.0.0.1:3100 \"lhci autorun --config=./lighthouserc.json\"",
+    "qa:website": "npm test -- --runInBand && npm run test:e2e && npm run test:links && npm run test:lighthouse"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^7.1.0",
@@ -22,12 +33,23 @@
     "tailwind-merge": "^3.3.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
+    "@lhci/cli": "^0.15.1",
+    "@playwright/test": "^1.55.1",
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.1",
     "eslint": "^9",
     "eslint-config-next": "16.0.1",
+    "jest": "^30.2.0",
+    "jest-environment-jsdom": "^30.2.0",
+    "start-server-and-test": "^2.1.2",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.4.0",
     "typescript": "^5"

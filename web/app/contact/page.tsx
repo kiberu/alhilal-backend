@@ -8,6 +8,7 @@ import { JsonLd } from "@/components/site/json-ld";
 import { Section, SectionIntro } from "@/components/site/primitives";
 import { TrackedLink } from "@/components/site/tracked-link";
 import { SinglePageTemplate } from "@/components/site/templates";
+import { analyticsEventNames } from "@/lib/gtag";
 import { generatePageMetadata } from "@/lib/seo-config";
 import { siteConfig } from "@/lib/site-config";
 import { buildBreadcrumbSchema } from "@/lib/structured-data";
@@ -32,24 +33,33 @@ export default function ContactPage() {
       <SinglePageTemplate
         eyebrow="Contact"
         title="Talk to a real Al Hilal advisor."
-        description="Use this page if you want a proper conversation about dates, pricing, family travel, or what journey may fit you best. WhatsApp is still the fastest route."
+        description="Use this page if you want a proper consultation about dates, pricing, family travel, or what journey may fit you best. The form is the primary handoff, with WhatsApp and call available when you need a faster direct route."
         actions={
           <>
             <TrackedLink
+              href="#consultation-form"
+              eventName={analyticsEventNames.ctaConsultationClick}
+              ctaLabel="contact_consultation"
+              contextLabel="contact_hero"
+              className={buttonLinkClass("gold")}
+            >
+              Start a consultation
+            </TrackedLink>
+            <TrackedLink
               href={siteConfig.social.whatsapp}
               newTab
-              action="contact_whatsapp_click"
-              category="conversion"
-              label="contact_whatsapp"
-              className={buttonLinkClass("gold")}
+              eventName={analyticsEventNames.ctaWhatsAppClick}
+              ctaLabel="contact_whatsapp"
+              contextLabel="contact_hero"
+              className={buttonLinkClass("outline")}
             >
               Ask on WhatsApp
             </TrackedLink>
             <TrackedLink
               href={`tel:${siteConfig.phoneIntl}`}
-              action="contact_phone_click"
-              category="conversion"
-              label="contact_phone"
+              eventName={analyticsEventNames.ctaCallClick}
+              ctaLabel="contact_phone"
+              contextLabel="contact_hero"
               className={buttonLinkClass("outline")}
             >
               Call the office
@@ -58,21 +68,21 @@ export default function ContactPage() {
         }
       />
 
-      <Section className="mt-6 grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-        <div className="grid gap-4">
-          <InfoCard icon={MessageCircle} title="Phone / WhatsApp" description={siteConfig.phoneDisplay} />
-          <InfoCard icon={Mail} title="Email" description={siteConfig.email} />
-          <InfoCard icon={MapPin} title="Office" description={siteConfig.addressLines.join(", ")} />
-          <InfoCard icon={Clock3} title="Hours" description={siteConfig.officeHours.join(" · ")} />
-        </div>
-
-        <div className="rounded-[2.25rem] border border-[color:var(--border-soft)] bg-[color:var(--surface-card)] p-7 shadow-[0_24px_60px_rgba(39,28,33,0.07)]">
+      <Section className="mt-6 grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
+        <div id="consultation-form" className="rounded-[2.25rem] border border-[color:var(--border-soft)] bg-[color:var(--surface-card)] p-7 shadow-[0_24px_60px_rgba(39,28,33,0.07)]">
           <SectionIntro
             eyebrow="Tell us what you need"
-            title="Give the team a better starting point."
-            description="Share the basics and the conversation can move faster on WhatsApp with less back-and-forth."
+            title="Give the team the context they need for a proper follow-up."
+            description="Share the basics here and Al Hilal can respond with a clearer next step instead of starting from an improvised chat handoff."
           />
-          <ConsultationForm source="contact" contextLabel="contact_page" className="mt-6" />
+          <ConsultationForm source="contact" contextLabel="contact_consultation" className="mt-6" />
+        </div>
+
+        <div className="grid gap-4">
+          <InfoCard icon={MessageCircle} title="Phone / WhatsApp" description={siteConfig.phoneDisplay} />
+          <InfoCard icon={Mail} title="Email" description={`${siteConfig.email} for supporting details and scheduled follow-up`} />
+          <InfoCard icon={MapPin} title="Office" description={siteConfig.addressLines.join(", ")} />
+          <InfoCard icon={Clock3} title="Hours" description={`${siteConfig.officeHours.join(" · ")}. Consultation follow-up is handled by the team, not by an unattended mailbox.`} />
         </div>
       </Section>
     </main>

@@ -7,6 +7,7 @@ import { Section, SectionIntro } from "@/components/site/primitives";
 import { TrackedLink } from "@/components/site/tracked-link";
 import { SinglePageTemplate } from "@/components/site/templates";
 import { fennaCampaign } from "@/lib/content/fenna";
+import { analyticsEventNames } from "@/lib/gtag";
 import { generatePageMetadata } from "@/lib/seo-config";
 import { buildBreadcrumbSchema } from "@/lib/structured-data";
 import { getPublicJourneys } from "@/lib/trips";
@@ -39,19 +40,19 @@ export default async function JourneysPage() {
         actions={
           <>
             <TrackedLink
-              href={fennaCampaign.route}
-              action="journeys_featured_trip_click"
-              category="conversion"
-              label="journeys_fenna"
+              href="/contact"
+              eventName={analyticsEventNames.ctaContactClick}
+              ctaLabel="journeys_help_choose"
+              contextLabel="journeys_hero"
               className={buttonLinkClass("gold")}
             >
-              See July Fenna
+              Need help choosing?
             </TrackedLink>
             <TrackedLink
               href="/how-to-book"
-              action="journeys_how_to_book_click"
-              category="navigation"
-              label="journeys_how_to_book"
+              eventName={analyticsEventNames.ctaHowToBookClick}
+              ctaLabel="journeys_how_to_book"
+              contextLabel="journeys_hero"
               className={buttonLinkClass("outline")}
             >
               How to book
@@ -63,8 +64,8 @@ export default async function JourneysPage() {
       <Section className="mt-6">
         <SectionIntro
           eyebrow="Current departures"
-          title="Featured first, then the rest."
-          description="The featured journey gets the strongest emphasis, but every departure should still make it easy to compare dates, support, and the next step."
+          title="A truthful journey calendar, featured first and then the rest."
+          description="Each card now carries the month label, journey status, dates, default nights, package count, and published starting price before you open the detail page."
         />
 
         <div className="mt-8 grid gap-6">

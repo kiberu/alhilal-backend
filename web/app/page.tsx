@@ -11,6 +11,7 @@ import { TrackedLink } from "@/components/site/tracked-link";
 import { FrontPageTemplate } from "@/components/site/templates";
 import { guidanceArticles } from "@/lib/content/guidance";
 import { fennaCampaign } from "@/lib/content/fenna";
+import { analyticsEventNames } from "@/lib/gtag";
 import { generatePageMetadata } from "@/lib/seo-config";
 import { siteConfig } from "@/lib/site-config";
 import { buildBreadcrumbSchema } from "@/lib/structured-data";
@@ -42,57 +43,61 @@ export default async function HomePage() {
         imageAlt="Pilgrims near the Kaaba under a bright sky"
         primaryAction={
           <TrackedLink
-            href={fennaCampaign.route}
-            action="homepage_featured_trip_click"
-            category="conversion"
-            label="hero_fenna"
-            className={buttonLinkClass("gold")}
-          >
-            See July Fenna
-          </TrackedLink>
-        }
-        secondaryAction={
-          <TrackedLink
             href={siteConfig.social.whatsapp}
             newTab
-            action="homepage_consultation_click"
-            category="conversion"
-            label="hero_whatsapp"
-            className={buttonLinkClass("default")}
+            eventName={analyticsEventNames.ctaWhatsAppClick}
+            ctaLabel="homepage_hero_whatsapp"
+            contextLabel="homepage_hero"
+            className={buttonLinkClass("gold")}
           >
             <MessageCircle className="h-4 w-4" />
             Ask on WhatsApp
           </TrackedLink>
         }
+        secondaryAction={
+          <TrackedLink
+            href="/journeys"
+            eventName={analyticsEventNames.ctaJourneysClick}
+            ctaLabel="homepage_hero_journeys"
+            contextLabel="homepage_hero"
+            className={buttonLinkClass("default")}
+          >
+            Browse journeys
+          </TrackedLink>
+        }
         proofChips={[
           { icon: ShieldCheck, label: "Licensed and trusted" },
           { icon: Users, label: "Family-aware care" },
-          { icon: CalendarDays, label: "WhatsApp support" },
+          { icon: CalendarDays, label: "Structured follow-up" },
         ]}
         supportRow={
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
-            <FeaturedCard
-              eyebrow="Featured July departure"
-              title={fennaCampaign.title}
-              description={fennaCampaign.summary}
-              media={
-                <div className="flex h-24 items-center justify-center rounded-[1.6rem] bg-[linear-gradient(145deg,_rgba(151,2,70,1),_rgba(108,5,53,0.96))] px-5 py-4 shadow-[0_18px_36px_rgba(151,2,70,0.16)]">
-                  <SiteLogo variant="umrah" />
-                </div>
-              }
-              stats={fennaCampaign.heroStats}
-              cta={
-                <TrackedLink
-                  href={fennaCampaign.route}
-                  action="homepage_featured_trip_click"
-                  category="conversion"
-                  label="hero_fenna_panel"
-                  className={buttonLinkClass("outline")}
-                >
-                  Check dates and pricing
-                </TrackedLink>
-              }
-            />
+            <div>
+              <h2 className="sr-only">Featured July departure</h2>
+              <FeaturedCard
+                eyebrow="Featured July departure"
+                title={fennaCampaign.title}
+                description={fennaCampaign.summary}
+                media={
+                  <div className="flex h-24 items-center justify-center rounded-[1.6rem] bg-[linear-gradient(145deg,_rgba(151,2,70,1),_rgba(108,5,53,0.96))] px-5 py-4 shadow-[0_18px_36px_rgba(151,2,70,0.16)]">
+                    <SiteLogo variant="umrah" />
+                  </div>
+                }
+                stats={fennaCampaign.heroStats}
+                cta={
+                  <TrackedLink
+                    href={fennaCampaign.route}
+                    eventName={analyticsEventNames.ctaJourneyDetailClick}
+                    ctaLabel="homepage_featured_journey"
+                    contextLabel="homepage_featured_panel"
+                    journeySlug={fennaCampaign.slug}
+                    className={buttonLinkClass("outline")}
+                  >
+                    Check dates and pricing
+                  </TrackedLink>
+                }
+              />
+            </div>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
               <InfoCard
                 icon={ShieldCheck}
@@ -109,7 +114,7 @@ export default async function HomePage() {
         }
       />
 
-      <Section className="mt-16">
+      <Section className="deferred-section mt-16">
         <div className="grid gap-6 xl:items-start xl:grid-cols-[1.08fr_0.92fr]">
           <div className="rounded-[2.3rem] border border-[color:var(--border-soft)] bg-white p-7 shadow-[0_24px_60px_rgba(39,28,33,0.08)]">
             <Eyebrow>Why Al Hilal</Eyebrow>
@@ -128,9 +133,9 @@ export default async function HomePage() {
             </div>
             <TrackedLink
               href="/about"
-              action="homepage_about_click"
-              category="navigation"
-              label="why_al_hilal"
+              eventName={analyticsEventNames.ctaAboutClick}
+              ctaLabel="homepage_about"
+              contextLabel="homepage_why_al_hilal"
               className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-maroon)]"
             >
               Why pilgrims in Uganda trust Al Hilal
@@ -159,7 +164,7 @@ export default async function HomePage() {
         </div>
       </Section>
 
-      <Section className="mt-20">
+      <Section className="deferred-section mt-20">
         <SectionIntro
           eyebrow="Journeys"
           title="Choose the departure that fits your dates, household, and budget."
@@ -167,9 +172,9 @@ export default async function HomePage() {
           action={
             <TrackedLink
               href="/journeys"
-              action="homepage_journeys_click"
-              category="navigation"
-              label="journeys_section"
+              eventName={analyticsEventNames.ctaJourneysClick}
+              ctaLabel="homepage_journeys_section"
+              contextLabel="homepage_journeys_intro"
               className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-maroon)]"
             >
               See all journeys
@@ -190,14 +195,13 @@ export default async function HomePage() {
               description="A short WhatsApp conversation can help you compare dates, rooming, pricing, and whether a journey suits your household before you commit."
               cta={
                 <TrackedLink
-                  href={siteConfig.social.whatsapp}
-                  newTab
-                  action="homepage_consultation_click"
-                  category="conversion"
-                  label="journeys_consultation_side"
+                  href="/contact"
+                  eventName={analyticsEventNames.ctaContactClick}
+                  ctaLabel="homepage_journeys_help"
+                  contextLabel="homepage_journeys_sidebar"
                   className={buttonLinkClass("default")}
                 >
-                  Ask on WhatsApp
+                  Get help choosing
                 </TrackedLink>
               }
             />
@@ -205,7 +209,7 @@ export default async function HomePage() {
         </div>
       </Section>
 
-      <Section className="mt-20">
+      <Section className="deferred-section mt-20">
         <SectionIntro
           eyebrow="Service style"
           title="What pilgrims should feel before they book."
@@ -236,7 +240,7 @@ export default async function HomePage() {
         </div>
       </Section>
 
-      <Section className="mt-20">
+      <Section className="deferred-section mt-20">
         <SectionIntro
           eyebrow="Guidance"
           title="Start with the question you already have."
@@ -244,9 +248,9 @@ export default async function HomePage() {
           action={
             <TrackedLink
               href="/guidance"
-              action="homepage_guidance_click"
-              category="navigation"
-              label="guidance_section"
+              eventName={analyticsEventNames.ctaGuidanceHubClick}
+              ctaLabel="homepage_guidance_section"
+              contextLabel="homepage_guidance_intro"
               className="inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--brand-maroon)]"
             >
               Visit the guidance hub
@@ -265,19 +269,19 @@ export default async function HomePage() {
         </div>
       </Section>
 
-      <Section className="mt-20 grid gap-6 xl:grid-cols-2">
-        <div className="rounded-[2.35rem] border border-[color:var(--border-soft)] bg-white p-7 shadow-[0_28px_75px_rgba(39,28,33,0.08)]">
-          <Eyebrow>Talk to Al Hilal</Eyebrow>
+      <Section className="deferred-section mt-20 grid gap-6 xl:grid-cols-2">
+        <div id="structured-consultation" className="rounded-[2.35rem] border border-[color:var(--border-soft)] bg-white p-7 shadow-[0_28px_75px_rgba(39,28,33,0.08)]">
+          <Eyebrow>Structured consultation</Eyebrow>
           <h2 className="mt-4 text-3xl font-bold leading-[0.96] tracking-[-0.05em] text-[color:var(--ink-strong)] md:text-5xl">
-            Tell the team what you need before you start the WhatsApp chat.
+            Share the important details before the team follows up.
           </h2>
           <p className="mt-4 text-sm leading-7 text-[color:var(--ink-soft)]">
-            This works well for first-timers, families, and anyone comparing dates or budget before choosing a departure.
+            This is the structured-enquiry path for first-timers, families, and anyone comparing dates or budget before choosing a departure.
           </p>
-          <ConsultationForm source="homepage" contextLabel="homepage" tripName={featuredJourney?.name} className="mt-6" />
+          <ConsultationForm source="homepage" contextLabel="homepage_structured_consultation" tripName={featuredJourney?.name} className="mt-6" />
         </div>
 
-        <div className="rounded-[2.35rem] border border-[color:var(--border-soft)] bg-[color:var(--surface-card)] p-7 shadow-[0_28px_75px_rgba(39,28,33,0.08)]">
+        <div id="planning-guide-form" className="rounded-[2.35rem] border border-[color:var(--border-soft)] bg-[color:var(--surface-card)] p-7 shadow-[0_28px_75px_rgba(39,28,33,0.08)]">
           <Eyebrow>Planning guide</Eyebrow>
           <h2 className="mt-4 text-3xl font-bold leading-[0.96] tracking-[-0.05em] text-[color:var(--ink-strong)] md:text-5xl">
             Want a simple guide before you choose a journey?
@@ -285,7 +289,7 @@ export default async function HomePage() {
           <p className="mt-4 text-sm leading-7 text-[color:var(--ink-soft)]">
             Ask for the Al Hilal planning guide if you want a calmer start before dates, pricing, and household decisions come together.
           </p>
-          <GuideRequestForm source="homepage" className="mt-6" />
+          <GuideRequestForm source="homepage" contextLabel="homepage_planning_guide" className="mt-6" />
         </div>
       </Section>
     </main>
