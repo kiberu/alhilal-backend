@@ -5,10 +5,11 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework import status
 from django.contrib.auth import get_user_model
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from apps.trips.models import Trip, TripPackage, PackageFlight, PackageHotel
 from apps.common.models import Currency
+from apps.api.tests.helpers import create_staff_user
 
 Account = get_user_model()
 
@@ -21,11 +22,9 @@ class AdminPackageAPITestCase(TestCase):
         self.client = APIClient()
         
         # Create staff user
-        self.staff_user = Account.objects.create_user(
+        self.staff_user = create_staff_user(
             phone='+1234567890',
             name='Staff User',
-            role='STAFF',
-            is_staff=True,
         )
         
         # Create currency
@@ -79,7 +78,7 @@ class AdminPackageAPITestCase(TestCase):
             'trip': str(self.trip.id),
             'name': 'Silver Package',
             'price_minor_units': 350000,
-            'currency': 'SAR',
+            'currency_code': 'SAR',
             'capacity': 60,
             'visibility': 'PUBLIC'
         }
@@ -131,11 +130,13 @@ class AdminFlightAPITestCase(TestCase):
         """Set up test client and test data."""
         self.client = APIClient()
         
-        self.staff_user = Account.objects.create_user(
+        self.staff_user = create_staff_user(
             phone='+1234567890',
             name='Staff User',
-            role='STAFF',
-            is_staff=True,
+        )
+        self.currency_sar, _ = Currency.objects.get_or_create(
+            code='SAR',
+            defaults={'name': 'Saudi Riyal', 'symbol': 'SAR'}
         )
         
         self.trip = Trip.objects.create(
@@ -151,7 +152,7 @@ class AdminFlightAPITestCase(TestCase):
             trip=self.trip,
             name='Gold Package',
             price_minor_units=500000,
-            currency='SAR',
+            currency=self.currency_sar,
             capacity=50
         )
         
@@ -162,9 +163,9 @@ class AdminFlightAPITestCase(TestCase):
             carrier='SV',
             flight_no='123',
             dep_airport='JFK',
-            dep_dt=datetime(2025, 12, 1, 10, 0),
+            dep_dt=datetime(2025, 12, 1, 10, 0, tzinfo=timezone.utc),
             arr_airport='JED',
-            arr_dt=datetime(2025, 12, 1, 22, 0),
+            arr_dt=datetime(2025, 12, 1, 22, 0, tzinfo=timezone.utc),
             group_pnr='ABC123'
         )
     
@@ -207,11 +208,13 @@ class AdminHotelAPITestCase(TestCase):
         """Set up test client and test data."""
         self.client = APIClient()
         
-        self.staff_user = Account.objects.create_user(
+        self.staff_user = create_staff_user(
             phone='+1234567890',
             name='Staff User',
-            role='STAFF',
-            is_staff=True,
+        )
+        self.currency_sar, _ = Currency.objects.get_or_create(
+            code='SAR',
+            defaults={'name': 'Saudi Riyal', 'symbol': 'SAR'}
         )
         
         self.trip = Trip.objects.create(
@@ -227,7 +230,7 @@ class AdminHotelAPITestCase(TestCase):
             trip=self.trip,
             name='Gold Package',
             price_minor_units=500000,
-            currency='SAR',
+            currency=self.currency_sar,
             capacity=50
         )
         
@@ -288,4 +291,3 @@ class AdminHotelAPITestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.hotel.refresh_from_db()
         self.assertEqual(self.hotel.room_type, 'Presidential Suite')
-

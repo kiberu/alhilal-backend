@@ -476,8 +476,13 @@ if not DEBUG:
 if DEBUG and not RUNNING_TESTS:
     INTERNAL_IPS = ['127.0.0.1', 'localhost']
     import socket
-    hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
-    INTERNAL_IPS += [ip[: ip.rfind(".")] + ".1" for ip in ips]
+    try:
+        hostname, _, ips = socket.gethostbyname_ex(socket.gethostname())
+        INTERNAL_IPS += [ip[: ip.rfind(".")] + ".1" for ip in ips]
+    except socket.gaierror:
+        # Some local and sandboxed environments do not expose a resolvable hostname.
+        # Keep debug tooling usable without making `manage.py check` fail.
+        pass
 
 # Logging configuration
 LOGGING = {

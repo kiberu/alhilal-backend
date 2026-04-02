@@ -12,6 +12,7 @@ from apps.trips.models import Trip, TripPackage
 from apps.bookings.models import Booking, Payment
 from apps.accounts.models import Account, PilgrimProfile
 from datetime import date, timedelta
+from apps.api.tests.helpers import create_staff_user
 
 
 class CurrencyModelTests(TestCase):
@@ -20,24 +21,24 @@ class CurrencyModelTests(TestCase):
     def setUp(self):
         """Set up test data."""
         self.currency_data = {
-            'code': 'UGX',
-            'name': 'Ugandan Shilling',
-            'symbol': 'USh',
+            'code': 'ZZZ',
+            'name': 'Certification Test Currency',
+            'symbol': 'CTC',
             'is_active': True
         }
     
     def test_create_currency(self):
         """Test creating a currency."""
         currency = Currency.objects.create(**self.currency_data)
-        self.assertEqual(currency.code, 'UGX')
-        self.assertEqual(currency.name, 'Ugandan Shilling')
-        self.assertEqual(currency.symbol, 'USh')
+        self.assertEqual(currency.code, 'ZZZ')
+        self.assertEqual(currency.name, 'Certification Test Currency')
+        self.assertEqual(currency.symbol, 'CTC')
         self.assertTrue(currency.is_active)
     
     def test_currency_str_representation(self):
         """Test string representation of currency."""
         currency = Currency.objects.create(**self.currency_data)
-        self.assertEqual(str(currency), 'UGX - Ugandan Shilling')
+        self.assertEqual(str(currency), 'ZZZ - Certification Test Currency')
     
     def test_currency_code_unique(self):
         """Test that currency code must be unique."""
@@ -62,7 +63,6 @@ class PackageCurrencyTests(TestCase):
         self.trip = Trip.objects.create(
             name='Test Umrah Trip',
             code='TEST2025',
-            trip_type='UMRAH',
             start_date=date.today() + timedelta(days=30),
             end_date=date.today() + timedelta(days=40)
         )
@@ -104,7 +104,6 @@ class BookingCurrencyInheritanceTests(TestCase):
         self.trip = Trip.objects.create(
             name='Test Umrah Trip',
             code='TEST2025',
-            trip_type='UMRAH',
             start_date=date.today() + timedelta(days=30),
             end_date=date.today() + timedelta(days=40)
         )
@@ -177,7 +176,6 @@ class PaymentCurrencyInheritanceTests(TestCase):
         self.trip = Trip.objects.create(
             name='Test Umrah Trip',
             code='TEST2025',
-            trip_type='UMRAH',
             start_date=date.today() + timedelta(days=30),
             end_date=date.today() + timedelta(days=40)
         )
@@ -201,12 +199,10 @@ class PaymentCurrencyInheritanceTests(TestCase):
             pilgrim=self.pilgrim,
             package=self.package
         )
-        self.staff_user = Account.objects.create_user(
+        self.staff_user = create_staff_user(
             phone='+256700000002',
             name='Staff User',
             password='testpass123',
-            role='STAFF',
-            is_staff=True
         )
     
     def test_payment_inherits_currency_from_booking(self):
@@ -252,7 +248,6 @@ class CurrencyAPITests(TestCase):
         self.trip = Trip.objects.create(
             name='Test Umrah Trip',
             code='TEST2025',
-            trip_type='UMRAH',
             start_date=date.today() + timedelta(days=30),
             end_date=date.today() + timedelta(days=40)
         )
@@ -276,12 +271,10 @@ class CurrencyAPITests(TestCase):
             pilgrim=self.pilgrim,
             package=self.package
         )
-        self.staff_user = Account.objects.create_user(
+        self.staff_user = create_staff_user(
             phone='+256700000002',
             name='Staff User',
             password='testpass123',
-            role='STAFF',
-            is_staff=True
         )
         
         # Authenticate as staff
@@ -289,7 +282,7 @@ class CurrencyAPITests(TestCase):
     
     def test_booking_api_returns_currency_details(self):
         """Test that booking API returns full currency object."""
-        url = f'/api/admin/bookings/{self.booking.id}/'
+        url = f'/api/v1/bookings/{self.booking.id}'
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -300,7 +293,7 @@ class CurrencyAPITests(TestCase):
     
     def test_package_api_returns_currency_details(self):
         """Test that package API returns full currency object."""
-        url = f'/api/admin/packages/{self.package.id}/'
+        url = f'/api/v1/packages/{self.package.id}'
         response = self.client.get(url)
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -310,4 +303,3 @@ class CurrencyAPITests(TestCase):
 
 if __name__ == '__main__':
     pytest.main([__file__])
-

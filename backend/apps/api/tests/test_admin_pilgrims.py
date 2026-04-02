@@ -8,6 +8,7 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 
 from apps.accounts.models import PilgrimProfile
+from apps.api.tests.helpers import create_staff_user
 
 Account = get_user_model()
 
@@ -20,14 +21,11 @@ class AdminPilgrimAPITestCase(TestCase):
         self.client = APIClient()
         
         # Create staff user
-        self.staff_user = Account.objects.create_user(
+        self.staff_user = create_staff_user(
             phone='+1234567890',
             name='Staff User',
-            role='STAFF',
-            is_staff=True,
+            password='testpass123',
         )
-        self.staff_user.set_password('testpass123')
-        self.staff_user.save()
         
         # Create non-staff user
         self.non_staff_user = Account.objects.create_user(
@@ -92,8 +90,7 @@ class AdminPilgrimAPITestCase(TestCase):
         self.client.force_authenticate(user=self.non_staff_user)
         response = self.client.get('/api/v1/pilgrims')
         
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 0)  # No pilgrims returned
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
     
     def test_list_pilgrims_success_for_staff(self):
         """Test that staff users can list all pilgrims."""
@@ -324,12 +321,13 @@ class AdminPilgrimAPITestCase(TestCase):
         self.assertIn('emergencyPhone', response.data)
         self.assertIn('emergencyRelationship', response.data)
         self.assertIn('medicalConditions', response.data)
-        self.assertIn('createdAt', response.data)
+        self.assertIn('created_at', response.data)
         # Check snake_case keys are NOT present
         self.assertNotIn('full_name', response.data)
         self.assertNotIn('passport_number', response.data)
         self.assertNotIn('emergency_name', response.data)
         self.assertNotIn('medical_conditions', response.data)
+        self.assertNotIn('createdAt', response.data)
     
     def test_list_pilgrims_shows_new_fields(self):
         """Test that list endpoint includes new pilgrim fields."""
@@ -361,4 +359,3 @@ class AdminPilgrimAPITestCase(TestCase):
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(response.data['count'], 1)
-

@@ -12,6 +12,7 @@ from apps.trips.models import Trip, TripPackage
 from apps.bookings.models import Booking
 from apps.accounts.models import PilgrimProfile
 from apps.common.models import Currency
+from apps.api.tests.helpers import create_staff_user
 
 Account = get_user_model()
 
@@ -24,14 +25,11 @@ class AdminBookingAPITestCase(TestCase):
         self.client = APIClient()
         
         # Create staff user
-        self.staff_user = Account.objects.create_user(
+        self.staff_user = create_staff_user(
             phone='+1234567890',
             name='Staff User',
-            role='STAFF',
-            is_staff=True,
+            password='testpass123',
         )
-        self.staff_user.set_password('testpass123')
-        self.staff_user.save()
         
         # Create pilgrim user
         self.pilgrim_user = Account.objects.create_user(
@@ -116,8 +114,7 @@ class AdminBookingAPITestCase(TestCase):
         self.client.force_authenticate(user=self.pilgrim_user)
         response = self.client.get('/api/v1/bookings')
         
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 0)  # No bookings returned
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
     
     def test_list_bookings_success_for_staff(self):
         """Test that staff users can list all bookings."""
@@ -147,7 +144,7 @@ class AdminBookingAPITestCase(TestCase):
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['count'], 1)
-        self.assertEqual(response.data['results'][0]['paymentStatus'], 'PARTIAL')
+        self.assertEqual(response.data['results'][0]['payment_status'], 'PARTIAL')
     
     def test_retrieve_booking_success(self):
         """Test retrieving a single booking."""
@@ -169,7 +166,7 @@ class AdminBookingAPITestCase(TestCase):
             trip=self.trip,
             name='Budget Package',
             price_minor_units=150000,
-            currency='USD',
+            currency=self.currency_usd,
             capacity=40,
             visibility='PUBLIC',
         )
@@ -178,9 +175,7 @@ class AdminBookingAPITestCase(TestCase):
             'pilgrim': str(self.pilgrim.user_id),
             'package': str(package3.id),
             'status': 'BOOKED',
-            'paymentStatus': 'PAID',
-            'amountPaidMinorUnits': 250000,
-            'currency': 'USD',
+            'notes': 'Created during certification review',
         }
         
         response = self.client.post('/api/v1/bookings', data, format='json')
@@ -197,8 +192,7 @@ class AdminBookingAPITestCase(TestCase):
         
         data = {
             'status': 'CONFIRMED',
-            'paymentStatus': 'PAID',
-            'amountPaidMinorUnits': 250000,
+            'notes': 'Documents verified',
         }
         
         response = self.client.patch(
@@ -212,7 +206,7 @@ class AdminBookingAPITestCase(TestCase):
         # Verify update in database
         self.booking1.refresh_from_db()
         self.assertEqual(self.booking1.status, 'CONFIRMED')
-        self.assertEqual(self.booking1.payment_status, 'PAID')
+        self.assertEqual(self.booking1.notes, 'Documents verified')
     
     def test_delete_booking_success(self):
         """Test deleting a booking."""
@@ -280,19 +274,16 @@ class AdminBookingAPITestCase(TestCase):
         
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
     
-    def test_camelcase_conversion(self):
-        """Test that API returns camelCase keys."""
+    def test_detail_payload_uses_current_backend_keys(self):
+        """Test that booking detail payload matches the current backend contract."""
         self.client.force_authenticate(user=self.staff_user)
         
         response = self.client.get(f'/api/v1/bookings/{self.booking1.id}')
         
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        # Check camelCase keys
-        self.assertIn('referenceNumber', response.data)
-        self.assertIn('paymentStatus', response.data)
-        self.assertIn('amountPaidMinorUnits', response.data)
-        self.assertIn('createdAt', response.data)
-        # Check snake_case keys are NOT present
-        self.assertNotIn('reference_number', response.data)
-        self.assertNotIn('payment_status', response.data)
-
+        self.assertIn('reference_number', response.data)
+        self.assertIn('payment_status', response.data)
+        self.assertIn('amount_paid_minor_units', response.data)
+        self.assertIn('created_at', response.data)
+        self.assertNotIn('referenceNumber', response.data)
+        self.assertNotIn('paymentStatus', response.data)

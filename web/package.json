@@ -6,6 +6,7 @@
     "dev": "next dev",
     "dev:test": "next dev --hostname 127.0.0.1 --port 3100",
     "build": "next build",
+    "build:qa": "NEXT_PUBLIC_DISABLE_ANALYTICS=1 next build",
     "start": "next start",
     "start:test": "next start --hostname 127.0.0.1 --port 3100",
     "lint": "eslint",
@@ -14,9 +15,9 @@
     "test:coverage": "jest --coverage",
     "test:e2e": "playwright test",
     "mock:public-api": "node tests/e2e/mock-public-api.mjs",
-    "serve:qa": "concurrently -k -s first \"npm run mock:public-api\" \"NEXT_PUBLIC_API_URL=http://127.0.0.1:4010/api/v1/ API_URL_INTERNAL=http://127.0.0.1:4010/api/v1/ npm run start:test\"",
-    "test:links": "npm run build && start-server-and-test \"npm run serve:qa\" http://127.0.0.1:3100 \"node tests/qa/check-links.mjs\"",
-    "test:lighthouse": "npm run build && start-server-and-test \"npm run serve:qa\" http://127.0.0.1:3100 \"lhci autorun --config=./lighthouserc.json\"",
+    "serve:qa": "concurrently -k -s first \"npm run mock:public-api\" \"NEXT_PUBLIC_DISABLE_ANALYTICS=1 NEXT_PUBLIC_API_URL=http://127.0.0.1:4010/api/v1/ API_URL_INTERNAL=http://127.0.0.1:4010/api/v1/ npm run start:test\"",
+    "test:links": "npm run build:qa && start-server-and-test \"npm run serve:qa\" http://127.0.0.1:3100 \"node tests/qa/check-links.mjs\"",
+    "test:lighthouse": "npm run build:qa && start-server-and-test \"npm run serve:qa\" http://127.0.0.1:3100 \"lhci autorun --config=./lighthouserc.json\"",
     "qa:website": "npm test -- --runInBand && npm run test:e2e && npm run test:links && npm run test:lighthouse"
   },
   "dependencies": {

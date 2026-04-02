@@ -1340,6 +1340,12 @@ class AdminPaymentSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at'
         ]
         read_only_fields = ['id', 'booking', 'recorded_by', 'recorded_by_name', 'created_at', 'updated_at']
+
+    def validate_amount_minor_units(self, value):
+        """Reject zero and negative payment amounts."""
+        if value <= 0:
+            raise serializers.ValidationError("Payment amount must be greater than zero.")
+        return value
     
     def create(self, validated_data):
         """Set recorded_by to current user."""

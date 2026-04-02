@@ -53,6 +53,28 @@ npm test -- --runInBand --runTestsByPath app/dashboard/reports/page.test.tsx app
 npm run test:smoke
 ```
 
+## Phase 5 Certification Snapshot
+
+Verified on April 3, 2026:
+
+- `cd apps/admin_dashboard && npm test -- --runInBand && npm run test:smoke && npm run build`
+- Result:
+  - `9` Jest suites passed
+  - `38` Jest tests passed
+  - `2` smoke suites passed
+  - `2` smoke tests passed
+  - production build passed
+
+## Phase 5 Manual Certification Checklist
+
+- Log in with a staff account.
+- Open reports and confirm data loads.
+- Export at least one CSV report.
+- Open the readiness queue, filter it, and open a detail record.
+- Save manual checks, validate-ready, and clear-validation.
+- Complete staff password change in settings.
+- Publish and unpublish a trip resource.
+
 ## Test Structure
 
 ### 1. Unit Tests - API Client

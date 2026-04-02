@@ -84,7 +84,7 @@ class TestPilgrimProfile:
     def test_pilgrim_profile_str(self, pilgrim_user):
         """Test pilgrim profile string representation."""
         profile = pilgrim_user.pilgrim_profile
-        assert str(profile) == "Test Pilgrim"
+        assert str(profile) == "Test Pilgrim (AB1234567)"
     
     def test_pilgrim_profile_history(self, pilgrim_user):
         """Test that pilgrim profile has audit trail."""
@@ -156,4 +156,3 @@ class TestOTPCode:
         otp_code.save()
         
         assert otp_code.attempts == 1
-

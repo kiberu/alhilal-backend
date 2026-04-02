@@ -10,6 +10,7 @@ from apps.bookings.models import Booking, Payment
 from apps.accounts.models import Account, PilgrimProfile
 from apps.trips.models import Trip, TripPackage
 from apps.common.models import Currency
+from apps.api.tests.helpers import create_staff_user
 
 
 @pytest.fixture
@@ -21,15 +22,11 @@ def api_client():
 @pytest.fixture
 def staff_user(db):
     """Create a staff user."""
-    user = Account.objects.create_user(
+    return create_staff_user(
         phone="+256700000001",
         name="Staff User",
         password="testpass123",
-        role="STAFF"
     )
-    user.is_staff = True
-    user.save()
-    return user
 
 
 @pytest.fixture
@@ -107,7 +104,6 @@ class TestPaymentRecording:
         url = reverse('api:admin-booking-add-payment', kwargs={'pk': booking.id})
         data = {
             'amount_minor_units': 150000,  # $1,500.00
-            'currency': 'USD',
             'payment_method': 'BANK_TRANSFER',
             'payment_date': date.today().isoformat(),
             'reference_number': 'TXN-12345',
@@ -120,7 +116,7 @@ class TestPaymentRecording:
         assert response.data['amount_minor_units'] == 150000
         assert response.data['payment_method'] == 'BANK_TRANSFER'
         assert response.data['reference_number'] == 'TXN-12345'
-        assert response.data['recorded_by'] == str(staff_user.id)
+        assert str(response.data['recorded_by']) == str(staff_user.id)
         
         # Verify payment was created
         assert Payment.objects.filter(booking=booking).count() == 1
@@ -137,7 +133,6 @@ class TestPaymentRecording:
         url = reverse('api:admin-booking-add-payment', kwargs={'pk': booking.id})
         data = {
             'amount_minor_units': 500000,  # Full amount
-            'currency': 'USD',
             'payment_method': 'CASH',
             'payment_date': date.today().isoformat(),
         }
@@ -160,7 +155,6 @@ class TestPaymentRecording:
         # First payment
         data1 = {
             'amount_minor_units': 200000,
-            'currency': 'USD',
             'payment_method': 'BANK_TRANSFER',
             'payment_date': date.today().isoformat(),
         }
@@ -170,7 +164,6 @@ class TestPaymentRecording:
         # Second payment
         data2 = {
             'amount_minor_units': 150000,
-            'currency': 'USD',
             'payment_method': 'CASH',
             'payment_date': date.today().isoformat(),
         }
@@ -190,7 +183,6 @@ class TestPaymentRecording:
         url = reverse('api:admin-booking-add-payment', kwargs={'pk': booking.id})
         data = {
             'amount_minor_units': 150000,
-            'currency': 'USD',
             'payment_method': 'CASH',
             'payment_date': date.today().isoformat(),
         }
@@ -205,7 +197,6 @@ class TestPaymentRecording:
         url = reverse('api:admin-booking-add-payment', kwargs={'pk': booking.id})
         data = {
             'amount_minor_units': 150000,
-            'currency': 'USD',
             'payment_method': 'CASH',
             'payment_date': date.today().isoformat(),
         }
@@ -221,7 +212,6 @@ class TestPaymentRecording:
         url = reverse('api:admin-booking-add-payment', kwargs={'pk': booking.id})
         data = {
             'amount_minor_units': -100,  # Negative amount
-            'currency': 'USD',
             'payment_method': 'CASH',
             'payment_date': date.today().isoformat(),
         }
@@ -253,7 +243,6 @@ class TestPaymentRecording:
         url = reverse('api:admin-booking-add-payment', kwargs={'pk': booking.id})
         data = {
             'amount_minor_units': 150000,
-            'currency': 'USD',
             'payment_method': 'CASH',
             'payment_date': date.today().isoformat(),
         }
@@ -448,4 +437,3 @@ class TestPaymentModel:
         booking.refresh_from_db()
         assert booking.amount_paid_minor_units == 600000
         assert booking.payment_status == 'PAID'  # Should be PAID, not overpaid
-

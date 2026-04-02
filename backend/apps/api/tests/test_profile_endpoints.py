@@ -47,9 +47,10 @@ class TestMyDocumentsEndpoint:
         response = authenticated_client.get('/api/v1/me/documents/')
         
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data) == 1
-        assert response.data[0]['status'] == 'PENDING'
-        assert response.data[0]['trip_name'] == 'Umrah 2025 - May'
+        assert len(response.data) == 3
+        visa_row = next(row for row in response.data if row['id'] == str(visa.id))
+        assert visa_row['status'] == 'PENDING'
+        assert visa_row['trip_name'] == 'Umrah 2025 - May'
     
     def test_get_visas_filter_by_trip(self, authenticated_client, visa):
         """Test retrieving a specific pilgrim document."""

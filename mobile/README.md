@@ -44,11 +44,22 @@ npx eslint lib/api/config.ts lib/api/services/auth.ts lib/api/services/documents
 
 ## Verified on April 3, 2026
 
-- The Phase 3 closeout suite passed with `5` suites and `9` tests:
-  - `cd apps/mobile && npm test -- --runInBand tests/phase3 tests/smoke/phase3-device-registration.smoke.test.ts`
-- Covered stale-cache daily-program behavior, cached guide reopen, notification preferences and device sync, document truth with support handoff, feedback eligibility/submission, and iOS/Android device-registration smoke behavior.
+- The Phase 5 mobile certification run passed:
+  - `cd apps/mobile && npm test -- --runInBand` -> `5` suites passed, `9` tests passed
+  - `cd apps/mobile && npm run test:smoke` -> `1` smoke suite passed, `2` smoke tests passed
+- Covered stale-cache daily-program behavior, cached guide reopen, notification preferences and device sync, document truth with support handoff, feedback eligibility and submission, and iOS/Android device-registration smoke behavior.
+
+## Phase 5 Manual Certification Checklist
+
+- Sign in on iOS and Android.
+- Open the trip summary and readiness surfaces.
+- Open the document center and confirm support next steps read correctly.
+- Reopen a cached guide with connectivity reduced or removed.
+- Open the daily program.
+- Submit feedback when the trip is eligible.
+- Verify stale-state messaging and retry-after-failure behavior under low connectivity.
 
 ## Known Gaps
 
-- Broader workspace lint and TypeScript debt still exists in booking, profile, theme, and auth screens outside the Phase 1 contract slice.
-- The backend Phase 3 contract slice still needs a rerun in an environment where the Postgres service alias `db` is reachable.
+- Broader workspace lint and TypeScript debt still exists in booking, profile, theme, and auth screens outside the locked Phase 3 certification surface.
+- Manual device and low-connectivity checks still need human execution before final release sign-off.

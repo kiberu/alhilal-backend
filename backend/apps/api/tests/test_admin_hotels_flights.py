@@ -9,6 +9,7 @@ from django.contrib.auth import get_user_model
 
 from apps.trips.models import Trip, TripPackage, PackageHotel, PackageFlight
 from apps.common.models import Currency
+from apps.api.tests.helpers import create_staff_user
 
 User = get_user_model()
 
@@ -22,13 +23,11 @@ def api_client():
 @pytest.fixture
 def staff_user(db):
     """Create a staff user."""
-    user = User.objects.create_user(
+    return create_staff_user(
         phone='+256701234567',
         name='Test Staff',
-        is_staff=True,
-        is_active=True
+        is_active=True,
     )
-    return user
 
 
 @pytest.fixture
@@ -114,10 +113,11 @@ class TestAdminPackageHotelViewSet:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
     
     def test_create_hotel_non_staff(self, api_client, package, db):
-        """Test creating hotel as non-staff user (passes but user can't see it)."""
+        """Test creating hotel as non-staff user is denied."""
         regular_user = User.objects.create_user(
             phone='+256709999999',
             name='Regular User',
+            role='PILGRIM',
             is_staff=False
         )
         api_client.force_authenticate(user=regular_user)
@@ -131,13 +131,8 @@ class TestAdminPackageHotelViewSet:
         
         response = api_client.post('/api/v1/hotels', data, format='json')
         
-        # Creation succeeds but user can't query it back (empty queryset)
-        assert response.status_code == status.HTTP_201_CREATED
-        
-        # Verify user can't see the created hotel
-        list_response = api_client.get('/api/v1/hotels')
-        assert list_response.status_code == status.HTTP_200_OK
-        assert list_response.data['count'] == 0
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+        assert not PackageHotel.objects.filter(name='Test Hotel').exists()
     
     def test_list_hotels_for_package(self, api_client, staff_user, package):
         """Test listing hotels filtered by package."""
@@ -618,4 +613,3 @@ class TestIntegrationHotelsAndFlights:
         assert flights[1].leg == 'RETURN'
         assert hotels[0].name == 'Makkah Hotel'
         assert hotels[1].name == 'Madinah Hotel'
-

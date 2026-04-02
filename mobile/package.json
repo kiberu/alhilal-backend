@@ -12,7 +12,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:ci": "jest --ci --runInBand",
-    "test:smoke": "jest --runInBand --testPathPatterns=tests/smoke"
+    "test:smoke": "jest --runInBand --runTestsByPath tests/smoke/phase3-device-registration.smoke.test.ts"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

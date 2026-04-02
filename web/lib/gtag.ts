@@ -1,4 +1,6 @@
-export const GA_MEASUREMENT_ID = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "";
+const analyticsDisabled = process.env.NEXT_PUBLIC_DISABLE_ANALYTICS === "1";
+
+export const GA_MEASUREMENT_ID = analyticsDisabled ? "" : process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID || "";
 
 declare global {
   interface Window {

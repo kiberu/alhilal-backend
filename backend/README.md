@@ -54,6 +54,15 @@ pytest
 - `python manage.py check` passed.
 - The Phase 1 contract suite passed with `76` tests.
 - The combined Phase 3 and Phase 4 backend contract slice passed with `13` tests under the local SQLite pytest default.
+- The full Phase 5 backend certification run passed with `315` tests under the local SQLite pytest default.
+
+## Phase 5 Manual Certification Checklist
+
+- Verify health and startup behavior in the intended release environment.
+- Confirm staff and pilgrim auth flows still work end to end.
+- Confirm public trip truth matches the approved calendar source.
+- Confirm report exports and readiness actions reflect canonical backend data.
+- Confirm document truth and support guidance match the mobile document center.
 
 ## Notes
 

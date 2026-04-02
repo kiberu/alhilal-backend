@@ -20,6 +20,7 @@ cd apps/web
 npm ci
 npm run dev
 npm run build
+npm run build:qa
 npm test -- --runInBand
 npm run test:e2e
 npm run test:links
@@ -27,15 +28,24 @@ npm run test:lighthouse
 npm run qa:website
 ```
 
-## Verified on April 2, 2026
+## Verified on April 3, 2026
 
-- `npm run build` passed.
-- `npm test -- --runInBand` passed.
-- `npm run test:e2e` passed with 12 checks, including axe scans on the six primary public surfaces.
-- `npm run test:links` passed and verified 12 sitemap URLs plus 13 internal navigation targets.
-- `npm run test:lighthouse` passed with the homepage, journeys listing, journey detail, and contact pages all clearing the configured `85` score gate across performance, SEO, accessibility, and best practices.
+- `npm run qa:website` passed.
+- That gate includes:
+  - `npm test -- --runInBand` -> `6` suites passed, `11` tests passed
+  - `npm run test:e2e` -> `12` Playwright checks passed
+  - `npm run test:links` -> verified `12` sitemap URLs and `13` internal navigation targets
+  - `npm run test:lighthouse` -> passed on `/`, `/journeys`, `/journeys/january-umrah-2027`, and `/contact`
+- Local QA note: `build:qa`, `test:links`, and `test:lighthouse` disable analytics only for the QA build so Lighthouse stays deterministic without changing production analytics behavior.
+
+## Phase 5 Manual Certification Checklist
+
+- Open the homepage, journeys listing, one journey detail page, guidance hub, one guidance article, and contact page in a real browser.
+- Confirm consultation and planning-guide forms still save correctly.
+- Confirm no critical placeholder or misleading message appears on public pages.
+- Compare homepage and journey-detail truth against the approved calendar source before release.
 
 ## Known Gaps
 
-- Phase 2 website engineering is complete and is awaiting human sign-off plus upstream readiness-gate acceptance.
+- Website engineering and automated certification are complete in repo and are awaiting human release sign-off plus the final calendar-truth spot-check.
 - `GUIDE_REQUEST` remains a manual staff follow-up flow by design until a later phase introduces broader automation.
