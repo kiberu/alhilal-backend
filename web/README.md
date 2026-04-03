@@ -1,51 +1,88 @@
-# Al Hilal Website
+# React + TypeScript + Vite
 
-`apps/web` is the public website for Hajj and Umrah information, trust building, and lead conversion.
+## Environment Variables
 
-## Current Role
+Copy `.env.example` to `.env` and set values before running locally.
 
-The website is the public discovery surface for:
+Required keys:
 
-- trip and package exploration
-- guidance and educational content
-- Al Hilal brand trust
-- structured consultation capture
-- planning-guide slow-nurture capture
-- analytics-attributed CTA and lead conversion for the public website
+- `VITE_PUBLIC_API_URL`
+- `VITE_PUBLIC_SITE_URL`
+- `VITE_CONTACT_PHONE`
+- `VITE_CONTACT_EMAIL`
 
-## Local Commands
+Optional:
 
-```bash
-cd apps/web
-npm ci
-npm run dev
-npm run build
-npm run build:qa
-npm test -- --runInBand
-npm run test:e2e
-npm run test:links
-npm run test:lighthouse
-npm run qa:website
+- `VITE_WHATSAPP_URL` (auto-derived from `VITE_CONTACT_PHONE` if omitted)
+
+This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+
+Currently, two official plugins are available:
+
+- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
+- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+
+## React Compiler
+
+The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+
+## Expanding the ESLint configuration
+
+If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+
+```js
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+
+      // Remove tseslint.configs.recommended and replace with this
+      tseslint.configs.recommendedTypeChecked,
+      // Alternatively, use this for stricter rules
+      tseslint.configs.strictTypeChecked,
+      // Optionally, add this for stylistic rules
+      tseslint.configs.stylisticTypeChecked,
+
+      // Other configs...
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
 ```
 
-## Verified on April 3, 2026
+You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
 
-- `npm run qa:website` passed.
-- That gate includes:
-  - `npm test -- --runInBand` -> `6` suites passed, `11` tests passed
-  - `npm run test:e2e` -> `12` Playwright checks passed
-  - `npm run test:links` -> verified `12` sitemap URLs and `13` internal navigation targets
-  - `npm run test:lighthouse` -> passed on `/`, `/journeys`, `/journeys/january-umrah-2027`, and `/contact`
-- Local QA note: `build:qa`, `test:links`, and `test:lighthouse` disable analytics only for the QA build so Lighthouse stays deterministic without changing production analytics behavior.
+```js
+// eslint.config.js
+import reactX from 'eslint-plugin-react-x'
+import reactDom from 'eslint-plugin-react-dom'
 
-## Phase 5 Manual Certification Checklist
-
-- Open the homepage, journeys listing, one journey detail page, guidance hub, one guidance article, and contact page in a real browser.
-- Confirm consultation and planning-guide forms still save correctly.
-- Confirm no critical placeholder or misleading message appears on public pages.
-- Compare homepage and journey-detail truth against the approved calendar source before release.
-
-## Known Gaps
-
-- Website engineering and automated certification are complete in repo and are awaiting human release sign-off plus the final calendar-truth spot-check.
-- `GUIDE_REQUEST` remains a manual staff follow-up flow by design until a later phase introduces broader automation.
+export default defineConfig([
+  globalIgnores(['dist']),
+  {
+    files: ['**/*.{ts,tsx}'],
+    extends: [
+      // Other configs...
+      // Enable lint rules for React
+      reactX.configs['recommended-typescript'],
+      // Enable lint rules for React DOM
+      reactDom.configs.recommended,
+    ],
+    languageOptions: {
+      parserOptions: {
+        project: ['./tsconfig.node.json', './tsconfig.app.json'],
+        tsconfigRootDir: import.meta.dirname,
+      },
+      // other options...
+    },
+  },
+])
+```

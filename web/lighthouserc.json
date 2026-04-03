@@ -3,10 +3,11 @@
     "collect": {
       "numberOfRuns": 1,
       "url": [
-        "http://127.0.0.1:3100/",
-        "http://127.0.0.1:3100/journeys",
-        "http://127.0.0.1:3100/journeys/january-umrah-2027",
-        "http://127.0.0.1:3100/contact"
+        "http://127.0.0.1:4317/",
+        "http://127.0.0.1:4317/journeys",
+        "http://127.0.0.1:4317/journeys/january-umrah-2027",
+        "http://127.0.0.1:4317/guidance/first-time-umrah-checklist",
+        "http://127.0.0.1:4317/contact"
       ],
       "settings": {
         "chromeFlags": "--no-sandbox"
@@ -23,7 +24,7 @@
         "categories:accessibility": [
           "error",
           {
-            "minScore": 0.85
+            "minScore": 0.95
           }
         ],
         "categories:best-practices": [

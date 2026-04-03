@@ -295,7 +295,7 @@ class StaffLoginView(APIView):
         staff_profile = None
         if hasattr(user, 'staff_profile'):
             staff_profile = {
-                'id': str(user.staff_profile.id),
+                'id': str(user.staff_profile.user_id),
                 'role': user.staff_profile.role,
             }
 
@@ -326,7 +326,7 @@ class StaffProfileView(APIView):
         staff_profile = None
         if hasattr(user, 'staff_profile'):
             staff_profile = {
-                'id': str(user.staff_profile.id),
+                'id': str(user.staff_profile.user_id),
                 'role': user.staff_profile.role,
             }
 

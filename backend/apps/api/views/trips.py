@@ -357,7 +357,11 @@ class PublicTripListView(generics.ListAPIView):
     
     def get_queryset(self):
         """Return public trips."""
-        queryset = Trip.objects.filter(visibility='PUBLIC')
+        today = timezone.localdate()
+        queryset = Trip.objects.filter(
+            visibility='PUBLIC',
+            end_date__gte=today,
+        ).exclude(status='DRAFT')
         
         # Filter by featured if requested
         featured = self.request.query_params.get('featured')
@@ -389,8 +393,12 @@ class PublicTripDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         """Return public trips only."""
         from django.db.models import Count, Q
+        today = timezone.localdate()
 
-        return Trip.objects.filter(visibility='PUBLIC').annotate(
+        return Trip.objects.filter(
+            visibility='PUBLIC',
+            end_date__gte=today,
+        ).exclude(status='DRAFT').annotate(
             public_packages_count=Count('packages', filter=Q(packages__visibility='PUBLIC'))
         ).filter(public_packages_count__gt=0)
 
