@@ -11,6 +11,7 @@ import {
   Menu,
   MessageCircleMore,
   Phone,
+  Star,
   ShieldCheck,
   Users,
   X,
@@ -37,6 +38,7 @@ export const appIcons = {
   menu: Menu,
   phone: Phone,
   shield: ShieldCheck,
+  star: Star,
   users: Users,
 } as const
 

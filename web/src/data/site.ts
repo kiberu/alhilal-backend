@@ -129,32 +129,28 @@ export const contactMethods: ContactMethod[] = [
 ]
 
 export const heroHighlights = [
-  { number: '01', label: 'Licensed and trusted' },
-  { number: '02', label: 'Family-aware care' },
-  { number: '03', label: 'WhatsApp support' },
-  { number: '04', label: 'Kampala-based team' },
+  { number: '01', label: 'Trusted and licensed operator' },
+  { number: '02', label: 'End-to-end pilgrimage logistics' },
+  { number: '03', label: 'Professional and experienced team' },
+  { number: '04', label: 'Based in Kampala, Uganda' },
 ]
 
 export const partnerLogos: PartnerLogo[] = [
   {
-    name: 'Ministry of Hajj and Umrah',
-    src: '/assets/partners/logo1.svg.png',
-  },
-  {
-    name: 'Saudi Vision 2030',
-    src: '/assets/partners/logo2.png',
-  },
-  {
-    name: 'Uganda Bureau of Hajj Affairs',
-    src: '/assets/partners/logo3.svg',
-  },
-  {
     name: 'IATA',
-    src: '/assets/partners/logo4.png',
+    src: '/assets/partners/iata-logo-photoroom.png',
+  },
+  {
+    name: 'Ministry of Hajj and Umrah',
+    src: '/assets/partners/ministry-of-hajj-photoroom.png',
   },
   {
     name: 'Nusuk',
-    src: '/assets/partners/logo5.svg.png',
+    src: '/assets/partners/nusuk-logo-photoroom.png',
+  },
+  {
+    name: 'Saudi Vision 2030',
+    src: '/assets/partners/vision-2030-photoroom.png',
   },
 ]
 

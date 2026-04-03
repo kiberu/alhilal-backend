@@ -2,6 +2,7 @@ import { formatDateRange, formatMoney, formatPackageCountLabel, formatStatusLabe
 import type { PublicJourneyListItem } from '../../lib/trips'
 import { Reveal } from '../motion/Reveal'
 import { AppIcon, appIcons } from '../ui/AppIcon'
+import { Button } from '../ui/Button'
 import { Card } from '../ui/Card'
 import { Container } from '../ui/Container'
 import { InlineLink } from '../ui/InlineLink'
@@ -16,6 +17,17 @@ type ProjectGridProps = {
   actionLabel?: string
   viewAllTo?: string
   viewAllLabel?: string
+  showFilters?: boolean
+  resultsCount?: number
+  searchTerm?: string
+  onSearchTermChange?: (value: string) => void
+  statusFilter?: string
+  onStatusFilterChange?: (value: string) => void
+  monthFilter?: string
+  onMonthFilterChange?: (value: string) => void
+  statusOptions?: string[]
+  monthOptions?: string[]
+  onResetFilters?: () => void
 }
 
 export function ProjectGrid({
@@ -27,9 +39,22 @@ export function ProjectGrid({
   actionLabel = 'Trip and booking information',
   viewAllTo,
   viewAllLabel = 'View all journeys',
+  showFilters = false,
+  resultsCount = 0,
+  searchTerm = '',
+  onSearchTermChange,
+  statusFilter = 'ALL',
+  onStatusFilterChange,
+  monthFilter = 'ALL',
+  onMonthFilterChange,
+  statusOptions = [],
+  monthOptions = [],
+  onResetFilters,
 }: ProjectGridProps) {
   return (
-    <section className={`section ${compact ? 'section--compact' : ''}`.trim()}>
+    <section
+      className={`section ${compact ? 'section--compact' : ''} ${showFilters ? 'project-grid-section--journeys-filters' : ''}`.trim()}
+    >
       <Container>
         <Reveal>
           <SectionHeading
@@ -39,10 +64,82 @@ export function ProjectGrid({
           />
         </Reveal>
 
+        {showFilters ? (
+          <Reveal className="card journeys-tools">
+            <div className="journeys-tools__header">
+              <h2 className="journeys-tools__title">Search and filter departures</h2>
+              <p className="journeys-tools__count">
+                {resultsCount} result{resultsCount === 1 ? '' : 's'}
+              </p>
+            </div>
+            <div className="journeys-tools__filters">
+              <label className="journeys-tools__field journeys-tools__field--search" htmlFor="journeys-search">
+                <span>Search</span>
+                <input
+                  id="journeys-search"
+                  onChange={(event) => onSearchTermChange?.(event.target.value)}
+                  placeholder="Journey name, city, or month"
+                  type="search"
+                  value={searchTerm}
+                />
+              </label>
+
+              <label className="journeys-tools__field" htmlFor="journeys-status">
+                <span>Status</span>
+                <select
+                  id="journeys-status"
+                  onChange={(event) => onStatusFilterChange?.(event.target.value)}
+                  value={statusFilter}
+                >
+                  <option value="ALL">All statuses</option>
+                  {statusOptions.map((status) => (
+                    <option key={status} value={status}>
+                      {formatStatusLabel(status)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="journeys-tools__field" htmlFor="journeys-month">
+                <span>Departure</span>
+                <select
+                  id="journeys-month"
+                  onChange={(event) => onMonthFilterChange?.(event.target.value)}
+                  value={monthFilter}
+                >
+                  <option value="ALL">All departure months</option>
+                  {monthOptions.map((month) => (
+                    <option key={month} value={month}>
+                      {month}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="journeys-tools__actions">
+                <Button
+                  icon={<AppIcon icon={appIcons.close} size="xs" />}
+                  iconPosition="start"
+                  onClick={onResetFilters}
+                  type="button"
+                  variant="ghost"
+                >
+                  Reset
+                </Button>
+              </div>
+            </div>
+          </Reveal>
+        ) : null}
+
         <div className={`projects-grid ${compact ? 'project-grid--archive' : 'project-grid--feature'}`.trim()}>
           {projects.map((project) => (
             <Reveal key={project.slug}>
-              <Card as="article" className="project-card project-card--journey">
+              <Card
+                as="article"
+                className={`project-card project-card--journey ${
+                  project.featured ? 'project-card--journey-featured' : ''
+                }`.trim()}
+              >
                 <div className="project-card__media">
                   <img
                     alt={project.name}
@@ -54,6 +151,12 @@ export function ProjectGrid({
                 <div className="project-card__body">
                   <div className="section-stack">
                     <div className="journey-card__meta journey-card__meta--summary">
+                      {project.featured ? (
+                        <span className="journey-card__featured-badge">
+                          <AppIcon icon={appIcons.star} size="xs" />
+                          <span>Featured</span>
+                        </span>
+                      ) : null}
                       <span className="journey-card__meta-item">
                         <AppIcon icon={appIcons.calendar} size="xs" />
                         <span>{project.commercialMonthLabel || 'Departure'}</span>
@@ -64,7 +167,13 @@ export function ProjectGrid({
                       </span>
                     </div>
                     <h3 className="project-card__title">{project.name}</h3>
-                    <p className="project-card__description">{project.excerpt}</p>
+                    {project.featured ? (
+                      <div className="project-card__description-wrap project-card__description-wrap--featured">
+                        <p className="project-card__description">{project.excerpt}</p>
+                      </div>
+                    ) : (
+                      <p className="project-card__description">{project.excerpt}</p>
+                    )}
                     <ul className="project-card__facts">
                       <li className="project-card__fact">
                         <AppIcon icon={appIcons.calendar} size="xs" />

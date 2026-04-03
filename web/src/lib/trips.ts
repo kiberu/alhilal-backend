@@ -500,15 +500,21 @@ export function getFallbackPublicJourneys(): PublicJourneyListItem[] {
   return fallbackTripListResponse.results.map((item) => normalizeJourneyListItem(item));
 }
 
-/** Featured journeys for the home page grid: next up to three, by departure date. */
-export function selectHomeFeaturedJourneys(
+/** Home journey grid: next `limit` journeys, featured first, then by departure date. */
+export function selectHomeJourneyPreview(
   journeys: PublicJourneyListItem[],
   limit = 3,
 ): PublicJourneyListItem[] {
   const byStart = (a: PublicJourneyListItem, b: PublicJourneyListItem) =>
     a.startDate.localeCompare(b.startDate);
-  const featured = journeys.filter((j) => j.featured).sort(byStart);
-  return featured.slice(0, limit);
+  return [...journeys]
+    .sort((a, b) => {
+      if (a.featured !== b.featured) {
+        return a.featured ? -1 : 1;
+      }
+      return byStart(a, b);
+    })
+    .slice(0, limit);
 }
 
 export function getFallbackPublicJourneyBySlug(slug: string): PublicJourneyDetail | null {

@@ -429,7 +429,7 @@ button {
 
 .trust-strip__logos {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 1rem;
   align-items: center;
 }
@@ -581,6 +581,59 @@ button {
 .contact-copy p {
   margin: 0;
   color: var(--color-text-muted);
+}
+
+.project-card--journey .project-card__description-wrap--featured {
+  margin-top: 0.15rem;
+  margin-left: -1.4rem;
+  margin-right: -1.4rem;
+  padding: 1rem 1.4rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-soft);
+}
+
+.project-card--journey .project-card__description-wrap--featured .project-card__description {
+  color: var(--color-text-primary);
+}
+
+.project-card--journey-featured {
+  border-color: rgba(123, 65, 8, 0.28);
+  background: linear-gradient(160deg, #f2ad43 0%, #f6bb5a 43%, #f2ad43 100%);
+}
+
+.project-card--journey-featured .project-card__media {
+  border-bottom: 1px solid rgba(123, 65, 8, 0.24);
+}
+
+.project-card--journey-featured .project-card__title,
+.project-card--journey-featured .project-card__description,
+.project-card--journey-featured .project-card__facts,
+.project-card--journey-featured .journey-card__meta,
+.project-card--journey-featured .inline-link {
+  color: #2f1308;
+}
+
+.project-card--journey-featured .project-card__description-wrap--featured {
+  margin-left: 0;
+  margin-right: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.journey-card__featured-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid rgba(255, 250, 244, 0.56);
+  background: rgba(127, 0, 58, 0.84);
+  color: var(--color-text-inverse);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 
 .project-card__facts {
@@ -976,6 +1029,7 @@ button {
   max-width: 44rem;
   color: var(--color-text-secondary);
   font-size: clamp(1.05rem, 1.5vw, 1.35rem);
+  line-height: 1.65;
 }
 
 .recent-card,
@@ -1078,6 +1132,166 @@ button {
 .contact-form {
   display: grid;
   gap: 1rem;
+}
+
+/* Journeys listing: roomier type and spacing above the filter card */
+.project-grid-section--journeys-filters .section-heading {
+  gap: var(--space-lg);
+}
+
+.project-grid-section--journeys-filters .section-heading__description {
+  line-height: 1.65;
+  margin-top: 0.2rem;
+}
+
+.project-grid-section--journeys-filters .journeys-tools {
+  margin-top: clamp(1.5rem, 3.5vw, 2.25rem);
+}
+
+.journeys-tools {
+  padding: clamp(1.1rem, 2.4vw, 1.6rem);
+  border-color: rgba(127, 0, 58, 0.18);
+  background: rgba(255, 252, 249, 0.86);
+  display: grid;
+  gap: 1.15rem;
+}
+
+.journeys-tools__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-bottom: 0.15rem;
+}
+
+.journeys-tools__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2vw, 1.7rem);
+  letter-spacing: -0.03em;
+}
+
+.journeys-tools__count {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
+
+.journeys-tools__filters {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) repeat(2, minmax(0, 1fr)) auto;
+  gap: 1rem 0.9rem;
+  align-items: end;
+}
+
+.journeys-tools__field {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.journeys-tools__field span {
+  font-size: 0.8rem;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--color-text-secondary);
+}
+
+.journeys-tools__field input,
+.journeys-tools__field select {
+  width: 100%;
+  border-radius: 0.85rem;
+  border: 1px solid var(--color-border-soft);
+  background: #fff;
+  padding: 0.76rem 0.9rem;
+  color: var(--color-text-primary);
+}
+
+.journeys-tools__actions {
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.journeys-empty {
+  padding: 1rem 1.2rem;
+  border-color: rgba(127, 0, 58, 0.16);
+  background: rgba(255, 252, 249, 0.86);
+}
+
+.booking-strip {
+  padding: clamp(1.15rem, 2.4vw, 1.55rem);
+  border-color: rgba(127, 0, 58, 0.18);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 247, 239, 0.92)),
+    var(--color-surface);
+  display: grid;
+  gap: 0.95rem;
+}
+
+.booking-strip__intro {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.booking-strip__intro .eyebrow {
+  margin: 0;
+}
+
+.booking-strip__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2vw, 1.65rem);
+  letter-spacing: -0.03em;
+}
+
+.booking-strip__form {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 0.8fr) minmax(0, 1fr) minmax(0, 1fr) minmax(
+      0,
+      1fr
+    ) auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.booking-strip__field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.booking-strip__field span {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-text-secondary);
+}
+
+.booking-strip__field input,
+.booking-strip__field select {
+  width: 100%;
+  border-radius: 0.8rem;
+  border: 1px solid var(--color-border-soft);
+  background: #fff;
+  padding: 0.76rem 0.82rem;
+  color: var(--color-text-primary);
+}
+
+.booking-strip__actions {
+  display: flex;
+  align-items: flex-end;
+}
+
+.booking-strip__actions .button {
+  min-height: 2.8rem;
+  white-space: nowrap;
+}
+
+.booking-strip__feedback {
+  margin-top: -0.1rem;
 }
 
 .form-feedback {
@@ -1443,6 +1657,27 @@ button {
   .contact-methods-list {
     grid-template-columns: 1fr;
   }
+
+  .journeys-tools__filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .journeys-tools__field--search,
+  .journeys-tools__actions {
+    grid-column: span 2;
+  }
+
+  .journeys-tools__actions {
+    justify-content: flex-start;
+  }
+
+  .booking-strip__form {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .booking-strip__actions {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (max-width: 720px) {
@@ -1502,6 +1737,22 @@ button {
 
   .journey-support-shell {
     padding: 1.15rem;
+  }
+
+  .journeys-tools__filters,
+  .booking-strip__form {
+    grid-template-columns: 1fr;
+  }
+
+  .journeys-tools__field--search,
+  .journeys-tools__actions,
+  .booking-strip__actions {
+    grid-column: auto;
+  }
+
+  .booking-strip__actions .button {
+    width: 100%;
+    justify-content: center;
   }
 }
 
@@ -1703,6 +1954,7 @@ button {
 
 .hero__features--reference .hero-feature {
   align-content: end;
+  min-width: 0;
 }
 
 .hero__features--reference .hero-feature__number {
@@ -1714,11 +1966,15 @@ button {
 }
 
 .hero__features--reference .hero-feature__label {
-  max-width: 12ch;
+  max-width: min(100%, 26ch);
   color: rgba(255, 248, 243, 0.94);
   font-size: 0.98rem;
   font-weight: 600;
   line-height: 1.45;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 
 /* Featured journey: compact icon row (no card chrome) */

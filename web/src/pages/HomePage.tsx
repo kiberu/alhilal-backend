@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import type { FormEvent } from 'react'
 import { CtaBanner } from '../components/sections/CtaBanner'
 import { FaqSection } from '../components/sections/FaqSection'
 import { HeroSection } from '../components/sections/HeroSection'
@@ -25,16 +26,35 @@ import {
   whyAlHilalIntro,
   whyAlHilalStats,
 } from '../data/site'
+import { analyticsEventNames, trackEvent } from '../lib/analytics'
 import { formatDateRange, formatMoney, formatNightsLabel } from '../lib/format'
+import { createWebsiteLead } from '../lib/leads'
 import {
   featuredJourneySlug,
   getPublicJourneys,
-  selectHomeFeaturedJourneys,
+  selectHomeJourneyPreview,
   type PublicJourneyListItem,
 } from '../lib/trips'
 
+function toMonthLabel(value: string): string {
+  if (!value) return ''
+  const parsed = new Date(`${value}-01T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return value
+  return new Intl.DateTimeFormat('en-UG', { month: 'long', year: 'numeric' }).format(parsed)
+}
+
 export function HomePage() {
   const [journeys, setJourneys] = useState<PublicJourneyListItem[]>([])
+  const [bookingForm, setBookingForm] = useState({
+    departureMonth: '',
+    travellers: '1',
+    name: '',
+    phone: '',
+    email: '',
+  })
+  const [isBookingSubmitting, setIsBookingSubmitting] = useState(false)
+  const [bookingFeedback, setBookingFeedback] = useState('')
+  const [bookingFeedbackKind, setBookingFeedbackKind] = useState<'idle' | 'success' | 'error'>('idle')
 
   useEffect(() => {
     document.title = 'Al Hilal Travels Uganda | Guided Umrah and Hajj from Kampala'
@@ -61,15 +81,206 @@ export function HomePage() {
   const featuredJourney = journeys.find((item) => item.featured) || journeys[0]
   const guideFallbackSlug = featuredJourney?.slug || featuredJourneySlug
 
-  const homeFeaturedJourneys = useMemo(
-    () => selectHomeFeaturedJourneys(journeys),
+  const homeJourneyPreview = useMemo(
+    () => selectHomeJourneyPreview(journeys),
     [journeys],
   )
+
+  async function handleBookingSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+
+    if (!bookingForm.name.trim() || !bookingForm.phone.trim()) {
+      setBookingFeedback('Please enter your name and phone or WhatsApp number.')
+      setBookingFeedbackKind('error')
+      return
+    }
+
+    if (bookingForm.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bookingForm.email.trim())) {
+      setBookingFeedback('Please enter a valid email address.')
+      setBookingFeedbackKind('error')
+      return
+    }
+
+    const notes = [
+      bookingForm.travellers ? `Travellers: ${bookingForm.travellers}` : '',
+      bookingForm.departureMonth ? `Preferred month: ${toMonthLabel(bookingForm.departureMonth)}` : '',
+    ]
+      .filter(Boolean)
+      .join(' | ')
+
+    setIsBookingSubmitting(true)
+    setBookingFeedback('')
+    setBookingFeedbackKind('idle')
+
+    trackEvent(analyticsEventNames.leadSubmitStarted, {
+      pagePath: window.location.pathname,
+      source: 'homepage_booking_bar',
+      contextLabel: 'homepage_booking_bar',
+      interestType: 'CONSULTATION',
+      tripId: '',
+    })
+
+    try {
+      await createWebsiteLead({
+        name: bookingForm.name.trim(),
+        phone: bookingForm.phone.trim(),
+        email: bookingForm.email.trim(),
+        interestType: 'CONSULTATION',
+        travelWindow: bookingForm.departureMonth || '',
+        notes,
+        tripId: '',
+        source: 'homepage_booking_bar',
+        contextLabel: 'homepage_booking_bar',
+        ctaLabel: 'homepage_booking_submit',
+        campaign: 'homepage_booking',
+      })
+
+      setBookingFeedback('Thank you. Your booking request is saved and the team will follow up shortly.')
+      setBookingFeedbackKind('success')
+      setBookingForm({
+        departureMonth: '',
+        travellers: '1',
+        name: '',
+        phone: '',
+        email: '',
+      })
+
+      trackEvent(analyticsEventNames.leadSubmitSucceeded, {
+        pagePath: window.location.pathname,
+        source: 'homepage_booking_bar',
+        contextLabel: 'homepage_booking_bar',
+        interestType: 'CONSULTATION',
+        tripId: '',
+      })
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'We could not save your request. Please try again.'
+      setBookingFeedback(message)
+      setBookingFeedbackKind('error')
+
+      trackEvent(analyticsEventNames.leadSubmitFailed, {
+        pagePath: window.location.pathname,
+        source: 'homepage_booking_bar',
+        contextLabel: 'homepage_booking_bar',
+        interestType: 'CONSULTATION',
+        tripId: '',
+      })
+    } finally {
+      setIsBookingSubmitting(false)
+    }
+  }
 
   return (
     <>
       <HeroSection />
-      <TrustStrip />
+
+      <section className="section section--compact">
+        <Container>
+          <Reveal className="card booking-strip">
+            <div className="booking-strip__intro">
+              <p className="eyebrow">Quick booking form</p>
+              <h2 className="booking-strip__title">Start a trip booking request</h2>
+            </div>
+
+            <form className="booking-strip__form" noValidate onSubmit={handleBookingSubmit}>
+              <label className="booking-strip__field" htmlFor="home-booking-departure-month">
+                <span>Departure month</span>
+                <input
+                  id="home-booking-departure-month"
+                  onChange={(event) =>
+                    setBookingForm((current) => ({ ...current, departureMonth: event.target.value }))
+                  }
+                  type="month"
+                  value={bookingForm.departureMonth}
+                />
+              </label>
+
+              <label className="booking-strip__field" htmlFor="home-booking-travellers">
+                <span>Travellers</span>
+                <select
+                  id="home-booking-travellers"
+                  onChange={(event) =>
+                    setBookingForm((current) => ({ ...current, travellers: event.target.value }))
+                  }
+                  value={bookingForm.travellers}
+                >
+                  <option value="1">1 traveller</option>
+                  <option value="2">2 travellers</option>
+                  <option value="3">3 travellers</option>
+                  <option value="4">4 travellers</option>
+                  <option value="5+">5+ travellers</option>
+                </select>
+              </label>
+
+              <label className="booking-strip__field" htmlFor="home-booking-name">
+                <span>Full name *</span>
+                <input
+                  id="home-booking-name"
+                  onChange={(event) =>
+                    setBookingForm((current) => ({ ...current, name: event.target.value }))
+                  }
+                  placeholder="Your full name"
+                  required
+                  value={bookingForm.name}
+                />
+              </label>
+
+              <label className="booking-strip__field" htmlFor="home-booking-phone">
+                <span>Phone or WhatsApp *</span>
+                <input
+                  id="home-booking-phone"
+                  onChange={(event) =>
+                    setBookingForm((current) => ({ ...current, phone: event.target.value }))
+                  }
+                  placeholder="+256..."
+                  required
+                  value={bookingForm.phone}
+                />
+              </label>
+
+              <label className="booking-strip__field" htmlFor="home-booking-email">
+                <span>Email (optional)</span>
+                <input
+                  id="home-booking-email"
+                  onChange={(event) =>
+                    setBookingForm((current) => ({ ...current, email: event.target.value }))
+                  }
+                  placeholder="you@example.com"
+                  type="email"
+                  value={bookingForm.email}
+                />
+              </label>
+
+              <div className="booking-strip__actions">
+                <Button
+                  data-context-label="homepage_booking_bar"
+                  data-cta-label="homepage_booking_submit"
+                  data-track-cta="true"
+                  disabled={isBookingSubmitting}
+                  icon={<AppIcon icon={appIcons.arrowUpRight} size="sm" />}
+                  type="submit"
+                  variant="primary"
+                >
+                  {isBookingSubmitting ? 'Saving...' : 'Check availability'}
+                </Button>
+              </div>
+            </form>
+
+            <div
+              aria-live="polite"
+              className={`form-feedback booking-strip__feedback ${
+                bookingFeedbackKind === 'error'
+                  ? 'form-feedback--error'
+                  : bookingFeedbackKind === 'success'
+                    ? 'form-feedback--success'
+                    : ''
+              }`.trim()}
+            >
+              {bookingFeedback}
+            </div>
+          </Reveal>
+        </Container>
+      </section>
 
       <section className="section">
         <Container>
@@ -205,10 +416,10 @@ export function HomePage() {
 
       <ProjectGrid
         actionLabel="Trip and booking information"
-        description="A preview of our featured departures—upcoming journeys with published dates and clear next steps. See the full list to compare every option."
+        description="Al Hilal has a full season coverage for all of the months of the year. Choose the one that suits your schedule, budget and convenience."
         eyebrow="Journeys"
-        projects={homeFeaturedJourneys}
-        title="Featured departures"
+        projects={homeJourneyPreview}
+        title="Upcoming journeys"
         viewAllLabel="View all journeys"
         viewAllTo="/journeys"
       />
@@ -364,6 +575,7 @@ export function HomePage() {
       />
 
       <FaqSection items={homeFaqs} />
+      <TrustStrip />
     </>
   )
 }
