@@ -27,7 +27,53 @@ npm run test:coverage
 
 # Run tests for CI
 npm run test:ci
+
+# Run the Phase 4 smoke suite
+npm run test:smoke
 ```
+
+## Phase 4 Closeout Coverage
+
+The Phase 4 closeout work adds route-level admin verification for the staff workflows that changed during readiness completion.
+
+- Reports page load and export:
+  - `app/dashboard/reports/page.test.tsx`
+- Readiness queue and detail flows:
+  - `app/dashboard/readiness/page.test.tsx`
+  - `app/dashboard/readiness/[id]/page.test.tsx`
+- Staff smoke flows:
+  - `tests/smoke/phase4-settings.smoke.test.tsx`
+  - `tests/smoke/phase4-trip-operations.smoke.test.tsx`
+
+Suggested Phase 4 verification commands:
+
+```bash
+cd apps/admin_dashboard
+npm test -- --runInBand --runTestsByPath app/dashboard/reports/page.test.tsx app/dashboard/readiness/page.test.tsx 'app/dashboard/readiness/[id]/page.test.tsx' tests/smoke/phase4-settings.smoke.test.tsx tests/smoke/phase4-trip-operations.smoke.test.tsx
+npm run test:smoke
+```
+
+## Phase 5 Certification Snapshot
+
+Verified on April 3, 2026:
+
+- `cd apps/admin_dashboard && npm test -- --runInBand && npm run test:smoke && npm run build`
+- Result:
+  - `9` Jest suites passed
+  - `38` Jest tests passed
+  - `2` smoke suites passed
+  - `2` smoke tests passed
+  - production build passed
+
+## Phase 5 Manual Certification Checklist
+
+- Log in with a staff account.
+- Open reports and confirm data loads.
+- Export at least one CSV report.
+- Open the readiness queue, filter it, and open a detail record.
+- Save manual checks, validate-ready, and clear-validation.
+- Complete staff password change in settings.
+- Publish and unpublish a trip resource.
 
 ## Test Structure
 
@@ -425,4 +471,3 @@ See `.github/workflows/test.yml` for the complete CI configuration.
 - [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/)
 - [Testing Playground](https://testing-playground.com/)
 - [Common Testing Mistakes](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
-

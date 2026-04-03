@@ -1,8 +1,18 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AuthService } from '@/lib/api/services/auth';
+import { SupportService } from '@/lib/api/services/support';
 import { AuthStorage } from '@/lib/storage';
-import { apiClient } from '@/lib/api/client';
-import type { User, PilgrimProfile, AuthTokens } from '@/lib/api/types';
+import type { User, PilgrimProfile, OTPFallback } from '@/lib/api/types';
+import { registerCurrentDevice } from '@/lib/support/device-registration';
+
+interface OTPRequestResult {
+  success: boolean;
+  error?: string;
+  message?: string;
+  fallback?: OTPFallback;
+  retryAfterSeconds?: number;
+  deliveryChannel?: string;
+}
 
 interface AuthState {
   isAuthenticated: boolean;
@@ -13,7 +23,7 @@ interface AuthState {
 }
 
 interface AuthContextType extends AuthState {
-  requestOTP: (phone: string) => Promise<{ success: boolean; error?: string }>;
+  requestOTP: (phone: string) => Promise<OTPRequestResult>;
   verifyOTP: (phone: string, otp: string) => Promise<{ success: boolean; error?: string; needsProfile?: boolean }>;
   logout: () => Promise<void>;
   refreshAuth: () => Promise<void>;
@@ -31,15 +41,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     accessToken: null,
   });
 
-  // Initialize auth state from storage
-  useEffect(() => {
-    initializeAuth();
+  // Pilgrim sessions should feel durable. We refresh silently and only clear
+  // local auth when the refresh token is definitively invalid.
+
+  const logout = useCallback(async () => {
+    try {
+      await AuthStorage.clearAll();
+      setState({
+        isAuthenticated: false,
+        isLoading: false,
+        user: null,
+        profile: null,
+        accessToken: null,
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    }
   }, []);
 
-  // Note: Auto-logout on token expiration removed
-  // Pilgrim tokens have very long expiration (365 days) and should only be cleared on manual logout
+  const performRefreshAuth = useCallback(async (logoutOnInvalid = true): Promise<boolean> => {
+    try {
+      const refreshToken = await AuthStorage.getRefreshToken();
+      if (!refreshToken) {
+        if (logoutOnInvalid) {
+          await logout();
+        }
+        return false;
+      }
 
-  const initializeAuth = async () => {
+      const response = await AuthService.refreshToken(refreshToken);
+
+      if (response.success && response.data) {
+        await AuthStorage.updateAccessToken(response.data.access);
+        setState(prev => ({
+          ...prev,
+          accessToken: response.data!.access,
+        }));
+        return true;
+      }
+
+      if (response.status === 400 || response.status === 401) {
+        if (logoutOnInvalid) {
+          await logout();
+        }
+        return false;
+      }
+
+      return false;
+    } catch (error: any) {
+      console.error('Token refresh failed:', error);
+
+      if ((error?.status === 400 || error?.status === 401) && logoutOnInvalid) {
+        await logout();
+      }
+
+      return false;
+    }
+  }, [logout]);
+
+  const initializeAuth = useCallback(async () => {
     try {
       const [tokens, user, profile] = await Promise.all([
         AuthStorage.getTokens(),
@@ -55,6 +115,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           profile,
           accessToken: tokens.access,
         });
+
+        void performRefreshAuth(true);
       } else {
         setState(prev => ({ ...prev, isLoading: false }));
       }
@@ -62,16 +124,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Failed to initialize auth:', error);
       setState(prev => ({ ...prev, isLoading: false }));
     }
-  };
+  }, [performRefreshAuth]);
 
-  const requestOTP = async (phone: string): Promise<{ success: boolean; error?: string }> => {
+  // Initialize auth state from storage
+  useEffect(() => {
+    void initializeAuth();
+  }, [initializeAuth]);
+
+  useEffect(() => {
+    if (!state.isAuthenticated || !state.accessToken) {
+      return;
+    }
+
+    let cancelled = false;
+    const syncDeviceRegistration = async () => {
+      try {
+        const preferencesResponse = await SupportService.getNotificationPreferences(state.accessToken as string);
+        if (cancelled) {
+          return;
+        }
+
+        await registerCurrentDevice(state.accessToken as string, preferencesResponse.data || undefined);
+      } catch (error) {
+        console.error('Device registration sync failed:', error);
+      }
+    };
+
+    void syncDeviceRegistration();
+    return () => {
+      cancelled = true;
+    };
+  }, [state.accessToken, state.isAuthenticated]);
+
+  const requestOTP = async (phone: string): Promise<OTPRequestResult> => {
     try {
       const response = await AuthService.requestOTP({ phone });
       
       if (response.success) {
-        return { success: true };
+        return {
+          success: true,
+          message: response.data?.message,
+          fallback: response.data?.fallback,
+          retryAfterSeconds: response.data?.retry_after_seconds,
+          deliveryChannel: response.data?.delivery_channel,
+        };
       } else {
-        return { success: false, error: response.error || 'Failed to send OTP' };
+        return {
+          success: false,
+          error: response.error || 'Failed to send OTP',
+        };
       }
     } catch (error: any) {
       return { success: false, error: error.message || 'Network error' };
@@ -112,44 +213,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const logout = async () => {
-    try {
-      await AuthStorage.clearAll();
-      setState({
-        isAuthenticated: false,
-        isLoading: false,
-        user: null,
-        profile: null,
-        accessToken: null,
-      });
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
-
   const refreshAuth = async () => {
-    try {
-      const refreshToken = await AuthStorage.getRefreshToken();
-      if (!refreshToken) {
-        await logout();
-        return;
-      }
-
-      const response = await AuthService.refreshToken(refreshToken);
-      
-      if (response.success && response.data) {
-        await AuthStorage.updateAccessToken(response.data.access);
-        setState(prev => ({
-          ...prev,
-          accessToken: response.data!.access,
-        }));
-      } else {
-        await logout();
-      }
-    } catch (error) {
-      console.error('Token refresh failed:', error);
-      await logout();
-    }
+    await performRefreshAuth(true);
   };
 
   const updateProfile = async (profile: PilgrimProfile) => {
@@ -186,4 +251,3 @@ export function useAuth() {
   }
   return context;
 }
-

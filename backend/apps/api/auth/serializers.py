@@ -1,6 +1,9 @@
-from rest_framework import serializers
 from django.contrib.auth import authenticate
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+from rest_framework import serializers
 from apps.accounts.models import Account
+
 
 class StaffLoginSerializer(serializers.Serializer):
     phone = serializers.CharField(required=True)
@@ -35,4 +38,44 @@ class StaffLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("This account is not active")
 
         attrs['user'] = user
+        return attrs
+
+
+class StaffChangePasswordSerializer(serializers.Serializer):
+    """Validate self-service staff password changes."""
+
+    current_password = serializers.CharField(required=True, write_only=True)
+    new_password = serializers.CharField(required=True, write_only=True)
+    confirm_password = serializers.CharField(required=True, write_only=True)
+
+    def validate(self, attrs):
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        current_password = attrs.get("current_password")
+        new_password = attrs.get("new_password")
+        confirm_password = attrs.get("confirm_password")
+
+        if not user or not user.is_authenticated:
+            raise serializers.ValidationError("Authentication is required.")
+
+        if not user.check_password(current_password):
+            raise serializers.ValidationError(
+                {"current_password": ["Current password is incorrect."]}
+            )
+
+        if new_password != confirm_password:
+            raise serializers.ValidationError(
+                {"confirm_password": ["New password and confirmation do not match."]}
+            )
+
+        if current_password == new_password:
+            raise serializers.ValidationError(
+                {"new_password": ["New password must be different from the current password."]}
+            )
+
+        try:
+            validate_password(new_password, user=user)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({"new_password": list(exc.messages)}) from exc
+
         return attrs

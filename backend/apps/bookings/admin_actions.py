@@ -97,7 +97,7 @@ def export_bookings_csv(modeladmin, request, queryset):
     for booking in queryset:
         pilgrim = booking.pilgrim
         user = pilgrim.user
-        passport = pilgrim.passports.first()
+        passport = pilgrim.get_passport_document()
         
         writer.writerow([
             str(booking.id),
@@ -107,7 +107,7 @@ def export_bookings_csv(modeladmin, request, queryset):
             user.name,
             user.phone,
             user.email or '',
-            mask_value(passport.number) if passport else '',
+            mask_value(passport.document_number) if passport and passport.document_number else '',
             pilgrim.nationality or '',
             booking.ticket_number or '',
             booking.room_assignment or '',
@@ -118,4 +118,3 @@ def export_bookings_csv(modeladmin, request, queryset):
     return response
 
 export_bookings_csv.short_description = "Export as CSV"
-

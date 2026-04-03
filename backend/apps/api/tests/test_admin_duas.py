@@ -8,6 +8,7 @@ from rest_framework import status
 from django.contrib.auth import get_user_model
 
 from apps.content.models import Dua
+from apps.api.tests.helpers import create_staff_user
 
 Account = get_user_model()
 
@@ -20,11 +21,9 @@ class AdminDuaAPITestCase(TestCase):
         self.client = APIClient()
         
         # Create staff user
-        self.staff_user = Account.objects.create_user(
+        self.staff_user = create_staff_user(
             phone='+1234567890',
             name='Staff User',
-            role='STAFF',
-            is_staff=True,
         )
         
         # Create non-staff user
@@ -67,8 +66,7 @@ class AdminDuaAPITestCase(TestCase):
         self.client.force_authenticate(user=self.pilgrim_user)
         response = self.client.get('/api/v1/duas')
         
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data['results']), 0)  # No duas returned
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
     
     def test_list_duas_success_for_staff(self):
         """Test that staff users can list all duas."""
@@ -195,4 +193,3 @@ class AdminDuaAPITestCase(TestCase):
         # Check snake_case keys are NOT present
         self.assertNotIn('text_ar', response.data)
         self.assertNotIn('text_en', response.data)
-

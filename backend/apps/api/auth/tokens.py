@@ -1,21 +1,20 @@
 """
 Custom JWT token classes for role-based token expiration.
-Pilgrims get tokens that don't expire (very long lifetime).
+Pilgrims get rare-login, refreshable sessions.
 Staff/Admin get normal expiring tokens.
 """
 from rest_framework_simplejwt.tokens import RefreshToken, AccessToken
 from datetime import timedelta
-from django.utils import timezone
 
 
 class PilgrimAccessToken(AccessToken):
-    """Access token with extended lifetime for pilgrims"""
-    lifetime = timedelta(days=365)
+    """Access token with a convenient but bounded lifetime for pilgrims."""
+    lifetime = timedelta(days=30)
 
 
 class PilgrimRefreshToken(RefreshToken):
-    """Refresh token with extended lifetime for pilgrims"""
-    lifetime = timedelta(days=730)
+    """Refresh token with a long trusted-device lifetime for pilgrims."""
+    lifetime = timedelta(days=180)
     access_token_class = PilgrimAccessToken
 
 
@@ -23,7 +22,7 @@ class RoleBasedRefreshToken(RefreshToken):
     """
     Custom RefreshToken that sets different lifetimes based on user role.
     
-    - PILGRIM: Very long token lifetime (365 days access, 730 days refresh)
+    - PILGRIM: 30-day access, 180-day refresh with silent refresh on trusted devices
     - STAFF/ADMIN: Normal token lifetime from settings
     """
     
@@ -41,4 +40,3 @@ class RoleBasedRefreshToken(RefreshToken):
             token = super().for_user(user)
         
         return token
-

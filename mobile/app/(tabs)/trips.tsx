@@ -158,8 +158,8 @@ export default function TripsScreen() {
         </View>
       ) : error ? (
         <View style={styles.errorContainer}>
-          <Ionicons name="alert-circle-outline" size={64} color={colors.destructive} />
-          <Text style={[styles.errorText, { color: colors.destructive }]}>{error}</Text>
+          <Ionicons name="alert-circle-outline" size={64} color={colors.error} />
+          <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
           <TouchableOpacity
             style={[styles.retryButton, { backgroundColor: colors.primary }]}
             onPress={loadTrips}
@@ -638,4 +638,3 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
-

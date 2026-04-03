@@ -145,6 +145,7 @@ export default function Button({
 
   const variantStyles = getVariantStyles();
   const sizeStyles = getSizeStyles();
+  const hasIcon = icon !== null && icon !== undefined;
 
   return (
     <TouchableOpacity
@@ -165,20 +166,20 @@ export default function Button({
         <ActivityIndicator color={variantStyles.text.color} />
       ) : (
         <>
-          {icon && iconPosition === 'left' && icon}
+          {hasIcon && iconPosition === 'left' ? icon : null}
           <Text
             style={[
               styles.text,
               variantStyles.text,
               sizeStyles.text,
               textStyle,
-              icon && iconPosition === 'left' && styles.textWithIconLeft,
-              icon && iconPosition === 'right' && styles.textWithIconRight,
+              hasIcon && iconPosition === 'left' && styles.textWithIconLeft,
+              hasIcon && iconPosition === 'right' && styles.textWithIconRight,
             ]}
           >
             {children}
           </Text>
-          {icon && iconPosition === 'right' && icon}
+          {hasIcon && iconPosition === 'right' ? icon : null}
         </>
       )}
     </TouchableOpacity>
@@ -209,4 +210,3 @@ const styles = StyleSheet.create({
     marginRight: Spacing.sm,
   },
 });
-

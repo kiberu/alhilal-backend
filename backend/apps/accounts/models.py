@@ -156,10 +156,30 @@ class PilgrimProfile(models.Model):
         if self.full_name:
             return f"{self.full_name} ({self.passport_number or 'N/A'})"
         return f"{self.user.name}"
+
+    @property
+    def id(self):
+        """Expose a stable id alias for clients that expect a conventional primary key."""
+        return self.user_id
     
     def get_active_bookings(self):
         """Get all active bookings for this pilgrim."""
         return self.bookings.exclude(status='CANCELLED')
+
+    def get_documents(self, document_type=None):
+        """Return this pilgrim's documents, optionally filtered by type."""
+        queryset = self.documents.all().order_by('-created_at')
+        if document_type:
+            queryset = queryset.filter(document_type=document_type)
+        return queryset
+
+    def get_passport_document(self):
+        """Return the most recent passport document for this pilgrim."""
+        return self.get_documents('PASSPORT').first()
+
+    def get_visa_documents(self):
+        """Return all visa documents for this pilgrim."""
+        return self.get_documents('VISA')
 
 
 class OTPCode(models.Model):
@@ -181,4 +201,3 @@ class OTPCode(models.Model):
     
     def __str__(self):
         return f"{self.phone} - {self.code}"
-

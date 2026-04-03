@@ -5,6 +5,7 @@ export interface Booking {
   id: string;
   reference_number: string;
   package_id: string;
+  trip_id: string;
   trip_name: string;
   trip_code: string;
   trip_date: string;
@@ -68,4 +69,3 @@ export class BookingsService {
     return apiClient.post<Booking>(API_ENDPOINTS.BOOKINGS.CREATE, data, undefined, token);
   }
 }
-

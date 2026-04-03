@@ -6,31 +6,37 @@ from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
-from apps.trips.models import Trip, ItineraryItem, TripUpdate
+from apps.trips.models import Trip, ItineraryItem, TripUpdate, TripMilestone, TripResource
 from apps.bookings.models import Booking
-from apps.common.permissions import IsPilgrim
+from apps.common.permissions import HasPilgrimProfile
+from apps.pilgrims.models import PilgrimReadiness
 from apps.api.serializers.trips import (
     TripListSerializer,
     TripDetailSerializer,
     PublicTripDetailSerializer,
     ItineraryItemSerializer,
     TripUpdateSerializer,
-    TripEssentialsSerializer
+    TripEssentialsSerializer,
+    TripMilestoneSerializer,
+    TripResourceSerializer,
+    PilgrimTripReadinessSerializer,
 )
+
+
+ACTIVE_BOOKING_STATUSES = ['EOI', 'BOOKED', 'CONFIRMED']
 
 
 class TripListView(generics.ListAPIView):
     """
     List trips where the user has a booking.
     
-    GET /api/v1/trips?scope=mine&when=upcoming|past
-    
+    GET /api/v1/me/trips?when=upcoming|past
+
     Query parameters:
-    - scope: Always 'mine' (only trips with user bookings)
     - when: 'upcoming' or 'past' (filter by date)
     """
     
-    permission_classes = [IsAuthenticated, IsPilgrim]
+    permission_classes = [IsAuthenticated, HasPilgrimProfile]
     serializer_class = TripListSerializer
     
     def get_queryset(self):
@@ -38,7 +44,7 @@ class TripListView(generics.ListAPIView):
         # Get trip IDs from user's bookings
         trip_ids = Booking.objects.filter(
             pilgrim=self.request.user.pilgrim_profile,
-            status__in=['EOI', 'BOOKED']
+            status__in=ACTIVE_BOOKING_STATUSES
         ).values_list('package__trip_id', flat=True).distinct()
         
         queryset = Trip.objects.filter(id__in=trip_ids)
@@ -59,19 +65,19 @@ class TripDetailView(generics.RetrieveAPIView):
     """
     Get trip details.
     
-    GET /api/v1/trips/{id}
+    GET /api/v1/me/trips/{id}
     
     Returns trip details if user has a booking for this trip.
     """
     
-    permission_classes = [IsAuthenticated, IsPilgrim]
+    permission_classes = [IsAuthenticated, HasPilgrimProfile]
     serializer_class = TripDetailSerializer
     
     def get_queryset(self):
         """Return trips where user has bookings."""
         trip_ids = Booking.objects.filter(
             pilgrim=self.request.user.pilgrim_profile,
-            status__in=['EOI', 'BOOKED']
+            status__in=ACTIVE_BOOKING_STATUSES
         ).values_list('package__trip_id', flat=True).distinct()
         
         return Trip.objects.filter(id__in=trip_ids)
@@ -81,12 +87,12 @@ class TripItineraryView(generics.ListAPIView):
     """
     Get trip itinerary.
     
-    GET /api/v1/trips/{trip_id}/itinerary
+    GET /api/v1/me/trips/{trip_id}/itinerary
     
     Returns ordered list of itinerary items.
     """
     
-    permission_classes = [IsAuthenticated, IsPilgrim]
+    permission_classes = [IsAuthenticated, HasPilgrimProfile]
     serializer_class = ItineraryItemSerializer
     
     def get_queryset(self):
@@ -97,7 +103,7 @@ class TripItineraryView(generics.ListAPIView):
         has_booking = Booking.objects.filter(
             pilgrim=self.request.user.pilgrim_profile,
             package__trip_id=trip_id,
-            status__in=['EOI', 'BOOKED']
+            status__in=ACTIVE_BOOKING_STATUSES
         ).exists()
         
         if not has_booking:
@@ -112,7 +118,7 @@ class TripUpdatesView(generics.ListAPIView):
     """
     Get trip updates.
     
-    GET /api/v1/trips/{trip_id}/updates?since=<ISO-datetime>
+    GET /api/v1/me/trips/{trip_id}/updates?since=<ISO-datetime>
     
     Query parameters:
     - since: ISO datetime to filter updates (optional)
@@ -120,7 +126,7 @@ class TripUpdatesView(generics.ListAPIView):
     Returns trip-level updates and package-specific updates for user's package.
     """
     
-    permission_classes = [IsAuthenticated, IsPilgrim]
+    permission_classes = [IsAuthenticated, HasPilgrimProfile]
     serializer_class = TripUpdateSerializer
     
     def get_queryset(self):
@@ -132,7 +138,7 @@ class TripUpdatesView(generics.ListAPIView):
             booking = Booking.objects.get(
                 pilgrim=self.request.user.pilgrim_profile,
                 package__trip_id=trip_id,
-                status__in=['EOI', 'BOOKED']
+                status__in=ACTIVE_BOOKING_STATUSES
             )
         except Booking.DoesNotExist:
             return TripUpdate.objects.none()
@@ -164,12 +170,12 @@ class TripEssentialsView(generics.RetrieveAPIView):
     """
     Get trip essentials (guide, checklist, contacts, FAQs).
     
-    GET /api/v1/trips/{trip_id}/essentials
+    GET /api/v1/me/trips/{trip_id}/essentials
     
     Returns composite data: sections, checklist, contacts, FAQs.
     """
     
-    permission_classes = [IsAuthenticated, IsPilgrim]
+    permission_classes = [IsAuthenticated, HasPilgrimProfile]
     serializer_class = TripEssentialsSerializer
     
     def get_object(self):
@@ -181,7 +187,7 @@ class TripEssentialsView(generics.RetrieveAPIView):
             booking = Booking.objects.get(
                 pilgrim=self.request.user.pilgrim_profile,
                 package__trip_id=trip_id,
-                status__in=['EOI', 'BOOKED']
+                status__in=ACTIVE_BOOKING_STATUSES
             )
         except Booking.DoesNotExist:
             from rest_framework.exceptions import PermissionDenied
@@ -192,7 +198,7 @@ class TripEssentialsView(generics.RetrieveAPIView):
         # Get all essentials
         from django.db.models import Q
         from apps.trips.models import ChecklistItem, EmergencyContact, TripFAQ, TripGuideSection
-        
+
         sections = TripGuideSection.objects.filter(trip=trip).order_by('order', 'title')
         
         # Get trip-level and package-specific checklist items
@@ -203,13 +209,131 @@ class TripEssentialsView(generics.RetrieveAPIView):
         
         contacts = EmergencyContact.objects.filter(trip=trip)
         faqs = TripFAQ.objects.filter(trip=trip).order_by('order')
+        milestones = TripMilestone.objects.filter(
+            Q(trip=trip, package__isnull=True) |
+            Q(trip=trip, package=booking.package)
+        ).filter(
+            is_public=True
+        ).order_by('target_date', 'order', 'created_at')
+        resources = TripResource.objects.filter(
+            Q(trip=trip, package__isnull=True) |
+            Q(trip=trip, package=booking.package)
+        ).filter(
+            published_at__isnull=False,
+            published_at__lte=timezone.now()
+        ).order_by('-is_pinned', 'order', 'title')
         
         return {
             'sections': sections,
             'checklist': checklist,
             'contacts': contacts,
-            'faqs': faqs
+            'faqs': faqs,
+            'milestones': milestones,
+            'resources': resources
         }
+
+
+class TripMilestonesView(generics.ListAPIView):
+    """
+    Get public milestones for a booked trip.
+
+    GET /api/v1/me/trips/{trip_id}/milestones/
+    """
+
+    permission_classes = [IsAuthenticated, HasPilgrimProfile]
+    serializer_class = TripMilestoneSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        """Return visible milestones for the user's booking."""
+        trip_id = self.kwargs['trip_id']
+
+        try:
+            booking = Booking.objects.get(
+                pilgrim=self.request.user.pilgrim_profile,
+                package__trip_id=trip_id,
+                status__in=ACTIVE_BOOKING_STATUSES
+            )
+        except Booking.DoesNotExist:
+            return TripMilestone.objects.none()
+
+        from django.db.models import Q
+        return TripMilestone.objects.filter(
+            Q(trip_id=trip_id, package__isnull=True) |
+            Q(trip_id=trip_id, package=booking.package)
+        ).filter(
+            is_public=True
+        ).order_by('target_date', 'order', 'created_at')
+
+
+class TripResourcesView(generics.ListAPIView):
+    """
+    Get published trip resources for a booked trip.
+
+    GET /api/v1/me/trips/{trip_id}/resources/
+    """
+
+    permission_classes = [IsAuthenticated, HasPilgrimProfile]
+    serializer_class = TripResourceSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        """Return published resources for the user's booking."""
+        trip_id = self.kwargs['trip_id']
+
+        try:
+            booking = Booking.objects.get(
+                pilgrim=self.request.user.pilgrim_profile,
+                package__trip_id=trip_id,
+                status__in=ACTIVE_BOOKING_STATUSES
+            )
+        except Booking.DoesNotExist:
+            return TripResource.objects.none()
+
+        from django.db.models import Q
+        return TripResource.objects.filter(
+            Q(trip_id=trip_id, package__isnull=True) |
+            Q(trip_id=trip_id, package=booking.package)
+        ).filter(
+            published_at__isnull=False,
+            published_at__lte=timezone.now()
+        ).order_by('-is_pinned', 'order', 'title')
+
+
+class TripReadinessView(generics.RetrieveAPIView):
+    """
+    Get travel-readiness status for a booked trip.
+
+    GET /api/v1/me/trips/{trip_id}/readiness/
+    """
+
+    permission_classes = [IsAuthenticated, HasPilgrimProfile]
+    serializer_class = PilgrimTripReadinessSerializer
+
+    def get_object(self):
+        """Return the readiness record for the authenticated pilgrim's booking."""
+        trip_id = self.kwargs['trip_id']
+
+        try:
+            booking = Booking.objects.get(
+                pilgrim=self.request.user.pilgrim_profile,
+                package__trip_id=trip_id,
+                status__in=ACTIVE_BOOKING_STATUSES
+            )
+        except Booking.DoesNotExist:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("You don't have access to this trip")
+
+        readiness, _ = PilgrimReadiness.objects.get_or_create(
+            booking=booking,
+            defaults={
+                'pilgrim': booking.pilgrim,
+                'trip': booking.package.trip,
+                'package': booking.package,
+            }
+        )
+        readiness.refresh_status(save=True)
+        return readiness
 
 
 # ============================================================================
@@ -233,7 +357,11 @@ class PublicTripListView(generics.ListAPIView):
     
     def get_queryset(self):
         """Return public trips."""
-        queryset = Trip.objects.filter(visibility='PUBLIC')
+        today = timezone.localdate()
+        queryset = Trip.objects.filter(
+            visibility='PUBLIC',
+            end_date__gte=today,
+        ).exclude(status='DRAFT')
         
         # Filter by featured if requested
         featured = self.request.query_params.get('featured')
@@ -265,8 +393,12 @@ class PublicTripDetailView(generics.RetrieveAPIView):
     def get_queryset(self):
         """Return public trips only."""
         from django.db.models import Count, Q
+        today = timezone.localdate()
 
-        return Trip.objects.filter(visibility='PUBLIC').annotate(
+        return Trip.objects.filter(
+            visibility='PUBLIC',
+            end_date__gte=today,
+        ).exclude(status='DRAFT').annotate(
             public_packages_count=Count('packages', filter=Q(packages__visibility='PUBLIC'))
         ).filter(public_packages_count__gt=0)
 

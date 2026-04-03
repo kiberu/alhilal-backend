@@ -37,16 +37,27 @@ export interface AuthTokens {
 export interface AuthResponse {
   access: string;
   refresh: string;
+  access_expires_at?: number;
+  refresh_expires_at?: number;
   user: User;
   profile?: PilgrimProfile;
   is_new_user?: boolean;
   needs_profile_completion?: boolean;
 }
 
+export interface OTPFallback {
+  supportPhone: string;
+  supportWhatsApp: string;
+  message: string;
+}
+
 export interface OTPRequestResponse {
   sent: boolean;
   expires_in: number; // seconds
+  retry_after_seconds?: number;
+  delivery_channel?: string;
   message: string;
+  fallback?: OTPFallback;
 }
 
 export interface Booking {
@@ -97,3 +108,17 @@ export interface TripPackage {
   updated_at: string;
 }
 
+export interface SyncState {
+  entitySet: string;
+  lastSuccessfulSync: string | null;
+  stale: boolean;
+  hardFailure: boolean;
+  lastError: string | null;
+  updatedAt: string | null;
+}
+
+export interface OfflineSurfaceState {
+  source: 'network' | 'cache' | 'empty';
+  sync: SyncState;
+  error?: string | null;
+}

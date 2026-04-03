@@ -177,9 +177,9 @@ def export_trip_roster(modeladmin, request, queryset):
             user = pilgrim.user
             
             # Get passport info
-            passport = pilgrim.passports.first()
-            passport_number = mask_value(passport.number) if passport else ''
-            passport_country = passport.country if passport else ''
+            passport = pilgrim.get_passport_document()
+            passport_number = mask_value(passport.document_number) if passport and passport.document_number else ''
+            passport_country = passport.issuing_country if passport else ''
             passport_expiry = passport.expiry_date if passport else ''
             
             writer.writerow([
@@ -303,4 +303,3 @@ def export_hotel_rooming_list(modeladmin, request, queryset):
     return response
 
 export_hotel_rooming_list.short_description = "Export hotel rooming list as CSV"
-

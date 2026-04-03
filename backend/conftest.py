@@ -30,6 +30,9 @@ def pilgrim_user(db):
     )
     PilgrimProfile.objects.create(
         user=user,
+        full_name="Test Pilgrim",
+        phone=user.phone,
+        passport_number="AB1234567",
         dob=date(1990, 1, 1),
         nationality="UG",
         emergency_name="Emergency Contact",
@@ -42,20 +45,59 @@ def pilgrim_user(db):
 def staff_user(db):
     """Create a staff user."""
     from apps.accounts.models import StaffProfile
-    
+
+    def create_staff(phone, name, role):
+        user = Account.objects.create_user(
+            phone=phone,
+            name=name,
+            role="STAFF",
+            password="staffpass123"
+        )
+        user.is_staff = True
+        user.save()
+
+        StaffProfile.objects.create(
+            user=user,
+            role=role
+        )
+        return user
+
+    return create_staff("+256700000001", "Test Staff", "ADMIN")
+
+
+@pytest.fixture
+def agent_user(db):
+    """Create an agent-role staff user."""
+    from apps.accounts.models import StaffProfile
+
     user = Account.objects.create_user(
-        phone="+256700000001",
-        name="Test Staff",
+        phone="+256700000005",
+        name="Test Agent",
         role="STAFF",
         password="staffpass123"
     )
     user.is_staff = True
     user.save()
-    
-    StaffProfile.objects.create(
-        user=user,
-        role="ADMIN"
+
+    StaffProfile.objects.create(user=user, role="AGENT")
+    return user
+
+
+@pytest.fixture
+def auditor_user(db):
+    """Create an auditor-role staff user."""
+    from apps.accounts.models import StaffProfile
+
+    user = Account.objects.create_user(
+        phone="+256700000006",
+        name="Test Auditor",
+        role="STAFF",
+        password="staffpass123"
     )
+    user.is_staff = True
+    user.save()
+
+    StaffProfile.objects.create(user=user, role="AUDITOR")
     return user
 
 
@@ -152,14 +194,60 @@ def trip_package(trip, currency_ugx):
 
 
 @pytest.fixture
-def passport(pilgrim_user):
-    """Create a test passport."""
-    from apps.pilgrims.models import Passport
-    
-    return Passport.objects.create(
-        pilgrim=pilgrim_user.pilgrim_profile,
-        number="AB1234567",
-        country="UG",
+def pilgrim(pilgrim_user):
+    """Return the default authenticated pilgrim profile."""
+    return pilgrim_user.pilgrim_profile
+
+
+@pytest.fixture
+def other_pilgrim(db):
+    """Create a second pilgrim profile for data-scoping tests."""
+    from apps.accounts.models import PilgrimProfile
+
+    user = Account.objects.create_user(
+        phone="+256799999999",
+        name="Other Pilgrim",
+        role="PILGRIM",
+        password="testpass123"
+    )
+    return PilgrimProfile.objects.create(
+        user=user,
+        full_name="Other Pilgrim",
+        phone=user.phone,
+        passport_number="ZZ7777777",
+        nationality="KE"
+    )
+
+
+@pytest.fixture
+def staff_pilgrim_profile(staff_user):
+    """Create a pilgrim profile for a staff user when needed."""
+    from apps.accounts.models import PilgrimProfile
+
+    profile, _ = PilgrimProfile.objects.get_or_create(
+        user=staff_user,
+        defaults={
+            "full_name": staff_user.name,
+            "phone": staff_user.phone,
+            "passport_number": "ST1234567",
+            "nationality": "UG",
+        }
+    )
+    return profile
+
+
+@pytest.fixture
+def passport(pilgrim):
+    """Create a passport document for the default pilgrim."""
+    from apps.pilgrims.models import Document
+
+    return Document.objects.create(
+        pilgrim=pilgrim,
+        document_type="PASSPORT",
+        title="Passport - Uganda",
+        document_number="AB1234567",
+        issuing_country="UG",
+        file_public_id="documents/passport_123",
         expiry_date=date.today() + timedelta(days=365)
     )
 
@@ -178,11 +266,15 @@ def booking(pilgrim_user, trip_package, passport):
 
 @pytest.fixture
 def visa(pilgrim_user, trip):
-    """Create a test visa."""
-    from apps.pilgrims.models import Visa
+    """Create a test visa document."""
+    from apps.pilgrims.models import Document
     
-    return Visa.objects.create(
+    return Document.objects.create(
         pilgrim=pilgrim_user.pilgrim_profile,
+        document_type="VISA",
+        title=f"Visa - {trip.name}",
+        document_number="VISA-123",
+        file_public_id="documents/visa_123",
         trip=trip,
         status="PENDING"
     )
@@ -253,4 +345,3 @@ def dua(db):
         text_en="Glory be to Allah",
         transliteration="Subhan Allah"
     )
-

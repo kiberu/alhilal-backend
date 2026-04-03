@@ -10,9 +10,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.trips.models import Trip
 from apps.api.serializers.admin import AdminTripListSerializer, AdminTripDetailSerializer
+from apps.common.permissions import StaffActionRolePermission, StaffRoleAccessMixin, user_has_staff_role
 
 
-class AdminTripViewSet(viewsets.ModelViewSet):
+class AdminTripViewSet(StaffRoleAccessMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing trips (staff only).
     
@@ -23,18 +24,18 @@ class AdminTripViewSet(viewsets.ModelViewSet):
     destroy: DELETE /trips/:id - Delete trip
     """
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StaffActionRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['visibility']  # Removed 'cities' - JSONField not supported by django-filter
-    search_fields = ['name', 'code']
-    ordering_fields = ['start_date', 'created_at', 'name']
+    filterset_fields = ['visibility', 'status']  # Removed 'cities' - JSONField not supported by django-filter
+    search_fields = ['name', 'code', 'family_code', 'commercial_month_label']
+    ordering_fields = ['start_date', 'sales_open_date', 'created_at', 'name']
     ordering = ['-start_date']
     
     def get_queryset(self):
         """Return trips based on staff permission."""
         user = self.request.user
-        
-        if not user.is_staff:
+
+        if not user_has_staff_role(user, self.get_allowed_staff_roles(self.request)):
             return Trip.objects.none()
         
         queryset = Trip.objects.all().prefetch_related('packages')
@@ -90,12 +91,6 @@ class AdminTripViewSet(viewsets.ModelViewSet):
     
     def create(self, request, *args, **kwargs):
         """Create a new trip."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff members can create trips.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -104,45 +99,32 @@ class AdminTripViewSet(viewsets.ModelViewSet):
     
     def update(self, request, *args, **kwargs):
         """Update a trip."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff members can update trips.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         return super().update(request, *args, **kwargs)
     
     def destroy(self, request, *args, **kwargs):
         """Delete a trip."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff members can delete trips.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         return super().destroy(request, *args, **kwargs)
     
     @action(detail=True, methods=['post'])
     def duplicate(self, request, pk=None):
         """Duplicate a trip."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff members can duplicate trips.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         trip = self.get_object()
         
         # Create a copy
         new_trip = Trip.objects.create(
             code=f"{trip.code}-COPY",
+            family_code=trip.family_code,
+            commercial_month_label=trip.commercial_month_label,
             name=f"{trip.name} (Copy)",
             excerpt=trip.excerpt,
             seo_title=trip.seo_title,
             seo_description=trip.seo_description,
             cities=trip.cities,
+            status='DRAFT',
+            sales_open_date=trip.sales_open_date,
             start_date=trip.start_date,
             end_date=trip.end_date,
+            default_nights=trip.default_nights,
             cover_image=trip.cover_image,
             featured=False,
             visibility='PRIVATE',  # Set to private by default

@@ -7,7 +7,7 @@ from django.utils import timezone
 from datetime import timedelta
 from apps.trips.models import (
     Trip, TripPackage, ItineraryItem, TripFAQ,
-    PackageHotel, EmergencyContact, TripGuideSection
+    PackageHotel, EmergencyContact, TripGuideSection, TripMilestone
 )
 from apps.common.models import Currency
 
@@ -26,6 +26,7 @@ class TestPublicTripListView:
             start_date=timezone.now().date() + timedelta(days=30),
             end_date=timezone.now().date() + timedelta(days=40),
             visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
             featured=True,
             cover_image='https://example.com/image.jpg'
         )
@@ -50,6 +51,8 @@ class TestPublicTripListView:
         assert response.data['results'][0]['featured'] is True
         assert response.data['results'][0]['cover_image'] == 'https://example.com/image.jpg'
         assert response.data['results'][0]['packages_count'] == 1
+        assert response.data['results'][0]['starting_price_minor_units'] == 180000
+        assert response.data['results'][0]['starting_price_currency'] == 'USD'
     
     def test_list_public_trips_no_auth_required(self, api_client, currency_usd):
         """Test that no authentication is required."""
@@ -59,7 +62,8 @@ class TestPublicTripListView:
             cities=['Makkah'],
             start_date=timezone.now().date() + timedelta(days=60),
             end_date=timezone.now().date() + timedelta(days=70),
-            visibility='PUBLIC'
+            visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
         )
         
         TripPackage.objects.create(
@@ -103,7 +107,8 @@ class TestPublicTripListView:
             cities=['Makkah'],
             start_date=timezone.now().date() + timedelta(days=30),
             end_date=timezone.now().date() + timedelta(days=40),
-            visibility='PUBLIC'
+            visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
         )
         
         TripPackage.objects.create(
@@ -128,7 +133,8 @@ class TestPublicTripListView:
             cities=['Makkah'],
             start_date=timezone.now().date() + timedelta(days=30),
             end_date=timezone.now().date() + timedelta(days=40),
-            visibility='PUBLIC'
+            visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
         )
         
         # Create only private package
@@ -155,6 +161,7 @@ class TestPublicTripListView:
             start_date=timezone.now().date() + timedelta(days=30),
             end_date=timezone.now().date() + timedelta(days=40),
             visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
             featured=True
         )
         
@@ -174,6 +181,7 @@ class TestPublicTripListView:
             start_date=timezone.now().date() + timedelta(days=30),
             end_date=timezone.now().date() + timedelta(days=40),
             visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
             featured=False
         )
         
@@ -191,6 +199,90 @@ class TestPublicTripListView:
         assert response.data['count'] == 1
         assert response.data['results'][0]['code'] == 'FEAT2025'
         assert response.data['results'][0]['featured'] is True
+
+    def test_list_public_trips_excludes_draft_status(self, api_client, currency_usd):
+        """Draft trips should not appear in public listings."""
+        draft_trip = Trip.objects.create(
+            code='DRAFT2026',
+            name='Draft Journey',
+            cities=['Makkah'],
+            start_date=timezone.now().date() + timedelta(days=30),
+            end_date=timezone.now().date() + timedelta(days=40),
+            visibility='PUBLIC',
+            status='DRAFT',
+        )
+        TripPackage.objects.create(
+            trip=draft_trip,
+            name='Draft Package',
+            price_minor_units=100000,
+            currency=currency_usd,
+            visibility='PUBLIC',
+        )
+
+        live_trip = Trip.objects.create(
+            code='LIVE2026',
+            name='Live Journey',
+            cities=['Makkah'],
+            start_date=timezone.now().date() + timedelta(days=31),
+            end_date=timezone.now().date() + timedelta(days=41),
+            visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
+        )
+        TripPackage.objects.create(
+            trip=live_trip,
+            name='Live Package',
+            price_minor_units=120000,
+            currency=currency_usd,
+            visibility='PUBLIC',
+        )
+
+        response = api_client.get('/api/v1/public/trips/')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+        assert response.data['results'][0]['code'] == 'LIVE2026'
+
+    def test_list_public_trips_excludes_expired_dates(self, api_client, currency_usd):
+        """Trips whose end_date is in the past should not appear."""
+        expired_trip = Trip.objects.create(
+            code='PAST2026',
+            name='Past Journey',
+            cities=['Makkah'],
+            start_date=timezone.now().date() - timedelta(days=20),
+            end_date=timezone.now().date() - timedelta(days=1),
+            visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
+        )
+        TripPackage.objects.create(
+            trip=expired_trip,
+            name='Past Package',
+            price_minor_units=100000,
+            currency=currency_usd,
+            visibility='PUBLIC',
+        )
+
+        active_trip = Trip.objects.create(
+            code='ACTIVE2026',
+            name='Active Journey',
+            cities=['Makkah'],
+            start_date=timezone.now().date() + timedelta(days=1),
+            end_date=timezone.now().date() + timedelta(days=10),
+            visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
+        )
+        TripPackage.objects.create(
+            trip=active_trip,
+            name='Active Package',
+            price_minor_units=120000,
+            currency=currency_usd,
+            visibility='PUBLIC',
+        )
+
+        response = api_client.get('/api/v1/public/trips/')
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['count'] == 1
+        assert response.data['results'][0]['code'] == 'ACTIVE2026'
     
     def test_trip_ordering(self, api_client, currency_usd):
         """Test that featured trips appear first, then by start_date."""
@@ -202,6 +294,7 @@ class TestPublicTripListView:
             start_date=timezone.now().date() + timedelta(days=10),
             end_date=timezone.now().date() + timedelta(days=20),
             visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
             featured=False
         )
         
@@ -221,6 +314,7 @@ class TestPublicTripListView:
             start_date=timezone.now().date() + timedelta(days=30),
             end_date=timezone.now().date() + timedelta(days=40),
             visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
             featured=True
         )
         
@@ -254,6 +348,7 @@ class TestPublicTripDetailView:
             start_date=timezone.now().date() + timedelta(days=30),
             end_date=timezone.now().date() + timedelta(days=40),
             visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
             featured=True,
             cover_image='https://example.com/image.jpg'
         )
@@ -310,7 +405,23 @@ class TestPublicTripDetailView:
             phone='+256700123456',
             hours='24/7'
         )
-        
+        TripMilestone.objects.create(
+            trip=trip,
+            milestone_type='DARASA_ONE',
+            title='First Darasa',
+            status='SCHEDULED',
+            target_date=trip.start_date - timedelta(days=20),
+            is_public=True,
+        )
+        TripMilestone.objects.create(
+            trip=trip,
+            milestone_type='VISA_SUBMISSION',
+            title='Internal Milestone',
+            status='AT_RISK',
+            target_date=trip.start_date - timedelta(days=10),
+            is_public=False,
+        )
+
         response = api_client.get(f'/api/v1/public/trips/{trip.id}/')
         
         assert response.status_code == status.HTTP_200_OK
@@ -326,6 +437,8 @@ class TestPublicTripDetailView:
         assert len(response.data['faqs']) == 1
         assert len(response.data['guide_sections']) == 1
         assert len(response.data['emergency_contacts']) == 1
+        assert len(response.data['milestones']) == 1
+        assert response.data['milestones'][0]['title'] == 'First Darasa'
     
     def test_get_trip_detail_no_auth_required(self, api_client, currency_usd):
         """Test that no authentication is required."""
@@ -335,7 +448,8 @@ class TestPublicTripDetailView:
             cities=['Makkah'],
             start_date=timezone.now().date() + timedelta(days=60),
             end_date=timezone.now().date() + timedelta(days=70),
-            visibility='PUBLIC'
+            visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
         )
         
         TripPackage.objects.create(
@@ -361,6 +475,7 @@ class TestPublicTripDetailView:
             start_date=timezone.now().date() + timedelta(days=90),
             end_date=timezone.now().date() + timedelta(days=98),
             visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
             excerpt='Featured Fenna departure for July pilgrims.',
             seo_title='July Fenna Umrah 2026 | Al Hilal Travels Uganda',
             seo_description='Book the July Fenna Umrah journey with Al Hilal Travels Uganda.',
@@ -395,6 +510,50 @@ class TestPublicTripDetailView:
         response = api_client.get(f'/api/v1/public/trips/{trip.id}/')
         
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_get_draft_trip_not_found(self, api_client, currency_usd):
+        """Draft public trips should not be accessible via public detail."""
+        trip = Trip.objects.create(
+            code='DRAFTDETAIL',
+            name='Draft Detail Trip',
+            cities=['Makkah'],
+            start_date=timezone.now().date() + timedelta(days=15),
+            end_date=timezone.now().date() + timedelta(days=25),
+            visibility='PUBLIC',
+            status='DRAFT',
+        )
+        TripPackage.objects.create(
+            trip=trip,
+            name='Package',
+            price_minor_units=100000,
+            currency=currency_usd,
+            visibility='PUBLIC',
+        )
+
+        response = api_client.get(f'/api/v1/public/trips/{trip.id}/')
+        assert response.status_code == status.HTTP_404_NOT_FOUND
+
+    def test_get_expired_trip_not_found(self, api_client, currency_usd):
+        """Expired public trips should not be accessible via public detail."""
+        trip = Trip.objects.create(
+            code='EXPIREDETAIL',
+            name='Expired Detail Trip',
+            cities=['Makkah'],
+            start_date=timezone.now().date() - timedelta(days=20),
+            end_date=timezone.now().date() - timedelta(days=2),
+            visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
+        )
+        TripPackage.objects.create(
+            trip=trip,
+            name='Package',
+            price_minor_units=100000,
+            currency=currency_usd,
+            visibility='PUBLIC',
+        )
+
+        response = api_client.get(f'/api/v1/public/trips/{trip.id}/')
+        assert response.status_code == status.HTTP_404_NOT_FOUND
     
     def test_get_trip_with_no_itinerary(self, api_client, currency_usd):
         """Test trip detail when no itinerary exists."""
@@ -404,7 +563,8 @@ class TestPublicTripDetailView:
             cities=['Makkah'],
             start_date=timezone.now().date() + timedelta(days=30),
             end_date=timezone.now().date() + timedelta(days=40),
-            visibility='PUBLIC'
+            visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
         )
         
         TripPackage.objects.create(
@@ -429,7 +589,8 @@ class TestPublicTripDetailView:
             cities=['Makkah'],
             start_date=timezone.now().date() + timedelta(days=30),
             end_date=timezone.now().date() + timedelta(days=40),
-            visibility='PUBLIC'
+            visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
         )
         
         # Public package
@@ -464,7 +625,8 @@ class TestPublicTripDetailView:
             cities=['Makkah', 'Madinah'],
             start_date=timezone.now().date() + timedelta(days=30),
             end_date=timezone.now().date() + timedelta(days=40),
-            visibility='PUBLIC'
+            visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
         )
         
         package = TripPackage.objects.create(
@@ -507,7 +669,8 @@ class TestPublicTripDetailView:
             cities=['Makkah'],
             start_date=timezone.now().date() + timedelta(days=30),
             end_date=timezone.now().date() + timedelta(days=40),
-            visibility='PUBLIC'
+            visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
         )
         
         TripPackage.objects.create(

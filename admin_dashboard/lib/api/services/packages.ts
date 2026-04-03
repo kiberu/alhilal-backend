@@ -44,10 +44,18 @@ export class PackageService {
   static async create(
     data: {
       trip: string
+      package_code?: string
       name: string
+      start_date_override?: string | null
+      end_date_override?: string | null
+      nights?: number | null
       price_minor_units: number
       currency: string
       capacity: number
+      sales_target?: number | null
+      hotel_booking_month?: string
+      airline_booking_month?: string
+      status?: string
       visibility: string
       description?: string
     },
@@ -55,7 +63,10 @@ export class PackageService {
   ): Promise<ApiResponse<TripPackage>> {
     return apiClient.post<TripPackage>(
       API_ENDPOINTS.PACKAGES.CREATE,
-      data,
+      {
+        ...data,
+        currency_code: data.currency,
+      },
       undefined,
       authToken
     )
@@ -68,10 +79,18 @@ export class PackageService {
   static async update(
     id: string,
     data: Partial<{
+      package_code: string
       name: string
+      start_date_override: string | null
+      end_date_override: string | null
+      nights: number | null
       price_minor_units: number
       currency: string
       capacity: number
+      sales_target: number | null
+      hotel_booking_month: string
+      airline_booking_month: string
+      status: string
       visibility: string
       description?: string
     }>,
@@ -79,7 +98,10 @@ export class PackageService {
   ): Promise<ApiResponse<TripPackage>> {
     return apiClient.patch<TripPackage>(
       API_ENDPOINTS.PACKAGES.UPDATE(id),
-      data,
+      {
+        ...data,
+        currency_code: data.currency,
+      },
       undefined,
       authToken
     )
@@ -100,5 +122,4 @@ export class PackageService {
     )
   }
 }
-
 

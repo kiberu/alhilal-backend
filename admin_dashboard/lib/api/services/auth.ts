@@ -1,7 +1,11 @@
 // lib/api/services/auth.ts
 import { apiClient, type ApiResponse } from "../client"
 import { API_ENDPOINTS } from "../config"
-import type { Account, StaffProfile } from "@/types/models"
+import type {
+  Account,
+  StaffChangePasswordResponse,
+  StaffProfile,
+} from "@/types/models"
 
 /**
  * Credentials for staff login.
@@ -57,7 +61,7 @@ export class AuthService {
   }
 
   /**
-   * POST /auth/staff/refresh
+   * POST /auth/refresh/
    * Refresh access token using refresh token.
    */
   static async refresh(): Promise<ApiResponse<AuthResponse>> {
@@ -66,32 +70,36 @@ export class AuthService {
       throw { message: "No refresh token available", status: 401 }
     }
     
-    const response = await apiClient.post<AuthResponse>(
+    const response = await apiClient.post<{ access: string }>(
       API_ENDPOINTS.AUTH.REFRESH,
-      { refreshToken }
+      { refresh: refreshToken }
     )
     
     // Update access token if refresh successful
     if (response.success && response.data) {
-      apiClient.setAuthToken(response.data.accessToken, false)
+      apiClient.setAuthToken(response.data.access, false)
     }
     
-    return response
+    return {
+      success: response.success,
+      data: response.data
+        ? ({
+            accessToken: response.data.access,
+          } as AuthResponse)
+        : undefined,
+      error: response.error,
+      message: response.message,
+    }
   }
 
   /**
-   * POST /auth/staff/logout
-   * Logout and invalidate refresh token.
+   * Client-side logout.
+   * Refresh token invalidation is not part of the current backend contract.
    */
   static async logout(authToken?: string): Promise<ApiResponse<void>> {
-    const response = await apiClient.post<void>(
-      API_ENDPOINTS.AUTH.LOGOUT,
-      undefined,
-      undefined,
-      authToken
-    )
+    void authToken
     apiClient.clearAuthToken()
-    return response
+    return { success: true }
   }
 
   /**
@@ -123,23 +131,35 @@ export class AuthService {
   }
 
   /**
-   * POST /auth/staff/change-password
-   * Change staff password.
+   * POST /auth/staff/change-password/
+   * Change the authenticated staff user's password.
    */
   static async changePassword(
     data: ChangePasswordData,
     authToken?: string
-  ): Promise<ApiResponse<void>> {
-    const payload = {
-      oldPassword: data.currentPassword,
-      newPassword: data.newPassword
-    }
-    return apiClient.post<void>(
+  ): Promise<ApiResponse<StaffChangePasswordResponse>> {
+    const response = await apiClient.post<{
+      message: string
+      changed_at: string
+    }>(
       API_ENDPOINTS.AUTH.CHANGE_PASSWORD,
-      payload,
+      {
+        current_password: data.currentPassword,
+        new_password: data.newPassword,
+        confirm_password: data.confirmPassword,
+      },
       undefined,
       authToken
     )
+
+    return {
+      ...response,
+      data: response.data
+        ? {
+            message: response.data.message,
+            changedAt: response.data.changed_at,
+          }
+        : undefined,
+    }
   }
 }
-

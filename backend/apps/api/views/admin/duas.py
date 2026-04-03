@@ -10,9 +10,10 @@ from django_filters.rest_framework import DjangoFilterBackend
 
 from apps.content.models import Dua
 from apps.api.serializers.admin import AdminDuaSerializer
+from apps.common.permissions import StaffActionRolePermission, StaffRoleAccessMixin, user_has_staff_role
 
 
-class AdminDuaViewSet(viewsets.ModelViewSet):
+class AdminDuaViewSet(StaffRoleAccessMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing duas (staff only).
     
@@ -23,7 +24,7 @@ class AdminDuaViewSet(viewsets.ModelViewSet):
     destroy: DELETE /duas/:id - Delete dua
     """
     
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, StaffActionRolePermission]
     serializer_class = AdminDuaSerializer
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['category']
@@ -33,9 +34,7 @@ class AdminDuaViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         """Return duas based on staff permission."""
-        user = self.request.user
-        
-        if not user.is_staff:
+        if not user_has_staff_role(self.request.user, self.get_allowed_staff_roles(self.request)):
             return Dua.objects.none()
         
         return Dua.objects.all()
@@ -74,12 +73,6 @@ class AdminDuaViewSet(viewsets.ModelViewSet):
     
     def create(self, request, *args, **kwargs):
         """Create a new dua."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff members can create duas.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
@@ -88,33 +81,14 @@ class AdminDuaViewSet(viewsets.ModelViewSet):
     
     def update(self, request, *args, **kwargs):
         """Update a dua."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff members can update duas.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         return super().update(request, *args, **kwargs)
     
     def destroy(self, request, *args, **kwargs):
         """Delete a dua."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff members can delete duas.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         return super().destroy(request, *args, **kwargs)
     
     @action(detail=False, methods=['post'])
     def reorder(self, request):
         """Reorder duas."""
-        if not request.user.is_staff:
-            return Response(
-                {'error': 'Only staff members can reorder duas.'},
-                status=status.HTTP_403_FORBIDDEN
-            )
-        
         # This is a placeholder - implement based on your ordering logic
         return Response({'message': 'Reorder not yet implemented'}, status=status.HTTP_501_NOT_IMPLEMENTED)
-

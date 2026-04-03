@@ -1,6 +1,12 @@
 from django.urls import path
 from rest_framework_simplejwt.views import TokenRefreshView
-from .views import RequestOTPView, VerifyOTPView, StaffLoginView, StaffProfileView
+from .views import (
+    RequestOTPView,
+    VerifyOTPView,
+    StaffChangePasswordView,
+    StaffLoginView,
+    StaffProfileView,
+)
 
 urlpatterns = [
     # OTP authentication (for pilgrims)
@@ -10,8 +16,8 @@ urlpatterns = [
     # Staff authentication
     path('staff/login/', StaffLoginView.as_view(), name='staff-login'),
     path('staff/profile/', StaffProfileView.as_view(), name='staff-profile'),
+    path('staff/change-password/', StaffChangePasswordView.as_view(), name='staff-change-password'),
     
     # JWT token refresh
     path('refresh/', TokenRefreshView.as_view(), name='token-refresh'),
 ]
-

@@ -20,9 +20,11 @@ help:
 dev-up:
 	docker-compose up -d
 	@echo "Development environment started!"
-	@echo "Django Admin: http://localhost/admin/"
-	@echo "Admin Dashboard: http://localhost:3001/"
-	@echo "API Docs: http://localhost/api/v1/docs/"
+	@echo "Django Admin: http://localhost:$${BACKEND_HOST_PORT:-18000}/admin/"
+	@echo "Admin Dashboard: http://localhost:$${FRONTEND_HOST_PORT:-13001}/"
+	@echo "API Docs: http://localhost:$${BACKEND_HOST_PORT:-18000}/api/v1/docs/"
+	@echo "Website: http://localhost:$${WEBSITE_HOST_PORT:-15173}/"
+	@echo "Nginx Gateway: http://localhost:$${NGINX_HTTP_PORT:-18080}/"
 
 dev-down:
 	docker-compose down
@@ -90,4 +92,3 @@ prod-migrate:
 
 prod-collectstatic:
 	docker-compose -f docker-compose.prod.yml exec backend python manage.py collectstatic --noinput
-

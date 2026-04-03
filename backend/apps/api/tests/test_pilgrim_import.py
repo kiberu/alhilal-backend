@@ -10,6 +10,7 @@ from openpyxl import Workbook
 import io
 
 from apps.accounts.models import Account, PilgrimProfile
+from apps.api.tests.helpers import create_staff_user
 
 
 class PilgrimImportTests(TestCase):
@@ -20,11 +21,9 @@ class PilgrimImportTests(TestCase):
         self.client = APIClient()
         
         # Create staff user
-        self.staff_user = Account.objects.create_user(
+        self.staff_user = create_staff_user(
             phone='+256700000000',
             name='Test Staff',
-            role='STAFF',
-            is_staff=True
         )
         
         # Authenticate
@@ -458,4 +457,3 @@ class PilgrimImportTests(TestCase):
         self.assertTrue(response.data['success'])
         self.assertEqual(response.data['imported'], 2)  # Only 2 valid rows
         self.assertEqual(len(response.data['errors']), 0)
-

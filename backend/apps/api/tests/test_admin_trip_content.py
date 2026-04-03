@@ -11,6 +11,7 @@ from apps.trips.models import (
     Trip, TripPackage, TripUpdate, TripGuideSection, 
     ChecklistItem, EmergencyContact, TripFAQ
 )
+from apps.api.tests.helpers import create_staff_user
 
 Account = get_user_model()
 
@@ -22,11 +23,9 @@ class AdminTripUpdateAPITestCase(TestCase):
         """Set up test client and test data."""
         self.client = APIClient()
         
-        self.staff_user = Account.objects.create_user(
+        self.staff_user = create_staff_user(
             phone='+1234567890',
             name='Staff User',
-            role='STAFF',
-            is_staff=True,
         )
         
         self.trip = Trip.objects.create(
@@ -86,11 +85,9 @@ class AdminTripGuideAPITestCase(TestCase):
         """Set up test client and test data."""
         self.client = APIClient()
         
-        self.staff_user = Account.objects.create_user(
+        self.staff_user = create_staff_user(
             phone='+1234567890',
             name='Staff User',
-            role='STAFF',
-            is_staff=True,
         )
         
         self.trip = Trip.objects.create(
@@ -161,11 +158,9 @@ class AdminChecklistAPITestCase(TestCase):
         """Set up test client and test data."""
         self.client = APIClient()
         
-        self.staff_user = Account.objects.create_user(
+        self.staff_user = create_staff_user(
             phone='+1234567890',
             name='Staff User',
-            role='STAFF',
-            is_staff=True,
         )
         
         self.trip = Trip.objects.create(
@@ -229,11 +224,9 @@ class AdminEmergencyContactAPITestCase(TestCase):
         """Set up test client and test data."""
         self.client = APIClient()
         
-        self.staff_user = Account.objects.create_user(
+        self.staff_user = create_staff_user(
             phone='+1234567890',
             name='Staff User',
-            role='STAFF',
-            is_staff=True,
         )
         
         self.trip = Trip.objects.create(
@@ -293,11 +286,9 @@ class AdminTripFAQAPITestCase(TestCase):
         """Set up test client and test data."""
         self.client = APIClient()
         
-        self.staff_user = Account.objects.create_user(
+        self.staff_user = create_staff_user(
             phone='+1234567890',
             name='Staff User',
-            role='STAFF',
-            is_staff=True,
         )
         
         self.trip = Trip.objects.create(
@@ -377,4 +368,3 @@ class AdminTripFAQAPITestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.faq1.refresh_from_db()
         self.assertIn('travel documents', self.faq1.answer)
-

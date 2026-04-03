@@ -6,15 +6,19 @@ import { cn } from "@/lib/utils"
 import { useUIStore } from "@/store/uiStore"
 import { Button } from "@/components/ui/button"
 import {
+  BarChart3,
+  CheckSquare,
   LayoutDashboard,
   Plane,
   Users,
   FileText,
+  MessageSquare,
   ChevronLeft,
   ChevronRight,
   Settings,
   LogOut,
   Shield,
+  Star,
 } from "lucide-react"
 import { useAuth } from "@/hooks/useAuth"
 
@@ -23,6 +27,10 @@ const navigation = [
   { name: "Trips", href: "/dashboard/trips", icon: Plane },
   { name: "Bookings", href: "/dashboard/bookings", icon: FileText },
   { name: "Pilgrims", href: "/dashboard/pilgrims", icon: Users },
+  { name: "Readiness", href: "/dashboard/readiness", icon: CheckSquare },
+  { name: "Leads", href: "/dashboard/leads", icon: MessageSquare },
+  { name: "Feedback", href: "/dashboard/feedback", icon: Star },
+  { name: "Reports", href: "/dashboard/reports", icon: BarChart3 },
   { name: "Users", href: "/dashboard/users", icon: Shield },
 ]
 

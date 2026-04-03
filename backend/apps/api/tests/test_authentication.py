@@ -9,6 +9,7 @@ from datetime import timedelta
 from unittest.mock import patch, MagicMock
 
 from apps.accounts.models import OTPCode
+from apps.common.models import PlatformSettings
 
 Account = get_user_model()
 
@@ -19,6 +20,12 @@ class TestOTPRequest:
     
     def test_request_otp_success(self, api_client):
         """Test successful OTP request."""
+        platform_settings = PlatformSettings.get_solo()
+        platform_settings.otp_support_phone = "+256700100100"
+        platform_settings.otp_support_whatsapp = "+256700100101"
+        platform_settings.otp_fallback_message = "Call support if the code delays."
+        platform_settings.save()
+
         response = api_client.post('/api/v1/auth/request-otp/', {
             'phone': '+256712345678'
         })
@@ -26,6 +33,10 @@ class TestOTPRequest:
         assert response.status_code == status.HTTP_200_OK
         assert response.data['sent'] is True
         assert 'expires_in' in response.data
+        assert response.data['retry_after_seconds'] == 60
+        assert response.data['fallback']['supportPhone'] == '+256700100100'
+        assert response.data['fallback']['supportWhatsApp'] == '+256700100101'
+        assert response.data['fallback']['message'] == 'Call support if the code delays.'
         
         # Check OTP was created
         otp = OTPCode.objects.filter(phone='+256712345678').first()
@@ -54,7 +65,7 @@ class TestOTPRequest:
         })
         assert response2.status_code == status.HTTP_429_TOO_MANY_REQUESTS
     
-    @patch('africastalking.SMS.send')
+    @patch('apps.api.auth.views.send_sms_message')
     def test_sms_enabled_success(self, mock_sms_send, api_client, settings):
         """Test OTP request with SMS enabled - successful send."""
         settings.SMS_ENABLED = True
@@ -77,7 +88,7 @@ class TestOTPRequest:
         assert 'otp' not in response.data  # OTP should not be in response in production
         assert mock_sms_send.called
     
-    @patch('africastalking.SMS.send')
+    @patch('apps.api.auth.views.send_sms_message')
     def test_sms_enabled_failure(self, mock_sms_send, api_client, settings):
         """Test OTP request with SMS enabled - failed send."""
         settings.SMS_ENABLED = True
@@ -103,7 +114,7 @@ class TestOTPRequest:
         otp = OTPCode.objects.filter(phone='+256712345678').first()
         assert otp is not None
     
-    @patch('africastalking.SMS.send')
+    @patch('apps.api.auth.views.send_sms_message')
     def test_sms_enabled_exception(self, mock_sms_send, api_client, settings):
         """Test OTP request with SMS enabled - exception during send."""
         settings.SMS_ENABLED = True
@@ -157,6 +168,8 @@ class TestOTPVerify:
         assert response.status_code == status.HTTP_200_OK
         assert 'access' in response.data
         assert 'refresh' in response.data
+        assert 'access_expires_at' in response.data
+        assert 'refresh_expires_at' in response.data
         assert 'user' in response.data
         assert response.data['user']['phone'] == '+256712345678'
         
@@ -264,4 +277,3 @@ class TestJWTRefresh:
         })
         
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-

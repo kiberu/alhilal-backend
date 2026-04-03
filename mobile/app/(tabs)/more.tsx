@@ -57,11 +57,6 @@ export default function MoreScreen() {
   const theme = useThemeContext();
   const { isAuthenticated, user, profile, logout } = useAuth();
 
-  const [settings, setSettings] = React.useState({
-    pushNotifications: true,
-    emailUpdates: false,
-  });
-
   // Menu items for authenticated users
   const authenticatedMenuItems = [
     {
@@ -84,9 +79,17 @@ export default function MoreScreen() {
       id: 'documents',
       icon: 'document-text-outline',
       title: 'My Documents',
-      subtitle: 'Manage travel paperwork',
+      subtitle: 'Read-only truth and support handoff',
       route: '/my-documents',
       color: '#10B981',
+    },
+    {
+      id: 'notifications',
+      icon: 'notifications-outline',
+      title: 'Notifications',
+      subtitle: 'Preferences, devices, and support feed',
+      route: '/notifications',
+      color: '#3B82F6',
     },
   ];
 
@@ -116,11 +119,6 @@ export default function MoreScreen() {
     Linking.openURL(url);
   };
 
-  const handleLoginPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/(auth)/login');
-  };
-
   const handleUserCardPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (isAuthenticated) {
@@ -128,11 +126,6 @@ export default function MoreScreen() {
     } else {
       router.push('/(auth)/login');
     }
-  };
-
-  const toggleSetting = (key: keyof typeof settings, value: boolean) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleThemeChange = (value: boolean) => {
@@ -244,36 +237,27 @@ export default function MoreScreen() {
         {/* Settings Section */}
         <View style={[styles.settingsSection, { backgroundColor: colors.card }, Shadow.small]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>Settings</Text>
-          
-          <View style={styles.settingRow}>
-            <View style={styles.settingTextGroup}>
-              <Text style={[styles.settingLabel, { color: colors.text }]}>Push Notifications</Text>
-              <Text style={[styles.settingDescription, { color: colors.mutedForeground }]}>
-                Receive booking reminders and updates
+
+          <Text style={[styles.settingDescription, { color: colors.mutedForeground }]}>
+            Notification delivery, support updates, and registered devices now live on the Notifications screen.
+          </Text>
+
+          <TouchableOpacity
+            style={[styles.menuItem, { backgroundColor: colors.muted }]}
+            onPress={() => handleMenuPress('/notifications')}
+            activeOpacity={0.8}
+          >
+            <View style={[styles.menuIconContainer, { backgroundColor: `${colors.primary}15` }]}>
+              <Ionicons name="notifications-outline" size={24} color={colors.primary} />
+            </View>
+            <View style={styles.menuContent}>
+              <Text style={[styles.menuTitle, { color: colors.text }]}>Open Notifications</Text>
+              <Text style={[styles.menuSubtitle, { color: colors.mutedForeground }]}>
+                Adjust preference toggles, device registration, and the support feed.
               </Text>
             </View>
-            <Switch
-              value={settings.pushNotifications}
-              onValueChange={(value) => toggleSetting('pushNotifications', value)}
-              thumbColor={settings.pushNotifications ? colors.primary : colors.border}
-            />
-          </View>
-
-          <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-          <View style={styles.settingRow}>
-            <View style={styles.settingTextGroup}>
-              <Text style={[styles.settingLabel, { color: colors.text }]}>Email Updates</Text>
-              <Text style={[styles.settingDescription, { color: colors.mutedForeground }]}>
-                Monthly highlights and travel tips
-              </Text>
-            </View>
-            <Switch
-              value={settings.emailUpdates}
-              onValueChange={(value) => toggleSetting('emailUpdates', value)}
-              thumbColor={settings.emailUpdates ? colors.primary : colors.border}
-            />
-          </View>
+            <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
+          </TouchableOpacity>
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
 

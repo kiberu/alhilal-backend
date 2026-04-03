@@ -8,29 +8,43 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, BorderRadius, Typography, Shadow } from '@/constants/theme';
+import type { OTPFallback } from '@/lib/api/types';
 
 const OTP_LENGTH = 6;
 const RESEND_TIMEOUT = 60; // seconds
 
 export default function VerifyOTPScreen() {
   const router = useRouter();
-  const { phone } = useLocalSearchParams<{ phone: string }>();
+  const { phone, supportPhone, supportWhatsApp, fallbackMessage, retryAfterSeconds } = useLocalSearchParams<{
+    phone: string;
+    supportPhone?: string;
+    supportWhatsApp?: string;
+    fallbackMessage?: string;
+    retryAfterSeconds?: string;
+  }>();
   const { verifyOTP, requestOTP } = useAuth();
   const colorScheme = useColorScheme();
   
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const [resendTimer, setResendTimer] = useState(RESEND_TIMEOUT);
+  const [resendTimer, setResendTimer] = useState(Number(retryAfterSeconds || RESEND_TIMEOUT));
   const [canResend, setCanResend] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [fallback, setFallback] = useState<OTPFallback | null>({
+    supportPhone: supportPhone || '',
+    supportWhatsApp: supportWhatsApp || '',
+    message: fallbackMessage || '',
+  });
   
-  const inputRefs = useRef<Array<TextInput | null>>([]);
+  const inputRefs = useRef<(TextInput | null)[]>([]);
 
   // Countdown timer for resend
   useEffect(() => {
@@ -109,14 +123,23 @@ export default function VerifyOTPScreen() {
   const handleResendOTP = async () => {
     if (!canResend || !phone) return;
 
-    setCanResend(false);
-    setResendTimer(RESEND_TIMEOUT);
     setError('');
+    setIsResending(true);
     
     try {
-      await requestOTP(phone as string);
-    } catch (err: any) {
+      const result = await requestOTP(phone as string);
+      if (!result.success) {
+        setError(result.error || 'Failed to resend OTP. Please try again.');
+        return;
+      }
+
+      setFallback(result.fallback || fallback);
+      setCanResend(false);
+      setResendTimer(result.retryAfterSeconds || RESEND_TIMEOUT);
+    } catch {
       setError('Failed to resend OTP. Please try again.');
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -155,7 +178,9 @@ export default function VerifyOTPScreen() {
             {otp.map((digit, index) => (
               <TextInput
                 key={index}
-                ref={(ref) => (inputRefs.current[index] = ref)}
+                ref={(ref) => {
+                  inputRefs.current[index] = ref;
+                }}
                 style={[
                   styles.otpInput,
                   { borderColor: colors.border, color: colors.text, backgroundColor: colors.background },
@@ -208,8 +233,10 @@ export default function VerifyOTPScreen() {
         {/* Resend OTP */}
         <View style={styles.resendContainer}>
           {canResend ? (
-            <TouchableOpacity onPress={handleResendOTP} activeOpacity={0.7}>
-              <Text style={[styles.resendText, { color: colors.primary }]}>Resend OTP</Text>
+            <TouchableOpacity onPress={handleResendOTP} activeOpacity={0.7} disabled={isResending}>
+              <Text style={[styles.resendText, { color: colors.primary }]}>
+                {isResending ? 'Sending new code...' : 'Resend OTP'}
+              </Text>
             </TouchableOpacity>
           ) : (
             <Text style={[styles.timerText, { color: colors.mutedForeground }]}>
@@ -217,6 +244,42 @@ export default function VerifyOTPScreen() {
             </Text>
           )}
         </View>
+
+        {fallback && (fallback.supportPhone || fallback.supportWhatsApp || fallback.message) ? (
+          <View style={[styles.supportCard, { backgroundColor: colors.card }, Shadow.small]}>
+            <View style={styles.supportHeader}>
+              <Ionicons name="help-buoy" size={18} color={colors.primary} />
+              <Text style={[styles.supportTitle, { color: colors.text }]}>Need help with authentication?</Text>
+            </View>
+            {fallback.message ? (
+              <Text style={[styles.supportText, { color: colors.mutedForeground }]}>
+                {fallback.message}
+              </Text>
+            ) : null}
+            <View style={styles.supportActions}>
+              {fallback.supportPhone ? (
+                <TouchableOpacity
+                  style={[styles.supportButton, { borderColor: colors.border }]}
+                  onPress={() => Linking.openURL(`tel:${fallback.supportPhone}`)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="call-outline" size={16} color={colors.primary} />
+                  <Text style={[styles.supportButtonText, { color: colors.primary }]}>Call Support</Text>
+                </TouchableOpacity>
+              ) : null}
+              {fallback.supportWhatsApp ? (
+                <TouchableOpacity
+                  style={[styles.supportButton, { borderColor: colors.border }]}
+                  onPress={() => Linking.openURL(`https://wa.me/${fallback.supportWhatsApp.replace(/\D/g, '')}`)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="logo-whatsapp" size={16} color={colors.primary} />
+                  <Text style={[styles.supportButtonText, { color: colors.primary }]}>WhatsApp</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          </View>
+        ) : null}
 
         {/* Change Number */}
         <TouchableOpacity
@@ -334,6 +397,44 @@ const styles = StyleSheet.create({
   },
   timerText: {
     fontSize: Typography.fontSize.base,
+  },
+  supportCard: {
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginTop: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  supportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+  },
+  supportTitle: {
+    flex: 1,
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  supportText: {
+    fontSize: Typography.fontSize.sm,
+    lineHeight: 20,
+  },
+  supportActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  supportButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    borderWidth: 1,
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+  },
+  supportButtonText: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.medium,
   },
   changeNumberButton: {
     flexDirection: 'row',

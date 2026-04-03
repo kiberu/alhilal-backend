@@ -30,6 +30,7 @@ export default function TripsPage() {
   // Filters
   const [searchQuery, setSearchQuery] = useState("")
   const [visibilityFilter, setVisibilityFilter] = useState<string>("all")
+  const [statusFilter, setStatusFilter] = useState<string>("all")
   const [dateRange, setDateRange] = useState<DateRange | undefined>()
   
   // Pagination
@@ -41,7 +42,7 @@ export default function TripsPage() {
   useEffect(() => {
     loadTrips()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, searchQuery, visibilityFilter, dateRange])
+  }, [page, searchQuery, visibilityFilter, statusFilter, dateRange])
 
   const loadTrips = async () => {
     try {
@@ -59,6 +60,10 @@ export default function TripsPage() {
 
       if (visibilityFilter && visibilityFilter !== "all") {
         filters.visibility = visibilityFilter
+      }
+
+      if (statusFilter && statusFilter !== "all") {
+        filters.status = statusFilter
       }
 
       if (dateRange?.from) {
@@ -95,6 +100,7 @@ export default function TripsPage() {
   const handleClearFilters = () => {
     setSearchQuery("")
     setVisibilityFilter("all")
+    setStatusFilter("all")
     setDateRange(undefined)
     setPage(1)
   }
@@ -152,8 +158,13 @@ export default function TripsPage() {
       },
     },
     {
-      key: "visibility",
+      key: "status",
       header: "Status",
+      render: (trip) => <StatusBadge status={trip.status || "DRAFT"} />,
+    },
+    {
+      key: "visibility",
+      header: "Visibility",
       render: (trip) => <StatusBadge status={trip.visibility} />,
     },
     {
@@ -197,7 +208,7 @@ export default function TripsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
             <div>
               <label className="mb-2 block text-sm font-medium">Search</label>
               <SearchBar
@@ -219,6 +230,30 @@ export default function TripsPage() {
                   <SelectItem value="PUBLIC">Public</SelectItem>
                   <SelectItem value="PRIVATE">Private</SelectItem>
                   <SelectItem value="ARCHIVED">Archived</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium">Operational Status</label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All operational statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="DRAFT">Draft</SelectItem>
+                  <SelectItem value="PLANNING">Planning</SelectItem>
+                  <SelectItem value="OPEN_FOR_SALES">Open for sales</SelectItem>
+                  <SelectItem value="PREPARATION">Preparation</SelectItem>
+                  <SelectItem value="VISA_IN_PROGRESS">Visa in progress</SelectItem>
+                  <SelectItem value="TICKETING">Ticketing</SelectItem>
+                  <SelectItem value="READY_TO_TRAVEL">Ready to travel</SelectItem>
+                  <SelectItem value="IN_JOURNEY">In journey</SelectItem>
+                  <SelectItem value="RETURNED">Returned</SelectItem>
+                  <SelectItem value="POST_TRIP">Post trip</SelectItem>
+                  <SelectItem value="ARCHIVED">Archived</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelled</SelectItem>
                 </SelectContent>
               </Select>
             </div>

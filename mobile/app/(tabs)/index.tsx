@@ -1,457 +1,337 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from "react";
 import {
-  StyleSheet,
-  ScrollView,
-  View,
-  Text,
-  Linking,
-  Dimensions,
-  TouchableOpacity,
-  Image,
-  ActivityIndicator,
   RefreshControl,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors, Spacing, Typography, BorderRadius, Shadow } from '@/constants/theme';
-import { AlHilalIcon } from '@/components/AlHilalIcon';
-import * as Haptics from 'expo-haptics';
-import { AlHilalLogo } from '@/components/AlHilalLogo';
-import { useAuth } from '@/contexts/auth-context';
-import { TripsService, Trip } from '@/lib/api/services';
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { LinearGradient } from "expo-linear-gradient";
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
+import * as Haptics from "expo-haptics";
 
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = width - 80; // Show partial next card
+import { AlHilalLogo } from "@/components/AlHilalLogo";
+import { Colors, Shadow, Spacing, Typography } from "@/constants/theme";
+import { useAuth } from "@/contexts/auth-context";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { readCachedDailyProgram, readCachedNextTrip, readCachedTripMilestones, readCachedTripReadiness, readCachedTripResources, readCachedTripUpdates, syncHomeSupport } from "@/lib/support/cache-sync";
+
+function formatDateRange(startDate?: string, endDate?: string) {
+  if (!startDate || !endDate) {
+    return "Dates will appear after the next sync";
+  }
+
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} to ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+}
+
+function formatSyncTime(value?: string | null) {
+  if (!value) {
+    return "Waiting for the first sync";
+  }
+
+  return `Last sync ${new Date(value).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  })}`;
+}
 
 export default function HomeScreen() {
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const colors = Colors[colorScheme ?? "light"];
   const router = useRouter();
-  const { isAuthenticated, user, profile } = useAuth();
-  
-  // State for trips
-  const [featuredTrips, setFeaturedTrips] = useState<Trip[]>([]);
-  const [allTrips, setAllTrips] = useState<Trip[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { accessToken, isAuthenticated, profile, user } = useAuth();
+
+  const [nextTrip, setNextTrip] = useState<any | null>(null);
+  const [readiness, setReadiness] = useState<any | null>(null);
+  const [dailyProgram, setDailyProgram] = useState<any | null>(null);
+  const [milestones, setMilestones] = useState<any[]>([]);
+  const [resources, setResources] = useState<any[]>([]);
+  const [updates, setUpdates] = useState<any[]>([]);
+  const [lastSync, setLastSync] = useState<string | null>(null);
+  const [stale, setStale] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // Fetch trips on mount
-  useEffect(() => {
-    loadTrips();
+  const firstName = profile?.full_name?.split(" ")[0] || user?.name?.split(" ")[0] || "Pilgrim";
+
+  const hydrateFromCache = useCallback(async () => {
+    const cachedNextTrip = await readCachedNextTrip();
+    setNextTrip(cachedNextTrip);
+
+    if (!cachedNextTrip?.id) {
+      setReadiness(null);
+      setDailyProgram(null);
+      setMilestones([]);
+      setResources([]);
+      setUpdates([]);
+      return;
+    }
+
+    const [cachedReadiness, cachedDailyProgram, cachedMilestones, cachedResources, cachedUpdates] = await Promise.all([
+      readCachedTripReadiness(cachedNextTrip.id),
+      readCachedDailyProgram(cachedNextTrip.id),
+      readCachedTripMilestones(cachedNextTrip.id),
+      readCachedTripResources(cachedNextTrip.id),
+      readCachedTripUpdates(cachedNextTrip.id),
+    ]);
+
+    setReadiness(cachedReadiness);
+    setDailyProgram(cachedDailyProgram);
+    setMilestones(cachedMilestones || []);
+    setResources(cachedResources || []);
+    setUpdates(cachedUpdates || []);
   }, []);
 
-  const loadTrips = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Fetch featured and all public trips
-      const [featuredResponse, allResponse] = await Promise.all([
-        TripsService.getPublicTrips(true), // Featured only
-        TripsService.getPublicTrips(), // All public trips
-      ]);
-      
-      if (!featuredResponse.success) {
-        throw new Error(featuredResponse.error || 'Failed to load featured trips');
-      }
-      if (!allResponse.success) {
-        throw new Error(allResponse.error || 'Failed to load trips');
-      }
-      
-      setFeaturedTrips(featuredResponse.data?.results || []);
-      setAllTrips(allResponse.data?.results || []);
-    } catch (err: any) {
-      console.error('Error loading trips:', err);
-      setError(err.message || 'Failed to load trips');
-    } finally {
-      setLoading(false);
+  const refreshSupport = useCallback(async () => {
+    if (!accessToken) {
+      return;
     }
-  };
 
-  const onRefresh = async () => {
     setRefreshing(true);
-    await loadTrips();
+    const support = await syncHomeSupport(accessToken);
+    await hydrateFromCache();
+    setLastSync(support.trips.syncMetadata.lastSuccessfulSync);
+    setStale(support.trips.syncMetadata.stale || support.trips.source === "cache");
+    setError(support.trips.error);
     setRefreshing(false);
-  };
+  }, [accessToken, hydrateFromCache]);
 
-  // Get user name - priority: profile full_name > user name > phone
-  const getUserName = () => {
-    if (profile?.full_name) return profile.full_name.split(' ')[0]; // First name only
-    if (user?.name && user.name !== user?.phone) return user.name;
-    return 'Guest';
-  };
+  useEffect(() => {
+    void hydrateFromCache();
+  }, [hydrateFromCache]);
 
-  const handleCallPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Linking.openURL('tel:+256700773535');
-  };
-
-  const handleTripPress = (tripId: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/trip/${tripId}` as any);
-  };
-  
-  // Format price from minor units to display
-  const formatPrice = (minorUnits: number, currency: string) => {
-    const major = minorUnits / 100;
-    if (currency === 'UGX') {
-      return `UGX ${major.toLocaleString('en-UG', { maximumFractionDigits: 0 })}`;
+  useEffect(() => {
+    if (isAuthenticated && accessToken) {
+      void refreshSupport();
     }
-    // For USD and other currencies
-    return `$${major.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
-  
-  // Format date range
-  const formatDateRange = (startDate: string, endDate: string) => {
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    const startFormatted = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    const endFormatted = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    return `${startFormatted} - ${endFormatted}`;
-  };
-  
-  // Get default trip image
-  const getDefaultTripImage = () => require('@/assets/alhilal-assets/Kaaba-hero1.jpg');
+  }, [accessToken, isAuthenticated, refreshSupport]);
 
-  const handleViewAllTrips = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push('/(tabs)/trips');
+  const openNotifications = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push("/notifications");
   };
 
-  const handleLoginPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/(auth)/login');
+  const openTripSupport = () => {
+    if (!nextTrip?.id) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push(`/trip/${nextTrip.id}` as never);
   };
 
-  const handleNotificationsPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // TODO: Navigate to notifications screen when available
+  const openDailyProgram = () => {
+    if (!nextTrip?.id) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push(`/daily-program/${nextTrip.id}` as never);
   };
 
-  const handleProfilePress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    if (isAuthenticated) {
-      router.push('/my-profile' as any);
-    } else {
-      handleLoginPress();
-    }
+  const openBookings = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    router.push("/my-bookings" as never);
   };
 
-  const handleMyBookingsPress = () => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/my-bookings' as any);
-  };
+  if (!isAuthenticated) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.header}>
+            <AlHilalLogo width={180} height={32} />
+          </View>
+          <LinearGradient colors={[colors.primary, "#A8024E"]} style={[styles.heroCard, Shadow.large]}>
+            <Text style={styles.heroEyebrow}>Pilgrim Support, Ready When You Are</Text>
+            <Text style={styles.heroTitle}>Sign in to see your readiness, trip program, and support updates.</Text>
+            <TouchableOpacity style={[styles.heroButton, { backgroundColor: colors.gold }]} onPress={() => router.push("/(auth)/login")}>
+              <Text style={[styles.heroButtonText, { color: colors.goldForeground }]}>Sign In</Text>
+            </TouchableOpacity>
+          </LinearGradient>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={["top"]}>
       <ScrollView
-        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refreshSupport} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
-          />
-        }
       >
-        <View
-          style={[
-            styles.header,
-            {
-              borderColor: colors.border,
-              backgroundColor: colors.background,
-            },
-          ]}
-        >
+        <View style={styles.header}>
           <AlHilalLogo width={180} height={32} />
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              onPress={handleNotificationsPress}
-              activeOpacity={0.8}
-              style={[styles.headerButton, { backgroundColor: colors.muted }]}
-            >
-              <FontAwesome name="bell-o" size={18} color={colors.text} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              onPress={handleProfilePress}
-              activeOpacity={0.8}
-              style={[styles.headerButton, { backgroundColor: colors.muted }]}
-            >
-              <FontAwesome name="user-o" size={18} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View
-          style={[
-            styles.welcomeSection,
-            Shadow.medium,
-            { backgroundColor: colors.card, borderColor: colors.border },
-          ]}
-        >
-          <View style={styles.welcomeHeader}>
-            <Text style={[styles.greeting, { color: colors.mutedForeground }]}>
-              Welcome back, {getUserName()}!
-            </Text>
-            <Text style={[styles.welcomeTitle, { color: colors.text }]}>For a Hussle-Free Pilgrimage</Text>
-          </View>
-        </View>
-        
-        {/* Next Trip Card */}
-        {loading ? (
-          <View style={[styles.section, styles.loadingContainer]}>
-            <ActivityIndicator size="large" color={colors.primary} />
-            <Text style={[styles.loadingText, { color: colors.mutedForeground }]}>Loading trips...</Text>
-          </View>
-        ) : error ? (
-          <View style={[styles.section, styles.errorContainer]}>
-            <Ionicons name="alert-circle-outline" size={48} color={colors.error} />
-            <Text style={[styles.errorText, { color: colors.error }]}>{error}</Text>
-            <TouchableOpacity
-              style={[styles.retryButton, { backgroundColor: colors.primary }]}
-              onPress={loadTrips}
-            >
-              <Text style={[styles.retryButtonText, { color: colors.primaryForeground }]}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        ) : allTrips.length > 0 && (
-        <View style={styles.section}>
           <TouchableOpacity
-            style={[styles.nextTripCard, Shadow.large]}
-              onPress={() => handleTripPress(allTrips[0].id)}
-            activeOpacity={0.95}
+            onPress={openNotifications}
+            style={[styles.iconButton, { backgroundColor: colors.muted }]}
+            activeOpacity={0.8}
           >
-            <LinearGradient
-              colors={[colors.primary, '#A8024E']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.nextTripGradient}
-            >
-              <View style={styles.nextTripContent}>
-                <Text style={styles.upcomingTripLabel}>UPCOMING TRIP</Text>
-                  <Text style={styles.nextTripTitle}>{allTrips[0].name}</Text>
-                
-                <View style={styles.nextTripRow}>
-                  <View style={styles.nextTripInfo}>
-                    <Ionicons name="calendar-outline" size={16} color="#FFFFFF" />
-                    <Text style={styles.nextTripText}>
-                        {formatDateRange(allTrips[0].start_date, allTrips[0].end_date)}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.nextTripRow}>
-                  <View style={styles.nextTripInfo}>
-                    <Ionicons name="location-outline" size={16} color="#FFFFFF" />
-                    <Text style={styles.nextTripText}>
-                        {allTrips[0].cities.join(' • ')}
-                    </Text>
-                  </View>
-                </View>
-
-                <View style={styles.nextTripFooter}>
-                  <View>
-                    <Text style={styles.nextTripSeats}>
-                        {allTrips[0].packages_count} {allTrips[0].packages_count === 1 ? 'package' : 'packages'}
-                    </Text>
-                  </View>
-                  <View style={[styles.nextTripButton, { backgroundColor: colors.gold }]}>
-                    <Ionicons name="arrow-forward" size={24} color={colors.goldForeground} />
-                  </View>
-                </View>
-              </View>
-            </LinearGradient>
+            <Ionicons name="notifications-outline" size={20} color={colors.text} />
           </TouchableOpacity>
         </View>
-        )}
 
-        {/* Featured Packages */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Featured Trips
-            </Text>
-            <TouchableOpacity onPress={handleViewAllTrips}>
-              <Text style={[styles.sectionLink, { color: colors.primary }]}>View All</Text>
+        <LinearGradient colors={[colors.primary, "#A8024E"]} style={[styles.heroCard, Shadow.large]}>
+          <Text style={styles.heroEyebrow}>Pilgrim Support Home</Text>
+          <Text style={styles.heroTitle}>Assalamu alaikum, {firstName}.</Text>
+          <Text style={styles.heroSubtitle}>
+            Your next trip, readiness state, and support updates appear here first, even after the app has been offline.
+          </Text>
+          <View style={styles.heroActionRow}>
+            <TouchableOpacity style={[styles.heroButton, { backgroundColor: colors.gold }]} onPress={openBookings}>
+              <Text style={[styles.heroButtonText, { color: colors.goldForeground }]}>My Bookings</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.heroGhostButton} onPress={openNotifications}>
+              <Text style={styles.heroGhostButtonText}>Alerts</Text>
             </TouchableOpacity>
           </View>
+        </LinearGradient>
 
-          {!loading && featuredTrips.length > 0 ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.packagesScroll}
-            snapToInterval={CARD_WIDTH + 16}
-            decelerationRate="fast"
-          >
-              {featuredTrips.map((trip) => (
-              <TouchableOpacity
-                  key={trip.id}
-                style={[styles.packageCard, Shadow.large]}
-                  onPress={() => handleTripPress(trip.id)}
-                activeOpacity={0.95}
-              >
-                  {trip.cover_image ? (
-                    <Image
-                      source={{ uri: trip.cover_image }}
-                      style={styles.packageImage}
-                      resizeMode="cover"
-                    />
-                  ) : (
-                <Image
-                      source={getDefaultTripImage()}
-                  style={styles.packageImage}
-                  resizeMode="cover"
-                />
-                  )}
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.8)']}
-                  style={styles.packageGradient}
-                >
-                    <View style={[styles.featuredBadge, { backgroundColor: colors.gold }]}>
-                      <Ionicons name="star" size={12} color={colors.goldForeground} />
-                      <Text style={[styles.featuredText, { color: colors.goldForeground }]}>
-                        FEATURED
+        <View style={[styles.syncCard, { backgroundColor: colors.card, borderColor: stale ? colors.warning : colors.border }]}>
+          <View style={styles.syncRow}>
+            <Ionicons
+              name={stale ? "cloud-offline-outline" : "sync-outline"}
+              size={18}
+              color={stale ? colors.warning : colors.primary}
+            />
+            <Text style={[styles.syncText, { color: colors.text }]}>{formatSyncTime(lastSync)}</Text>
+          </View>
+          <Text style={[styles.syncSubtext, { color: colors.mutedForeground }]}>
+            {stale
+              ? error || "Showing the last known good support snapshot while the network refresh recovers."
+              : "The app opens from cache first and refreshes this support snapshot in the background."}
+          </Text>
+        </View>
+
+        {nextTrip ? (
+          <>
+            <TouchableOpacity
+              style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.medium]}
+              onPress={openTripSupport}
+              activeOpacity={0.92}
+            >
+              <Text style={[styles.sectionEyebrow, { color: colors.primary }]}>Next Booked Trip</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{nextTrip.name}</Text>
+              <Text style={[styles.sectionMeta, { color: colors.mutedForeground }]}>
+                {formatDateRange(nextTrip.start_date, nextTrip.end_date)}
+              </Text>
+              <Text style={[styles.sectionMeta, { color: colors.mutedForeground }]}>
+                {(nextTrip.cities || []).join(" • ")}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.medium]}
+              onPress={openTripSupport}
+              activeOpacity={0.92}
+            >
+              <View style={styles.inlineHeader}>
+                <Text style={[styles.sectionEyebrow, { color: colors.primary }]}>Readiness Summary</Text>
+                <Text style={[styles.statusBadge, { color: readiness?.ready_for_travel ? colors.success : colors.warning }]}>
+                  {readiness?.status || "Syncing"}
+                </Text>
+              </View>
+              <Text style={[styles.readinessHeadline, { color: colors.text }]}>
+                {readiness?.ready_for_travel
+                  ? "You are cleared for travel."
+                  : readiness?.missing_items?.length
+                    ? `${readiness.missing_items.length} item${readiness.missing_items.length === 1 ? "" : "s"} still need attention.`
+                    : "Readiness details will appear after the next sync."}
+              </Text>
+              <Text style={[styles.sectionMeta, { color: colors.mutedForeground }]}>
+                Payment progress: {readiness?.payment_progress_percent ?? 0}% of the required target
+              </Text>
+              {!!readiness?.blockers?.length && (
+                <Text style={[styles.warningText, { color: colors.warning }]}>
+                  Blockers: {readiness.blockers.join(" · ")}
+                </Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.medium]}
+              onPress={openDailyProgram}
+              activeOpacity={0.92}
+            >
+              <Text style={[styles.sectionEyebrow, { color: colors.primary }]}>Pinned Daily Program</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>
+                {dailyProgram?.pinned_resource?.title || `Day ${dailyProgram?.current_day_index || 1}`}
+              </Text>
+              <Text style={[styles.sectionMeta, { color: colors.mutedForeground }]}>
+                {dailyProgram?.days?.length
+                  ? `${dailyProgram.days.length} program day${dailyProgram.days.length === 1 ? "" : "s"} cached for offline reading`
+                  : "Program details will appear once operations publish them."}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.row}>
+              <View style={[styles.compactCard, { backgroundColor: colors.card }, Shadow.medium]}>
+                <Text style={[styles.sectionEyebrow, { color: colors.primary }]}>Latest Updates</Text>
+                {updates.length ? (
+                  updates.slice(0, 2).map((item) => (
+                    <View key={item.id} style={styles.compactItem}>
+                      <Text style={[styles.compactTitle, { color: colors.text }]}>{item.title}</Text>
+                      <Text style={[styles.compactMeta, { color: colors.mutedForeground }]}>{item.urgency}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={[styles.compactMeta, { color: colors.mutedForeground }]}>
+                    No trip updates have been cached yet.
+                  </Text>
+                )}
+              </View>
+
+              <View style={[styles.compactCard, { backgroundColor: colors.card }, Shadow.medium]}>
+                <Text style={[styles.sectionEyebrow, { color: colors.primary }]}>Guides and Resources</Text>
+                {resources.length ? (
+                  resources.slice(0, 2).map((item) => (
+                    <View key={item.id} style={styles.compactItem}>
+                      <Text style={[styles.compactTitle, { color: colors.text }]}>{item.title}</Text>
+                      <Text style={[styles.compactMeta, { color: colors.mutedForeground }]}>{item.resource_type}</Text>
+                    </View>
+                  ))
+                ) : (
+                  <Text style={[styles.compactMeta, { color: colors.mutedForeground }]}>
+                    Published guides will appear here once staff pins them to your trip.
+                  </Text>
+                )}
+              </View>
+            </View>
+
+            <View style={[styles.sectionCard, { backgroundColor: colors.card }, Shadow.medium]}>
+              <Text style={[styles.sectionEyebrow, { color: colors.primary }]}>Milestones</Text>
+              {milestones.length ? (
+                milestones.slice(0, 3).map((item) => (
+                  <View key={item.id} style={styles.milestoneRow}>
+                    <View style={[styles.milestoneDot, { backgroundColor: item.status === "DONE" ? colors.success : colors.gold }]} />
+                    <View style={styles.milestoneCopy}>
+                      <Text style={[styles.compactTitle, { color: colors.text }]}>{item.title}</Text>
+                      <Text style={[styles.compactMeta, { color: colors.mutedForeground }]}>
+                        {item.target_date || "Schedule to be confirmed"}
                       </Text>
                     </View>
-                  <View style={styles.packageInfo}>
-                      <Text style={styles.packageSubtitle}>{trip.cities.join(', ')}</Text>
-                      <Text style={styles.packageTitle}>{trip.name}</Text>
-                    <View style={styles.packageFooter}>
-                      <View>
-                          <Text style={styles.packageDate}>
-                            {formatDateRange(trip.start_date, trip.end_date)}
-                          </Text>
-                      </View>
-                      <View style={[styles.packageButton, { backgroundColor: colors.gold }]}>
-                        <Ionicons name="arrow-forward" size={20} color={colors.goldForeground} />
-                      </View>
-                    </View>
                   </View>
-                </LinearGradient>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          ) : !loading && (
-            <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                No featured trips available at the moment
-              </Text>
+                ))
+              ) : (
+                <Text style={[styles.compactMeta, { color: colors.mutedForeground }]}>
+                  Milestones will appear once operations publishes the next support checkpoint.
+                </Text>
+              )}
             </View>
-          )}
-        </View>
-
-        {/* About Al-Hilal */}
-        <View style={[styles.aboutCard, { backgroundColor: colors.card }, Shadow.medium]}>
-          <Text style={[styles.aboutTitle, { color: colors.text }]}>About Al-Hilal</Text>
-          <Text style={[styles.aboutText, { color: colors.mutedForeground }]}>
-            Al-Hilal is a trusted and licensed Hajj and Umrah operator dedicated to providing
-            hassle-free, spiritually fulfilling, and professionally organized pilgrimage experiences.
-          </Text>
-          
-          <View style={styles.contactRow}>
-            <TouchableOpacity
-              style={styles.contactItem}
-              onPress={handleCallPress}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.contactIconCircle, { backgroundColor: `${colors.primary}15` }]}>
-                <Ionicons name="call" size={20} color={colors.primary} />
-              </View>
-              <View style={styles.contactInfo}>
-                <Text style={[styles.contactLabel, { color: colors.mutedForeground }]}>
-                  Call Us
-                </Text>
-                <Text style={[styles.contactValue, { color: colors.text }]}>
-                  +256 700 773535
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.contactRow}>
-            <TouchableOpacity
-              style={styles.contactItem}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                Linking.openURL('https://maps.google.com/?q=Kyato+Complex+Bombo+Road+Kampala');
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.contactIconCircle, { backgroundColor: `${colors.gold}15` }]}>
-                <Ionicons name="location" size={20} color={colors.gold} />
-              </View>
-              <View style={styles.contactInfo}>
-                <Text style={[styles.contactLabel, { color: colors.mutedForeground }]}>
-                  Visit Us
-                </Text>
-                <Text style={[styles.contactValue, { color: colors.text }]}>
-                  Kyato Complex B5-18, Bombo Road
-                </Text>
-              </View>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Conditional: My Bookings (authenticated) or Login CTA (guest) */}
-        {isAuthenticated ? (
-          <TouchableOpacity
-            style={[styles.loginCard, { backgroundColor: colors.card }, Shadow.large]}
-            onPress={handleMyBookingsPress}
-            activeOpacity={0.95}
-          >
-            <LinearGradient
-              colors={[colors.primary, '#A8024E']}
-              style={styles.loginGradient}
-            >
-              <View style={styles.loginIconContainer}>
-                <Ionicons name="calendar" size={48} color="#FFFFFF" />
-              </View>
-              <View style={styles.loginContent}>
-                <Text style={styles.loginTitle}>My Bookings</Text>
-                <Text style={styles.loginSubtitle}>
-                  View and manage your trips and reservations
-                </Text>
-              </View>
-              <View style={styles.loginButton}>
-                <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
+          </>
         ) : (
-          <TouchableOpacity
-            style={[styles.loginCard, { backgroundColor: colors.card }, Shadow.large]}
-            onPress={handleLoginPress}
-            activeOpacity={0.95}
-          >
-            <LinearGradient
-              colors={[colors.primary, '#A8024E']}
-              style={styles.loginGradient}
-            >
-              <View style={styles.loginIconContainer}>
-                <Ionicons name="person" size={48} color="#FFFFFF" />
-              </View>
-              <View style={styles.loginContent}>
-                <Text style={styles.loginTitle}>Sign In to Your Account</Text>
-                <Text style={styles.loginSubtitle}>
-                  Access your bookings, trips, and exclusive content
-                </Text>
-              </View>
-              <View style={styles.loginButton}>
-                <Ionicons name="arrow-forward" size={24} color="#FFFFFF" />
-              </View>
-            </LinearGradient>
-          </TouchableOpacity>
+          <View style={[styles.emptyCard, { backgroundColor: colors.card }, Shadow.medium]}>
+            <Ionicons name="calendar-outline" size={32} color={colors.primary} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>No booked trip cached yet</Text>
+            <Text style={[styles.sectionMeta, { color: colors.mutedForeground }]}>
+              Your booked trip will appear here after the first successful sync. Pull to refresh if you have just signed in or completed a booking.
+            </Text>
+            <TouchableOpacity style={[styles.retryButton, { backgroundColor: colors.primary }]} onPress={refreshSupport}>
+              <Text style={styles.retryButtonText}>Refresh Support Home</Text>
+            </TouchableOpacity>
+          </View>
         )}
-
-        <View style={{ height: 100 }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -461,361 +341,176 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  welcomeSection: {
-    marginHorizontal: Spacing.md,
-    marginBottom: Spacing.xl,
+  scrollContent: {
     padding: Spacing.lg,
-    borderRadius: BorderRadius.xl,
-    borderWidth: 1,
-  },
-  welcomeHeader: {
-    gap: Spacing.xs,
-  },
-  greeting: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.medium,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
-  welcomeTitle: {
-    fontSize: Typography.fontSize['2xl'],
-    fontWeight: Typography.fontWeight.black,
-    lineHeight: 36,
+    gap: Spacing.md,
+    paddingBottom: 140,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    borderBottomWidth: 1,
-    marginBottom: Spacing.lg,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  iconButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroCard: {
+    borderRadius: 24,
+    padding: Spacing.lg,
     gap: Spacing.sm,
   },
-  headerButton: {
-    width: 44,
-    height: 44,
-    borderRadius: BorderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  scrollView: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingTop: Spacing.lg,
-    paddingBottom: Spacing.xxxl,
-  },
-  nextTripCard: {
-    // height: 350,
-    borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
-    marginHorizontal: Spacing.md,
-  },
-  nextTripGradient: {
-    flex: 1,
-    justifyContent: 'flex-start',
-    padding: Spacing.xl,
-  },
-  nextTripContent: {
-    gap: Spacing.sm,
-  },
-  upcomingTripLabel: {
+  heroEyebrow: {
+    color: "rgba(255,255,255,0.8)",
     fontSize: Typography.fontSize.xs,
+    fontWeight: Typography.fontWeight.semibold,
+    letterSpacing: 1,
+    textTransform: "uppercase",
+  },
+  heroTitle: {
+    color: "#FFFFFF",
+    fontSize: Typography.fontSize["2xl"],
     fontWeight: Typography.fontWeight.bold,
-    letterSpacing: 1.5,
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: Spacing.xs,
   },
-  nextTripTitle: {
-    fontSize: Typography.fontSize['3xl'],
-    fontWeight: Typography.fontWeight.black,
-    color: '#FFFFFF',
-    marginBottom: Spacing.xs,
+  heroSubtitle: {
+    color: "rgba(255,255,255,0.82)",
+    fontSize: Typography.fontSize.sm,
+    lineHeight: 20,
   },
-  nextTripRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  heroActionRow: {
+    flexDirection: "row",
+    gap: Spacing.sm,
+    marginTop: Spacing.sm,
   },
-  nextTripInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  heroButton: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: 999,
+  },
+  heroButtonText: {
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  heroGhostButton: {
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.28)",
+  },
+  heroGhostButtonText: {
+    color: "#FFFFFF",
+    fontWeight: Typography.fontWeight.semibold,
+  },
+  syncCard: {
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: Spacing.md,
+    gap: Spacing.xs,
+  },
+  syncRow: {
+    flexDirection: "row",
+    alignItems: "center",
     gap: Spacing.sm,
   },
-  nextTripText: {
-    fontSize: Typography.fontSize.base,
-    color: '#FFFFFF',
-    fontWeight: Typography.fontWeight.medium,
+  syncText: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
   },
-  nextTripFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: Spacing.md,
+  syncSubtext: {
+    fontSize: Typography.fontSize.sm,
+    lineHeight: 18,
   },
-  nextTripPrice: {
-    fontSize: Typography.fontSize['2xl'],
-    fontWeight: Typography.fontWeight.black,
-    color: '#FFFFFF',
-    marginBottom: 2,
+  sectionCard: {
+    borderRadius: 20,
+    padding: Spacing.lg,
+    gap: Spacing.xs,
   },
-  nextTripSeats: {
+  sectionEyebrow: {
     fontSize: Typography.fontSize.xs,
-    color: 'rgba(255,255,255,0.8)',
-    fontWeight: Typography.fontWeight.medium,
-  },
-  nextTripButton: {
-    width: 56,
-    height: 56,
-    borderRadius: BorderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  section: {
-    marginBottom: Spacing.xl,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: Spacing.md,
-    marginBottom: Spacing.md,
+    fontWeight: Typography.fontWeight.semibold,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
   },
   sectionTitle: {
     fontSize: Typography.fontSize.xl,
     fontWeight: Typography.fontWeight.bold,
   },
-  sectionLink: {
+  sectionMeta: {
     fontSize: Typography.fontSize.sm,
+    lineHeight: 19,
+  },
+  inlineHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  statusBadge: {
+    fontSize: Typography.fontSize.xs,
     fontWeight: Typography.fontWeight.semibold,
   },
-  packagesScroll: {
-    paddingLeft: Spacing.md,
-    paddingRight: Spacing.md,
-    gap: Spacing.md,
+  readinessHeadline: {
+    fontSize: Typography.fontSize.lg,
+    fontWeight: Typography.fontWeight.semibold,
+    lineHeight: 24,
   },
-  packageCard: {
-    width: CARD_WIDTH,
-    height: 400,
-    borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
-  },
-  packageImage: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute',
-  },
-  packageGradient: {
-    flex: 1,
-    justifyContent: 'space-between',
-    padding: Spacing.lg,
-  },
-  featuredBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: BorderRadius.full,
-  },
-  featuredText: {
-    fontSize: Typography.fontSize.xs,
-    fontWeight: Typography.fontWeight.bold,
-    letterSpacing: 1,
-  },
-  packageInfo: {
-    gap: Spacing.xs,
-  },
-  packageSubtitle: {
-    color: 'rgba(255,255,255,0.8)',
+  warningText: {
     fontSize: Typography.fontSize.sm,
     fontWeight: Typography.fontWeight.medium,
   },
-  packageTitle: {
-    color: '#FFFFFF',
-    fontSize: Typography.fontSize['3xl'],
-    fontWeight: Typography.fontWeight.black,
-    marginBottom: Spacing.sm,
+  row: {
+    flexDirection: "row",
+    gap: Spacing.md,
   },
-  packageFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
+  compactCard: {
+    flex: 1,
+    borderRadius: 20,
+    padding: Spacing.md,
+    gap: Spacing.sm,
   },
-  packagePrice: {
-    color: '#FFFFFF',
-    fontSize: Typography.fontSize.xl,
-    fontWeight: Typography.fontWeight.bold,
+  compactItem: {
+    gap: 2,
   },
-  packageDiscount: {
+  compactTitle: {
     fontSize: Typography.fontSize.sm,
     fontWeight: Typography.fontWeight.semibold,
-    marginTop: 4,
   },
-  packageButton: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  actionsGrid: {
-    paddingHorizontal: Spacing.lg,
-    gap: Spacing.md,
-  },
-  actionCardWide: {
-    borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
-  },
-  actionGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: Spacing.lg,
-  },
-  actionLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    flex: 1,
-  },
-  actionLargeTitle: {
-    color: '#FFFFFF',
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    marginBottom: 2,
-  },
-  actionLargeSubtitle: {
-    color: 'rgba(255,255,255,0.9)',
+  compactMeta: {
     fontSize: Typography.fontSize.sm,
+    lineHeight: 18,
   },
-  loginCard: {
-    marginHorizontal: Spacing.lg,
-    borderRadius: BorderRadius.xl,
-    overflow: 'hidden',
+  milestoneRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: Spacing.sm,
+    paddingVertical: Spacing.xs,
   },
-  loginGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  milestoneDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    marginTop: 6,
+  },
+  milestoneCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  emptyCard: {
+    borderRadius: 20,
     padding: Spacing.xl,
-    gap: Spacing.lg,
-  },
-  loginIconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loginContent: {
-    flex: 1,
-  },
-  loginTitle: {
-    color: '#FFFFFF',
-    fontSize: Typography.fontSize.lg,
-    fontWeight: Typography.fontWeight.bold,
-    marginBottom: 4,
-  },
-  loginSubtitle: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: Typography.fontSize.sm,
-  },
-  loginButton: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  aboutCard: {
-    marginHorizontal: Spacing.lg,
-    padding: Spacing.xl,
-    borderRadius: BorderRadius.xl,
-    marginBottom: Spacing.xl,
-  },
-  aboutTitle: {
-    fontSize: Typography.fontSize.xl,
-    fontWeight: Typography.fontWeight.bold,
-    marginBottom: Spacing.md,
-  },
-  aboutText: {
-    fontSize: Typography.fontSize.sm,
-    lineHeight: 22,
-    marginBottom: Spacing.lg,
-  },
-  contactRow: {
-    marginBottom: Spacing.md,
-  },
-  contactItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-  },
-  contactIconCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: BorderRadius.full,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  contactInfo: {
-    flex: 1,
-  },
-  contactLabel: {
-    fontSize: Typography.fontSize.xs,
-    marginBottom: 2,
-  },
-  contactValue: {
-    fontSize: Typography.fontSize.base,
-    fontWeight: Typography.fontWeight.semibold,
-  },
-  loadingContainer: {
-    padding: Spacing.xxl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.md,
-  },
-  loadingText: {
-    fontSize: Typography.fontSize.sm,
-  },
-  errorContainer: {
-    padding: Spacing.xxl,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: Spacing.md,
-  },
-  errorText: {
-    fontSize: Typography.fontSize.sm,
-    textAlign: 'center',
+    gap: Spacing.sm,
+    alignItems: "flex-start",
   },
   retryButton: {
-    paddingVertical: Spacing.md,
-    paddingHorizontal: Spacing.xl,
-    borderRadius: BorderRadius.lg,
-    marginTop: Spacing.md,
+    marginTop: Spacing.sm,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    borderRadius: 999,
   },
   retryButtonText: {
-    fontSize: Typography.fontSize.base,
+    color: "#FFFFFF",
     fontWeight: Typography.fontWeight.semibold,
-  },
-  emptyContainer: {
-    padding: Spacing.xxl,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: Typography.fontSize.sm,
-    textAlign: 'center',
-  },
-  packageDate: {
-    color: '#FFFFFF',
-    fontSize: Typography.fontSize.xs,
-    opacity: 0.9,
   },
 });

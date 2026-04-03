@@ -17,8 +17,8 @@ class TestMeEndpoint:
         assert response.data['name'] == pilgrim_user.name
         assert response.data['phone'] == pilgrim_user.phone
         assert response.data['nationality'] == 'UG'
-        assert 'passport' in response.data
-        assert '****' in response.data['passport']['number_masked']
+        assert response.data['passport_number'] == 'AB1234567'
+        assert response.data['emergency_contact']['name'] == 'Emergency Contact'
     
     def test_get_profile_unauthenticated(self, api_client):
         """Test getting profile without authentication."""
@@ -27,7 +27,7 @@ class TestMeEndpoint:
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
     
     def test_get_profile_staff_denied(self, api_client, staff_user):
-        """Test that staff cannot access pilgrim profile endpoint."""
+        """Test that staff without pilgrim profiles are denied."""
         from apps.api.auth.tokens import RoleBasedRefreshToken
         
         refresh = RoleBasedRefreshToken.for_user(staff_user)
@@ -35,35 +35,35 @@ class TestMeEndpoint:
         
         response = api_client.get('/api/v1/me/')
         
-        # Staff is not a pilgrim, so should be denied
         assert response.status_code == status.HTTP_403_FORBIDDEN
 
 
 @pytest.mark.django_db
-class TestMyVisasEndpoint:
-    """Tests for /api/v1/me/visas endpoint."""
+class TestMyDocumentsEndpoint:
+    """Tests for /api/v1/me/documents endpoint."""
     
     def test_get_visas(self, authenticated_client, visa):
-        """Test getting pilgrim visas."""
-        response = authenticated_client.get('/api/v1/me/visas/')
+        """Test getting pilgrim documents."""
+        response = authenticated_client.get('/api/v1/me/documents/')
         
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data['results']) == 1
-        assert response.data['results'][0]['status'] == 'PENDING'
-        assert response.data['results'][0]['trip_code'] == 'UMRAH2025'
+        assert len(response.data) == 3
+        visa_row = next(row for row in response.data if row['id'] == str(visa.id))
+        assert visa_row['status'] == 'PENDING'
+        assert visa_row['trip_name'] == 'Umrah 2025 - May'
     
     def test_get_visas_filter_by_trip(self, authenticated_client, visa):
-        """Test filtering visas by trip."""
+        """Test retrieving a specific pilgrim document."""
         response = authenticated_client.get(
-            f'/api/v1/me/visas/?trip_id={visa.trip.id}'
+            f'/api/v1/me/documents/{visa.id}/'
         )
         
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data['results']) == 1
+        assert response.data['id'] == str(visa.id)
     
     def test_get_visas_unauthenticated(self, api_client):
-        """Test getting visas without authentication."""
-        response = api_client.get('/api/v1/me/visas/')
+        """Test getting documents without authentication."""
+        response = api_client.get('/api/v1/me/documents/')
         
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
@@ -77,14 +77,13 @@ class TestMyBookingsEndpoint:
         response = authenticated_client.get('/api/v1/me/bookings/')
         
         assert response.status_code == status.HTTP_200_OK
-        assert len(response.data['results']) == 1
-        assert response.data['results'][0]['status'] == 'BOOKED'
-        assert response.data['results'][0]['trip']['code'] == 'UMRAH2025'
-        assert response.data['results'][0]['package']['name'] == 'Gold'
+        assert len(response.data) == 1
+        assert response.data[0]['status'] == 'BOOKED'
+        assert response.data[0]['trip_code'] == 'UMRAH2025'
+        assert response.data[0]['package_name'] == 'Gold'
     
     def test_get_bookings_unauthenticated(self, api_client):
         """Test getting bookings without authentication."""
         response = api_client.get('/api/v1/me/bookings/')
         
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-

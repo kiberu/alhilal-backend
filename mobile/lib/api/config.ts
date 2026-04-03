@@ -24,7 +24,7 @@ export const API_ENDPOINTS = {
     STAFF_PROFILE: API_BASE_URL + "auth/staff/profile/",
   },
   PROFILE: {
-    ME: API_BASE_URL + "profile/me/",
+    ME: API_BASE_URL + "me/",
     UPDATE: API_BASE_URL + "profile/update/",
   },
   BOOKINGS: {
@@ -38,17 +38,29 @@ export const API_ENDPOINTS = {
     MY_TRIPS: API_BASE_URL + "me/trips/",
     MY_TRIP_DETAIL: (id: string) => API_BASE_URL + `me/trips/${id}/`,
     ITINERARY: (tripId: string) => API_BASE_URL + `me/trips/${tripId}/itinerary/`,
+    UPDATES: (tripId: string) => API_BASE_URL + `me/trips/${tripId}/updates/`,
     ESSENTIALS: (tripId: string) => API_BASE_URL + `me/trips/${tripId}/essentials/`,
+    MILESTONES: (tripId: string) => API_BASE_URL + `me/trips/${tripId}/milestones/`,
+    RESOURCES: (tripId: string) => API_BASE_URL + `me/trips/${tripId}/resources/`,
+    READINESS: (tripId: string) => API_BASE_URL + `me/trips/${tripId}/readiness/`,
+    DAILY_PROGRAM: (tripId: string) => API_BASE_URL + `me/trips/${tripId}/daily-program/`,
+    FEEDBACK: (tripId: string) => API_BASE_URL + `me/trips/${tripId}/feedback/`,
+  },
+  CONTENT: {
+    VIDEOS: API_BASE_URL + "public/videos/",
+  },
+  NOTIFICATIONS: {
+    PREFERENCES: API_BASE_URL + "me/notification-preferences/",
+    DEVICES: API_BASE_URL + "me/devices/",
+    DEVICE_DETAIL: (deviceId: string) => API_BASE_URL + `me/devices/${deviceId}/`,
   },
   DOCUMENTS: {
     MY_DOCUMENTS: API_BASE_URL + "me/documents/",
-    UPLOAD: API_BASE_URL + "documents/upload/",
-    DETAIL: (id: string) => API_BASE_URL + `documents/${id}/`,
-    DELETE: (id: string) => API_BASE_URL + `documents/${id}/`,
+    DETAIL: (id: string) => API_BASE_URL + `me/documents/${id}/`,
+    DELETE: (id: string) => API_BASE_URL + `me/documents/${id}/`,
   },
 } as const;
 
 export const REQUEST_TIMEOUT = 30000;
 export const MAX_RETRIES = 2;
 export const RETRY_DELAY = 750;
-

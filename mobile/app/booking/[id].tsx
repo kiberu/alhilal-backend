@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, Typography, BorderRadius, Shadow } from '@/constants/theme';
 import * as Haptics from 'expo-haptics';
-import { BookingsService, type Booking } from '@/lib/api';
+import { BookingsService, type BookingDetail } from '@/lib/api';
 import { useAuth } from '@/contexts/auth-context';
 
 const STATUS_CONFIG = {
@@ -38,7 +38,7 @@ export default function BookingDetailsScreen() {
   const colors = Colors[colorScheme ?? 'light'];
   const { accessToken } = useAuth();
 
-  const [booking, setBooking] = useState<Booking | null>(null);
+  const [booking, setBooking] = useState<BookingDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,7 +60,7 @@ export default function BookingDetailsScreen() {
         throw new Error(response.error || 'Failed to load booking details');
       }
 
-      setBooking(response.data as Booking);
+      setBooking(response.data);
     } catch (err: any) {
       console.error('Error loading booking details:', err);
       setError(err.message || 'Failed to load booking details');
@@ -82,6 +82,12 @@ export default function BookingDetailsScreen() {
   const handleWhatsApp = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Linking.openURL('https://wa.me/256700773535');
+  };
+
+  const handleOpenTripSupport = () => {
+    if (!booking?.trip_id) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    router.push(`/trip/${booking.trip_id}` as never);
   };
 
   const formatPrice = (minorUnits: number, currency: string) => {
@@ -333,7 +339,7 @@ export default function BookingDetailsScreen() {
           </View>
 
           <Text style={[styles.supportText, { color: colors.mutedForeground }]}>
-            Have questions about your booking? Our team is here to help!
+            Have questions about your booking? Reach support directly or jump into the trip support surface for readiness, guides, and updates.
           </Text>
 
           <View style={styles.contactButtons}>
@@ -353,6 +359,15 @@ export default function BookingDetailsScreen() {
             >
               <Ionicons name="logo-whatsapp" size={20} color="#FFFFFF" />
               <Text style={styles.contactButtonText}>WhatsApp</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.contactButton, { backgroundColor: colors.gold }]}
+              onPress={handleOpenTripSupport}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="navigate" size={20} color="#000000" />
+              <Text style={[styles.contactButtonText, { color: '#000000' }]}>Trip Support</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -536,11 +551,13 @@ const styles = StyleSheet.create({
   },
   contactButtons: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.md,
     marginTop: Spacing.md,
   },
   contactButton: {
-    flex: 1,
+    flexGrow: 1,
+    minWidth: '30%',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -554,4 +571,3 @@ const styles = StyleSheet.create({
     fontWeight: Typography.fontWeight.semibold,
   },
 });
-

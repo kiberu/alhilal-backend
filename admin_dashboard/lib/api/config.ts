@@ -1,7 +1,7 @@
 // Use internal Docker network for server-side requests, external URL for client-side
 export const API_BASE_URL = typeof window === 'undefined'
   ? (process.env.API_URL_INTERNAL || "http://backend:8000/api/v1/")
-  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost/api/v1/")
+  : (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1/")
 
 /**
  * All API endpoints grouped by feature.
@@ -11,16 +11,20 @@ export const API_ENDPOINTS = {
   AUTH: {
     /** POST /auth/staff/login – Authenticate staff and receive JWT tokens. */
     LOGIN: API_BASE_URL + "auth/staff/login/",
-    /** POST /auth/staff/refresh – Refresh access token using refresh token. */
-    REFRESH: API_BASE_URL + "auth/staff/refresh",
-    /** POST /auth/staff/logout – Logout and invalidate refresh token. */
-    LOGOUT: API_BASE_URL + "auth/staff/logout",
+    /** POST /auth/refresh/ – Refresh access token using refresh token. */
+    REFRESH: API_BASE_URL + "auth/refresh/",
     /** GET /auth/staff/profile – Get authenticated staff profile. */
-    PROFILE: API_BASE_URL + "auth/staff/profile",
+    PROFILE: API_BASE_URL + "auth/staff/profile/",
     /** PATCH /auth/staff/profile – Update authenticated staff profile. */
-    UPDATE_PROFILE: API_BASE_URL + "auth/staff/profile",
-    /** POST /auth/staff/change-password – Change staff password. */
-    CHANGE_PASSWORD: API_BASE_URL + "auth/staff/change-password",
+    UPDATE_PROFILE: API_BASE_URL + "auth/staff/profile/",
+    /** POST /auth/staff/change-password/ – Change the current staff user's password. */
+    CHANGE_PASSWORD: API_BASE_URL + "auth/staff/change-password/",
+  },
+
+  /** Platform Settings */
+  PLATFORM: {
+    /** GET/PATCH /platform/settings/ – Operational auth and media settings. */
+    SETTINGS: API_BASE_URL + "platform/settings/",
   },
 
   /** Trips Management */
@@ -198,48 +202,72 @@ export const API_ENDPOINTS = {
     IMPORT_CSV: API_BASE_URL + "pilgrims/import",
   },
 
-  /** Passports Management */
-  PASSPORTS: {
-    /** GET /passports – List all passports. */
-    LIST: API_BASE_URL + "passports",
-    /** GET /passports/:id – Get passport details. */
-    GET: (id: string) => API_BASE_URL + `passports/${id}`,
-    /** GET /passports/:id – Get passport details (alias). */
-    DETAIL: (id: string) => API_BASE_URL + `passports/${id}`,
-    /** POST /passports – Create passport. */
-    CREATE: API_BASE_URL + "passports",
-    /** PATCH /passports/:id – Update passport. */
-    UPDATE: (id: string) => API_BASE_URL + `passports/${id}`,
-    /** DELETE /passports/:id – Delete passport. */
-    DELETE: (id: string) => API_BASE_URL + `passports/${id}`,
-    /** GET /passports/export – Export passports to CSV. */
-    EXPORT_CSV: API_BASE_URL + "passports/export",
-    /** GET /passports/expiring – Get expiring passports. */
-    EXPIRING: API_BASE_URL + "passports/expiring",
+  /** Pilgrim Travel Readiness */
+  READINESS: {
+    /** GET /readiness – List all readiness records with filters. */
+    LIST: API_BASE_URL + "readiness",
+    /** GET /readiness/:id – Get readiness details. */
+    GET: (id: string) => API_BASE_URL + `readiness/${id}`,
+    /** POST /readiness – Create readiness record. */
+    CREATE: API_BASE_URL + "readiness",
+    /** PATCH /readiness/:id – Update manual readiness fields. */
+    UPDATE: (id: string) => API_BASE_URL + `readiness/${id}`,
+    /** POST /readiness/:id/validate-ready – Issue the travel-ready pass. */
+    VALIDATE_READY: (id: string) => API_BASE_URL + `readiness/${id}/validate-ready`,
+    /** POST /readiness/:id/clear-validation – Revoke the travel-ready pass. */
+    CLEAR_VALIDATION: (id: string) => API_BASE_URL + `readiness/${id}/clear-validation`,
   },
 
-  /** Visas Management */
-  VISAS: {
-    /** GET /visas – List all visas. */
-    LIST: API_BASE_URL + "visas",
-    /** GET /visas/:id – Get visa details. */
-    GET: (id: string) => API_BASE_URL + `visas/${id}`,
-    /** GET /visas/:id – Get visa details (alias). */
-    DETAIL: (id: string) => API_BASE_URL + `visas/${id}`,
-    /** POST /visas – Create visa application. */
-    CREATE: API_BASE_URL + "visas",
-    /** PATCH /visas/:id – Update visa. */
-    UPDATE: (id: string) => API_BASE_URL + `visas/${id}`,
-    /** DELETE /visas/:id – Delete visa. */
-    DELETE: (id: string) => API_BASE_URL + `visas/${id}`,
-    /** POST /visas/bulk/submit – Mark visas as submitted. */
-    BULK_SUBMIT: API_BASE_URL + "visas/bulk/submit",
-    /** POST /visas/bulk/approve – Approve visas. */
-    BULK_APPROVE: API_BASE_URL + "visas/bulk/approve",
-    /** POST /visas/bulk/reject – Reject visas. */
-    BULK_REJECT: API_BASE_URL + "visas/bulk/reject",
-    /** GET /visas/export – Export visa status to CSV. */
-    EXPORT_CSV: API_BASE_URL + "visas/export",
+  /** Trip Milestones */
+  MILESTONES: {
+    /** GET /milestones – List milestones with filtering. */
+    LIST: API_BASE_URL + "milestones",
+    /** GET /milestones/:id – Get milestone details. */
+    GET: (id: string) => API_BASE_URL + `milestones/${id}`,
+    /** POST /milestones – Create milestone. */
+    CREATE: API_BASE_URL + "milestones",
+    /** PATCH /milestones/:id – Update milestone. */
+    UPDATE: (id: string) => API_BASE_URL + `milestones/${id}`,
+    /** DELETE /milestones/:id – Delete milestone. */
+    DELETE: (id: string) => API_BASE_URL + `milestones/${id}`,
+  },
+
+  /** Trip Resources */
+  RESOURCES: {
+    /** GET /resources – List resources with filtering. */
+    LIST: API_BASE_URL + "resources",
+    /** GET /resources/:id – Get resource details. */
+    GET: (id: string) => API_BASE_URL + `resources/${id}`,
+    /** POST /resources – Create resource. */
+    CREATE: API_BASE_URL + "resources",
+    /** PATCH /resources/:id – Update resource. */
+    UPDATE: (id: string) => API_BASE_URL + `resources/${id}`,
+    /** DELETE /resources/:id – Delete resource. */
+    DELETE: (id: string) => API_BASE_URL + `resources/${id}`,
+    /** POST /resources/:id/publish – Publish a resource immediately. */
+    PUBLISH: (id: string) => API_BASE_URL + `resources/${id}/publish`,
+    /** POST /resources/:id/unpublish – Remove a resource from pilgrim reads. */
+    UNPUBLISH: (id: string) => API_BASE_URL + `resources/${id}/unpublish`,
+  },
+
+  /** Website Leads */
+  LEADS: {
+    /** GET /leads – List persisted website leads with filters. */
+    LIST: API_BASE_URL + "leads",
+    /** GET /leads/:id – Get a single website lead. */
+    GET: (id: string) => API_BASE_URL + `leads/${id}`,
+    /** PATCH /leads/:id – Update status, assignment, and follow-up notes. */
+    UPDATE: (id: string) => API_BASE_URL + `leads/${id}`,
+  },
+
+  /** Post-trip pilgrim feedback */
+  FEEDBACK: {
+    /** GET /feedback – List pilgrim feedback records for staff review. */
+    LIST: API_BASE_URL + "feedback",
+    /** GET /feedback/:id – Get a single feedback record. */
+    GET: (id: string) => API_BASE_URL + `feedback/${id}`,
+    /** PATCH /feedback/:id – Save review notes or mark review ownership. */
+    UPDATE: (id: string) => API_BASE_URL + `feedback/${id}`,
   },
 
   /** Documents Management (Unified - replaces Passports & Visas) */
@@ -320,14 +348,30 @@ export const API_ENDPOINTS = {
 
   /** Reports & Analytics */
   REPORTS: {
-    /** GET /reports/trips – Trip analytics. */
-    TRIPS: API_BASE_URL + "reports/trips",
-    /** GET /reports/pilgrims – Pilgrim demographics. */
-    PILGRIMS: API_BASE_URL + "reports/pilgrims",
-    /** GET /reports/visas – Visa statistics. */
-    VISAS: API_BASE_URL + "reports/visas",
-    /** GET /reports/finance – Financial reports. */
-    FINANCE: API_BASE_URL + "reports/finance",
+    /** GET /dashboard/reports/summary/ – Summary report cards. */
+    SUMMARY: API_BASE_URL + "dashboard/reports/summary/",
+    /** GET /dashboard/reports/summary/export/ – CSV export for summary cards. */
+    SUMMARY_EXPORT: API_BASE_URL + "dashboard/reports/summary/export/",
+    /** GET /dashboard/reports/payment-target/ – Payment target attainment. */
+    PAYMENT_TARGET: API_BASE_URL + "dashboard/reports/payment-target/",
+    /** GET /dashboard/reports/payment-target/export/ – CSV export for payment target attainment. */
+    PAYMENT_TARGET_EXPORT: API_BASE_URL + "dashboard/reports/payment-target/export/",
+    /** GET /dashboard/reports/readiness/ – Readiness completion report. */
+    READINESS: API_BASE_URL + "dashboard/reports/readiness/",
+    /** GET /dashboard/reports/readiness/export/ – CSV export for readiness completion. */
+    READINESS_EXPORT: API_BASE_URL + "dashboard/reports/readiness/export/",
+    /** GET /dashboard/reports/visa-ticket-progress/ – Visa and ticket progress report. */
+    VISA_TICKET_PROGRESS: API_BASE_URL + "dashboard/reports/visa-ticket-progress/",
+    /** GET /dashboard/reports/visa-ticket-progress/export/ – CSV export for visa/ticket progress. */
+    VISA_TICKET_PROGRESS_EXPORT: API_BASE_URL + "dashboard/reports/visa-ticket-progress/export/",
+    /** GET /dashboard/reports/trip-package-performance/ – Trip and package performance report. */
+    TRIP_PACKAGE_PERFORMANCE: API_BASE_URL + "dashboard/reports/trip-package-performance/",
+    /** GET /dashboard/reports/trip-package-performance/export/ – CSV export for trip/package performance. */
+    TRIP_PACKAGE_PERFORMANCE_EXPORT: API_BASE_URL + "dashboard/reports/trip-package-performance/export/",
+    /** GET /dashboard/reports/lead-funnel/ – Lead funnel report. */
+    LEAD_FUNNEL: API_BASE_URL + "dashboard/reports/lead-funnel/",
+    /** GET /dashboard/reports/lead-funnel/export/ – CSV export for lead funnel. */
+    LEAD_FUNNEL_EXPORT: API_BASE_URL + "dashboard/reports/lead-funnel/export/",
   },
 
   /** Dashboard */
@@ -383,4 +427,3 @@ export const RETRY_DELAY = 1000 // 1 second
 /** Token lifespan settings */
 export const TOKEN_EXPIRY_TIME = 60 * 60 * 1000 // 60 minutes
 export const REFRESH_TOKEN_THRESHOLD = 5 * 60 * 1000 // 5 minutes before expiry
-

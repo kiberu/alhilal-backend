@@ -18,7 +18,7 @@ from datetime import datetime
 import io
 
 from apps.accounts.models import Account, PilgrimProfile
-from apps.common.permissions import IsStaff
+from apps.common.permissions import STAFF_WRITE_ROLES, IsStaff, user_has_staff_role
 
 
 @api_view(['GET'])
@@ -32,6 +32,12 @@ def download_template(request):
     - Data validation hints
     - Example row
     """
+    if not user_has_staff_role(request.user, STAFF_WRITE_ROLES):
+        return Response(
+            {'error': 'You do not have permission to manage pilgrim imports.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
     # Create workbook and worksheet
     wb = Workbook()
     ws = wb.active
@@ -174,6 +180,12 @@ def validate_import(request):
     - duplicate_rows: Rows that match existing pilgrims
     - error_rows: Rows with validation errors
     """
+    if not user_has_staff_role(request.user, STAFF_WRITE_ROLES):
+        return Response(
+            {'error': 'You do not have permission to manage pilgrim imports.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
     if 'file' not in request.FILES:
         return Response(
             {'error': 'No file provided'},
@@ -373,6 +385,12 @@ def import_pilgrims(request):
     - errors: List of errors with row numbers
     - warnings: List of warnings
     """
+    if not user_has_staff_role(request.user, STAFF_WRITE_ROLES):
+        return Response(
+            {'error': 'You do not have permission to manage pilgrim imports.'},
+            status=status.HTTP_403_FORBIDDEN
+        )
+
     if 'file' not in request.FILES:
         return Response(
             {'error': 'No file provided'},
@@ -549,4 +567,3 @@ def import_pilgrims(request):
             {'error': f'Failed to process file: {str(e)}'},
             status=status.HTTP_400_BAD_REQUEST
         )
-

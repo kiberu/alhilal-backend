@@ -5,7 +5,8 @@ from django.test import TestCase
 from rest_framework.test import APIClient
 from rest_framework import status
 from django.contrib.auth import get_user_model
-from datetime import date, datetime
+from datetime import date, datetime, timezone
+from apps.api.tests.helpers import create_staff_user
 
 from apps.trips.models import Trip, ItineraryItem
 
@@ -20,11 +21,9 @@ class AdminItineraryAPITestCase(TestCase):
         self.client = APIClient()
         
         # Create staff user
-        self.staff_user = Account.objects.create_user(
+        self.staff_user = create_staff_user(
             phone='+1234567890',
             name='Staff User',
-            role='STAFF',
-            is_staff=True,
         )
         
         # Create trip
@@ -43,8 +42,8 @@ class AdminItineraryAPITestCase(TestCase):
             day_index=1,
             title='Arrival and Check-in',
             location='Makkah',
-            start_time=datetime(2025, 12, 1, 14, 0),
-            end_time=datetime(2025, 12, 1, 16, 0),
+            start_time=datetime(2025, 12, 1, 14, 0, tzinfo=timezone.utc),
+            end_time=datetime(2025, 12, 1, 16, 0, tzinfo=timezone.utc),
             notes='Welcome to Makkah'
         )
         
@@ -53,8 +52,8 @@ class AdminItineraryAPITestCase(TestCase):
             day_index=2,
             title='Umrah',
             location='Masjid al-Haram',
-            start_time=datetime(2025, 12, 2, 8, 0),
-            end_time=datetime(2025, 12, 2, 12, 0)
+            start_time=datetime(2025, 12, 2, 8, 0, tzinfo=timezone.utc),
+            end_time=datetime(2025, 12, 2, 12, 0, tzinfo=timezone.utc)
         )
     
     def test_list_itinerary_items(self):
@@ -166,4 +165,3 @@ class AdminItineraryAPITestCase(TestCase):
         response = self.client.post('/api/v1/itinerary/reorder', data, format='json')
         
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
-

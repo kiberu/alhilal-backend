@@ -18,6 +18,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthService } from '@/lib/api';
 import { Colors, Spacing, BorderRadius, Typography, Shadow } from '@/constants/theme';
+import type { CompleteProfileData } from '@/lib/api/services/auth';
 
 const GENDERS = [
   { value: 'MALE', label: 'Male' },
@@ -99,11 +100,11 @@ export default function CompleteProfileScreen() {
       const profileData = {
         full_name: formData.full_name,
         dob: formatDateForAPI(formData.dob),
-        gender: formData.gender,
+        gender: formData.gender || undefined,
         nationality: formData.nationality,
         passport_number: formData.has_passport ? formData.passport_number : undefined,
         has_passport: formData.has_passport,
-      };
+      } satisfies Partial<CompleteProfileData>;
 
       const response = await AuthService.updateProfile(profileData, accessToken!);
 
@@ -514,4 +515,3 @@ const styles = StyleSheet.create({
     fontWeight: Typography.fontWeight.semibold,
   },
 });
-

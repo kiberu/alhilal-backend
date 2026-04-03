@@ -252,13 +252,13 @@ def api_root(request):
                 <h2 style="color: #667eea; margin-bottom: 15px;">🔑 Quick Start</h2>
                 <p style="margin-bottom: 15px;">Main API endpoints:</p>
                 <div class="endpoint">
-                    <strong>Authentication:</strong> POST /api/v1/auth/login/
+                    <strong>Authentication:</strong> POST /api/v1/auth/staff/login/ or POST /api/v1/auth/request-otp/
                 </div>
                 <div class="endpoint">
-                    <strong>Trips:</strong> GET /api/v1/trips/
+                    <strong>Pilgrim Trips:</strong> GET /api/v1/me/trips/
                 </div>
                 <div class="endpoint">
-                    <strong>Bookings:</strong> GET /api/v1/bookings/
+                    <strong>Pilgrim Bookings:</strong> GET /api/v1/me/bookings/
                 </div>
                 <div class="endpoint">
                     <strong>Admin Panel:</strong> GET /admin/

@@ -57,15 +57,14 @@ class Command(BaseCommand):
         """Clear existing data (except superusers)"""
         from apps.trips.models import Trip
         from apps.bookings.models import Booking
-        from apps.pilgrims.models import Passport, Visa
+        from apps.pilgrims.models import Document
         from apps.content.models import Dua
         
         self.stdout.write('🗑️  Clearing existing data...')
         
         Trip.objects.all().delete()
         Booking.objects.all().delete()
-        Passport.objects.all().delete()
-        Visa.objects.all().delete()
+        Document.objects.all().delete()
         Dua.objects.all().delete()
         Account.objects.filter(is_superuser=False).delete()
         
@@ -120,7 +119,7 @@ class Command(BaseCommand):
     def create_pilgrims(self):
         """Create sample pilgrims with profiles and passports"""
         from apps.accounts.models import PilgrimProfile
-        from apps.pilgrims.models import Passport
+        from apps.pilgrims.models import Document
         
         self.stdout.write('🧳 Creating pilgrims...')
         
@@ -183,16 +182,22 @@ class Command(BaseCommand):
             if created:
                 profile = PilgrimProfile.objects.create(
                     user=user,
+                    full_name=data['name'],
+                    phone=data['phone'],
+                    passport_number=passport_number,
                     dob=dob,
                     nationality=nationality,
                     emergency_name=f'{data["name"].split()[0]} Emergency',
                     emergency_phone=f'+25670{random.randint(1000000, 9999999)}'
                 )
                 
-                Passport.objects.create(
+                Document.objects.create(
                     pilgrim=profile,
-                    number=passport_number,
-                    country=nationality,
+                    document_type='PASSPORT',
+                    title=f'Passport - {nationality}',
+                    document_number=passport_number,
+                    issuing_country=nationality,
+                    file_public_id=f'documents/passport_{passport_number.lower()}',
                     expiry_date=date.today() + timedelta(days=365*3)  # 3 years
                 )
                 
@@ -203,299 +208,425 @@ class Command(BaseCommand):
         self.stdout.write('')
 
     def create_trips(self):
-        """Create sample trips with packages, flights, hotels, and bookings"""
+        """Seed 2026-2027 Umrah calendar trips and package metadata."""
         from apps.trips.models import (
             Trip, TripPackage, PackageFlight, PackageHotel,
-            ItineraryItem, TripUpdate, TripGuideSection,
-            ChecklistItem, EmergencyContact, TripFAQ
+            TripUpdate, TripGuideSection, ChecklistItem,
+            EmergencyContact, TripFAQ
         )
-        from apps.bookings.models import Booking
-        from apps.pilgrims.models import Visa
-        from apps.accounts.models import PilgrimProfile
+        from apps.common.models import Currency
         
         self.stdout.write('✈️  Creating trips...')
-        
-        # Trip 1: Umrah 2025 - May (Upcoming)
-        trip1, created = Trip.objects.get_or_create(
-            code='UMRAH2025MAY',
-            defaults={
-                'name': 'Umrah 2025 - May Package',
-                'cities': ['Makkah', 'Madinah'],
-                'start_date': date.today() + timedelta(days=30),
-                'end_date': date.today() + timedelta(days=45),
-                'visibility': 'PUBLIC',
-                'operator_notes': 'Premium Umrah experience with 5-star accommodation'
-            }
-        )
-        
-        if created:
-            self.stdout.write(f'   ✓ Created trip: {trip1.name}')
-            
-            # Packages for Trip 1
-            gold_pkg = TripPackage.objects.create(
-                trip=trip1,
-                name='Gold Package',
-                price_minor_units=5000000,  # 50,000 UGX
-                currency='UGX',
-                capacity=50,
-                visibility='PUBLIC'
+        currencies = {}
+        for code, name, symbol in [
+            ('UGX', 'Ugandan Shilling', 'USh'),
+            ('USD', 'US Dollar', '$'),
+        ]:
+            currency, _ = Currency.objects.get_or_create(
+                code=code,
+                defaults={'name': name, 'symbol': symbol},
             )
-            
-            premium_pkg = TripPackage.objects.create(
-                trip=trip1,
-                name='Premium Package',
-                price_minor_units=8000000,  # 80,000 UGX
-                currency='UGX',
-                capacity=30,
-                visibility='PUBLIC'
+            currencies[code] = currency
+
+        # Source: UMRAH CALENDER 2026-2027.pdf (normalized for obvious year typos)
+        calendar_rows = [
+            {
+                'code': 'UMR26JULFEN',
+                'family_code': '2026-JUL-FFENNA',
+                'label': 'July 2026',
+                'name': 'July Ffenna Umrah',
+                'start_date': date(2026, 7, 12),
+                'end_date': date(2026, 7, 21),
+                'status': 'PREPARATION',
+                'nights': 8,
+                'airline': 'ET',
+                'madinah_hotel': 'Araek Taibah',
+                'makkah_hotel': 'Infinity',
+                'price_minor_units': 4650000,
+                'currency': 'UGX',
+                'sales_target': 70,
+                'hotel_booking_month': 'JUNE',
+                'airline_booking_month': 'MARCH',
+            },
+            {
+                'code': 'UMR26AUG',
+                'family_code': '2026-AUG',
+                'label': 'August 2026',
+                'name': 'August Umrah',
+                'start_date': date(2026, 8, 20),
+                'end_date': date(2026, 8, 29),
+                'status': 'OPEN_FOR_SALES',
+                'nights': 8,
+                'airline': 'QATAR',
+                'madinah_hotel': 'Maysan',
+                'makkah_hotel': 'Swiis Hotel',
+                'price_minor_units': 2050,
+                'currency': 'USD',
+                'sales_target': 20,
+                'hotel_booking_month': '',
+                'airline_booking_month': '',
+            },
+            {
+                'code': 'UMR26SEP',
+                'family_code': '2026-SEP',
+                'label': 'September 2026',
+                'name': 'September Umrah',
+                'start_date': date(2026, 9, 20),
+                'end_date': date(2026, 9, 28),
+                'status': 'OPEN_FOR_SALES',
+                'nights': 8,
+                'airline': 'FLY DUBAI/ET',
+                'madinah_hotel': 'Concord Hotel',
+                'makkah_hotel': 'Al Masa Grand',
+                'price_minor_units': 1650,
+                'currency': 'USD',
+                'sales_target': 20,
+                'hotel_booking_month': '',
+                'airline_booking_month': '',
+            },
+            {
+                'code': 'UMR26OCTIND',
+                'family_code': '2026-OCT-INDEPENDENCE',
+                'label': 'October 2026',
+                'name': 'Independence Umrah',
+                'start_date': date(2026, 10, 8),
+                'end_date': date(2026, 10, 15),
+                'status': 'OPEN_FOR_SALES',
+                'nights': 7,
+                'airline': 'ET/FD',
+                'madinah_hotel': 'Golden Tulip',
+                'makkah_hotel': 'Vocco / Infinity',
+                'price_minor_units': 4910000,
+                'currency': 'UGX',
+                'sales_target': 30,
+                'hotel_booking_month': '',
+                'airline_booking_month': '',
+            },
+            {
+                'code': 'UMR26NOV',
+                'family_code': '2026-NOV',
+                'label': 'November 2026',
+                'name': 'November Umrah',
+                'start_date': date(2026, 11, 28),
+                'end_date': date(2026, 12, 5),
+                'status': 'OPEN_FOR_SALES',
+                'nights': 8,
+                'airline': 'QATAR',
+                'madinah_hotel': 'Maysan',
+                'makkah_hotel': 'Anjum',
+                'price_minor_units': 1950,
+                'currency': 'USD',
+                'sales_target': 20,
+                'hotel_booking_month': '',
+                'airline_booking_month': '',
+            },
+            {
+                'code': 'UMR26DECSUPA',
+                'family_code': '2026-DEC',
+                'label': 'December 2026',
+                'name': 'December Supa Umrah',
+                'start_date': date(2026, 12, 24),
+                'end_date': date(2027, 1, 2),
+                'status': 'OPEN_FOR_SALES',
+                'nights': 9,
+                'airline': 'QATAR',
+                'madinah_hotel': 'Concord Hotel',
+                'makkah_hotel': 'Al Masa Grand',
+                'price_minor_units': 1950,
+                'currency': 'USD',
+                'sales_target': None,
+                'hotel_booking_month': 'JUNE',
+                'airline_booking_month': 'APRIL',
+            },
+            {
+                'code': 'UMR26DECPJED',
+                'family_code': '2026-DEC-PREMIUM',
+                'label': 'December 2026',
+                'name': 'December Premium / Jeddah Trip',
+                'start_date': date(2026, 12, 24),
+                'end_date': date(2027, 1, 3),
+                'status': 'OPEN_FOR_SALES',
+                'nights': 9,
+                'airline': 'QATAR',
+                'madinah_hotel': 'Maysan',
+                'makkah_hotel': 'Swiis Hotel',
+                'price_minor_units': 2650,
+                'currency': 'USD',
+                'sales_target': 35,
+                'hotel_booking_month': 'JUNE',
+                'airline_booking_month': 'APRIL',
+            },
+            {
+                'code': 'UMR26DECPQAT',
+                'family_code': '2026-DEC-PREMIUM',
+                'label': 'December 2026',
+                'name': 'December Premium / Qatar Tour',
+                'start_date': date(2026, 12, 24),
+                'end_date': date(2027, 1, 5),
+                'status': 'OPEN_FOR_SALES',
+                'nights': 12,
+                'airline': 'QATAR',
+                'madinah_hotel': 'Maysan',
+                'makkah_hotel': 'Swiis Hotel',
+                'price_minor_units': 3300,
+                'currency': 'USD',
+                'sales_target': None,
+                'hotel_booking_month': 'JUNE',
+                'airline_booking_month': 'APRIL',
+            },
+            {
+                'code': 'UMR27JAN',
+                'family_code': '2027-JAN',
+                'label': 'January 2027',
+                'name': 'January Umrah 2027',
+                'start_date': date(2027, 1, 15),
+                'end_date': date(2027, 1, 23),
+                'status': 'OPEN_FOR_SALES',
+                'nights': 8,
+                'airline': 'ET',
+                'madinah_hotel': 'Golden Tulip',
+                'makkah_hotel': 'Al Masa Grand',
+                'price_minor_units': 1750,
+                'currency': 'USD',
+                'sales_target': 25,
+                'hotel_booking_month': 'NOVEMBER',
+                'airline_booking_month': '',
+            },
+            {
+                'code': 'UMR27HIJJA',
+                'family_code': '2027-HIJJA',
+                'label': 'Hijja 2027',
+                'name': 'Hijja 2027',
+                'start_date': date(2027, 5, 14),
+                'end_date': date(2027, 5, 19),
+                'status': 'PLANNING',
+                'nights': 20,
+                'airline': 'FD/ET',
+                'madinah_hotel': '',
+                'makkah_hotel': '',
+                'price_minor_units': 6100,
+                'currency': 'USD',
+                'sales_target': 30,
+                'hotel_booking_month': 'JULY',
+                'airline_booking_month': 'MAY',
+            },
+            {
+                'code': 'UMR27RAMEARLY',
+                'family_code': '2027-RAMADHAN',
+                'label': 'Early Ramadhan 2027',
+                'name': 'Early Ramadhan Umrah',
+                'start_date': date(2027, 2, 13),
+                'end_date': date(2027, 2, 21),
+                'status': 'PLANNING',
+                'nights': 8,
+                'airline': '',
+                'madinah_hotel': 'Maysan',
+                'makkah_hotel': 'Anjum',
+                'price_minor_units': 1850,
+                'currency': 'USD',
+                'sales_target': 20,
+                'hotel_booking_month': 'JULY',
+                'airline_booking_month': 'MAY',
+            },
+            {
+                'code': 'UMR27RAM',
+                'family_code': '2027-RAMADHAN',
+                'label': 'Ramadhan 2027',
+                'name': 'Ramadhan Umrah',
+                'start_date': date(2027, 2, 23),
+                'end_date': date(2027, 3, 8),
+                'status': 'PLANNING',
+                'nights': 14,
+                'airline': 'FD/ET',
+                'madinah_hotel': 'Golden Tulip',
+                'makkah_hotel': 'Tara Ajyad',
+                'price_minor_units': 7850000,
+                'currency': 'UGX',
+                'sales_target': 40,
+                'hotel_booking_month': 'JULY',
+                'airline_booking_month': 'MAY',
+            },
+            {
+                'code': 'UMR27RAMPREM',
+                'family_code': '2027-RAMADHAN',
+                'label': 'Ramadhan 2027',
+                'name': 'Premium Ramadhan Umrah',
+                'start_date': date(2027, 2, 23),
+                'end_date': date(2027, 3, 8),
+                'status': 'PLANNING',
+                'nights': 14,
+                'airline': 'QATAR',
+                'madinah_hotel': 'Concord Hotel',
+                'makkah_hotel': 'Al Masa Grand',
+                'price_minor_units': 3350,
+                'currency': 'USD',
+                'sales_target': 20,
+                'hotel_booking_month': 'JULY',
+                'airline_booking_month': 'MAY',
+            },
+        ]
+
+        for row in calendar_rows:
+            excerpt = (
+                f"{row['name']} - {row['start_date'].strftime('%d %b %Y')} to "
+                f"{row['end_date'].strftime('%d %b %Y')}"
             )
-            
-            self.stdout.write(f'     ✓ Created packages: Gold, Premium')
-            
-            # Flights for Gold Package
-            dep_date = datetime.combine(trip1.start_date, time(2, 0))
-            
-            PackageFlight.objects.create(
-                package=gold_pkg,
-                leg='OUTBOUND',
-                carrier='EK',
-                flight_no='EK730',
-                dep_airport='EBB',
-                dep_dt=timezone.make_aware(dep_date),
-                arr_airport='DXB',
-                arr_dt=timezone.make_aware(dep_date + timedelta(hours=6)),
-                group_pnr='ABC123'
-            )
-            
-            PackageFlight.objects.create(
-                package=gold_pkg,
-                leg='CONNECTING',
-                carrier='EK',
-                flight_no='EK804',
-                dep_airport='DXB',
-                dep_dt=timezone.make_aware(dep_date + timedelta(hours=8)),
-                arr_airport='JED',
-                arr_dt=timezone.make_aware(dep_date + timedelta(hours=11)),
-                group_pnr='ABC123'
-            )
-            
-            return_date = datetime.combine(trip1.end_date, time(18, 0))
-            
-            PackageFlight.objects.create(
-                package=gold_pkg,
-                leg='RETURN',
-                carrier='EK',
-                flight_no='EK805',
-                dep_airport='JED',
-                dep_dt=timezone.make_aware(return_date),
-                arr_airport='DXB',
-                arr_dt=timezone.make_aware(return_date + timedelta(hours=3)),
-                group_pnr='XYZ789'
-            )
-            
-            self.stdout.write(f'     ✓ Created flights for Gold package')
-            
-            # Hotels for Gold Package
-            PackageHotel.objects.create(
-                package=gold_pkg,
-                name='Hilton Makkah Convention Hotel',
-                address='Jabal Omar, Near Haram, Makkah',
-                room_type='Standard Room',
-                check_in=trip1.start_date,
-                check_out=trip1.start_date + timedelta(days=10),
-                group_confirmation_no='HIL12345'
-            )
-            
-            PackageHotel.objects.create(
-                package=gold_pkg,
-                name='Intercontinental Madinah',
-                address='Near Masjid Nabawi, Madinah',
-                room_type='Deluxe Room',
-                check_in=trip1.start_date + timedelta(days=10),
-                check_out=trip1.end_date,
-                group_confirmation_no='IHG67890'
-            )
-            
-            self.stdout.write(f'     ✓ Created hotels for Gold package')
-            
-            # Itinerary
-            itinerary_items = [
-                {
-                    'day_index': 1,
-                    'title': 'Arrival at Jeddah Airport',
-                    'location': 'King Abdulaziz International Airport',
-                    'start_time': '11:00:00',
-                    'end_time': '14:00:00',
-                    'notes': 'Group meet at Terminal 1. Transport to Makkah hotel.'
+            trip, created = Trip.objects.get_or_create(
+                code=row['code'],
+                defaults={
+                    'family_code': row['family_code'],
+                    'commercial_month_label': row['label'],
+                    'name': row['name'],
+                    'excerpt': excerpt,
+                    'seo_title': f"Al Hilal {row['name']}",
+                    'seo_description': excerpt,
+                    'cities': ['Makkah', 'Madinah'],
+                    'status': row['status'],
+                    'start_date': row['start_date'],
+                    'end_date': row['end_date'],
+                    'default_nights': row['nights'],
+                    'visibility': 'PUBLIC',
+                    'featured': row['code'] == 'UMR26JULFEN',
+                    'operator_notes': 'Seeded from UMRAH CALENDER 2026-2027 source.',
                 },
-                {
-                    'day_index': 1,
-                    'title': 'Check-in at Makkah Hotel',
-                    'location': 'Hilton Makkah Convention Hotel',
-                    'start_time': '16:00:00',
-                    'end_time': '18:00:00',
-                    'notes': 'Room allocation and orientation'
+            )
+
+            if created:
+                self.stdout.write(f"   ✓ Created trip: {trip.name}")
+            else:
+                self.stdout.write(f"   - Trip exists: {trip.name}")
+
+            package, package_created = TripPackage.objects.get_or_create(
+                trip=trip,
+                package_code=f"{row['code']}-STD",
+                defaults={
+                    'name': 'Standard Package',
+                    'nights': row['nights'],
+                    'price_minor_units': row['price_minor_units'],
+                    'currency': currencies[row['currency']],
+                    'capacity': row['sales_target'],
+                    'sales_target': row['sales_target'],
+                    'hotel_booking_month': row['hotel_booking_month'],
+                    'airline_booking_month': row['airline_booking_month'],
+                    'status': 'SELLING' if row['status'] == 'OPEN_FOR_SALES' else 'DRAFT',
+                    'visibility': 'PUBLIC',
                 },
-                {
-                    'day_index': 2,
-                    'title': 'Umrah Ritual',
-                    'location': 'Masjid al-Haram',
-                    'start_time': '06:00:00',
-                    'end_time': '12:00:00',
-                    'notes': 'Complete Umrah with guide'
-                },
-                {
-                    'day_index': 3,
-                    'title': 'Ziyarah Tour - Makkah',
-                    'location': 'Historical Sites',
-                    'start_time': '09:00:00',
-                    'end_time': '17:00:00',
-                    'notes': 'Visit Cave of Hira, Jabal al-Nour, and other sites'
-                },
-                {
-                    'day_index': 11,
-                    'title': 'Travel to Madinah',
-                    'location': 'Makkah to Madinah',
-                    'start_time': '08:00:00',
-                    'end_time': '14:00:00',
-                    'notes': 'Coach journey with lunch stop'
-                },
-            ]
-            
-            for item in itinerary_items:
-                ItineraryItem.objects.create(trip=trip1, **item)
-            
-            self.stdout.write(f'     ✓ Created itinerary ({len(itinerary_items)} items)')
-            
-            # Travel Guide
-            TripGuideSection.objects.create(
-                trip=trip1,
+            )
+
+            if package_created:
+                self.stdout.write('     ✓ Created package')
+            else:
+                self.stdout.write('     - Package exists')
+
+            if package_created and row['airline']:
+                outbound_dt = timezone.make_aware(datetime.combine(trip.start_date, time(3, 0)))
+                return_dt = timezone.make_aware(datetime.combine(trip.end_date, time(18, 0)))
+                carrier = row['airline'].split('/')[0][:8]
+                group_code = row['code'][-6:]
+
+                PackageFlight.objects.get_or_create(
+                    package=package,
+                    leg='OUTBOUND',
+                    dep_airport='EBB',
+                    arr_airport='JED',
+                    defaults={
+                        'carrier': carrier,
+                        'flight_no': f'{group_code}1',
+                        'dep_dt': outbound_dt,
+                        'arr_dt': outbound_dt + timedelta(hours=5),
+                        'group_pnr': f'{group_code}OUT',
+                    },
+                )
+                PackageFlight.objects.get_or_create(
+                    package=package,
+                    leg='RETURN',
+                    dep_airport='JED',
+                    arr_airport='EBB',
+                    defaults={
+                        'carrier': carrier,
+                        'flight_no': f'{group_code}2',
+                        'dep_dt': return_dt,
+                        'arr_dt': return_dt + timedelta(hours=5),
+                        'group_pnr': f'{group_code}RET',
+                    },
+                )
+
+            if package_created and (row['madinah_hotel'] or row['makkah_hotel']):
+                trip_span_days = max((trip.end_date - trip.start_date).days, 2)
+                mid_date = trip.start_date + timedelta(days=max(trip_span_days // 2, 1))
+                if mid_date >= trip.end_date:
+                    mid_date = trip.end_date - timedelta(days=1)
+
+                if row['madinah_hotel']:
+                    PackageHotel.objects.get_or_create(
+                        package=package,
+                        name=row['madinah_hotel'],
+                        check_in=trip.start_date,
+                        check_out=mid_date,
+                        defaults={
+                            'address': 'Madinah, Saudi Arabia',
+                            'room_type': 'Standard',
+                        },
+                    )
+                if row['makkah_hotel']:
+                    PackageHotel.objects.get_or_create(
+                        package=package,
+                        name=row['makkah_hotel'],
+                        check_in=mid_date,
+                        check_out=trip.end_date,
+                        defaults={
+                            'address': 'Makkah, Saudi Arabia',
+                            'room_type': 'Standard',
+                        },
+                    )
+
+        # Add lightweight support content for the featured departure.
+        featured_trip = Trip.objects.filter(code='UMR26JULFEN').first()
+        if featured_trip:
+            TripGuideSection.objects.get_or_create(
+                trip=featured_trip,
                 order=1,
-                title='What to Pack',
-                content_md='''# Essential Items
-- Ihram clothing (2 sets for men)
-- Comfortable walking shoes
-- Prayer mat and Quran
-- Medications and toiletries
-- Travel adapter (Saudi Arabia uses type G plugs)'''
-            )
-            
-            TripGuideSection.objects.create(
-                trip=trip1,
-                order=2,
-                title='Weather Information',
-                content_md='''# May Weather in Saudi Arabia
-- Temperature: 35-40°C (hot and dry)
-- Recommended: Light, breathable clothing
-- Stay hydrated - carry water bottle
-- Use sunscreen and hat during outdoor activities'''
-            )
-            
-            self.stdout.write(f'     ✓ Created travel guide sections')
-            
-            # Checklist
-            checklist_items = [
-                {'label': 'Valid Passport', 'category': 'DOCS', 'is_required': True},
-                {'label': 'Visa Copy', 'category': 'DOCS', 'is_required': True},
-                {'label': 'Yellow Fever Certificate', 'category': 'HEALTH', 'is_required': False},
-                {'label': 'Travel Insurance', 'category': 'DOCS', 'is_required': False},
-                {'label': 'Ihram Clothing', 'category': 'PERSONAL', 'is_required': True},
-                {'label': 'Prayer Mat', 'category': 'PERSONAL', 'is_required': False},
-            ]
-            
-            for item in checklist_items:
-                ChecklistItem.objects.create(trip=trip1, **item)
-            
-            # Emergency Contacts
-            EmergencyContact.objects.create(
-                trip=trip1,
-                label='Tour Guide',
-                phone='+966501234567',
-                hours='24/7',
-                notes='WhatsApp available'
-            )
-            
-            EmergencyContact.objects.create(
-                trip=trip1,
-                label='Hotel Reception',
-                phone='+966126777777',
-                hours='24/7',
-                notes='Hilton Makkah front desk'
-            )
-            
-            # FAQs
-            faqs = [
-                {
-                    'question': 'What time is hotel check-in?',
-                    'answer': 'Check-in is at 2:00 PM. Early check-in subject to availability.',
-                    'order': 1
+                title='Core Packing Checklist',
+                defaults={
+                    'content_md': (
+                        "- Ihram clothing\n"
+                        "- Valid passport and visa copy\n"
+                        "- Personal medication\n"
+                        "- Comfortable walking footwear"
+                    )
                 },
-                {
-                    'question': 'Is WiFi available at the hotel?',
-                    'answer': 'Yes, free WiFi is available in all rooms and public areas.',
-                    'order': 2
-                },
-                {
-                    'question': 'What meals are included?',
-                    'answer': 'Breakfast and dinner are included. Lunch can be purchased at the hotel or nearby restaurants.',
-                    'order': 3
-                },
-            ]
-            
-            for faq in faqs:
-                TripFAQ.objects.create(trip=trip1, **faq)
-            
-            self.stdout.write(f'     ✓ Created essentials (checklist, contacts, FAQs)')
-            
-            # Create bookings for pilgrims
-            pilgrims = PilgrimProfile.objects.all()[:3]
-            for i, pilgrim in enumerate(pilgrims):
-                booking = Booking.objects.create(
-                    pilgrim=pilgrim,
-                    package=gold_pkg if i < 2 else premium_pkg,
-                    status='BOOKED',
-                    ticket_number=f'TK{random.randint(100000, 999999)}',
-                    room_assignment=f'Room {201 + i}'
-                )
-                
-                # Create visa for booked pilgrims
-                Visa.objects.create(
-                    pilgrim=pilgrim,
-                    trip=trip1,
-                    status='PENDING'
-                )
-            
-            self.stdout.write(f'     ✓ Created {len(pilgrims)} bookings and visas')
-            
-            # Trip Update
-            TripUpdate.objects.create(
-                trip=trip1,
-                title='Important: Flight Schedule Confirmed',
-                body_md='All flights have been confirmed. Please check your email for detailed itinerary.',
-                urgency='IMPORTANT',
-                pinned=True,
-                publish_at=timezone.now() - timedelta(days=1)
             )
-        
-        else:
-            self.stdout.write(f'   - Trip exists: {trip1.name}')
-        
-        # Trip 2: Past Umrah (for history)
-        trip2, created = Trip.objects.get_or_create(
-            code='UMRAH2024DEC',
-            defaults={
-                'name': 'Umrah 2024 - December',
-                'cities': ['Makkah', 'Madinah'],
-                'start_date': date.today() - timedelta(days=60),
-                'end_date': date.today() - timedelta(days=45),
-                'visibility': 'PUBLIC',
-                'operator_notes': 'Completed trip - December 2024'
-            }
-        )
-        
-        if created:
-            self.stdout.write(f'   ✓ Created past trip: {trip2.name}')
-        
+            ChecklistItem.objects.get_or_create(
+                trip=featured_trip,
+                label='Valid passport (6+ months)',
+                category='DOCS',
+                defaults={'is_required': True},
+            )
+            EmergencyContact.objects.get_or_create(
+                trip=featured_trip,
+                label='Al Hilal Operations',
+                phone='+256700000001',
+                defaults={'hours': '24/7', 'notes': 'Main support line'},
+            )
+            TripFAQ.objects.get_or_create(
+                trip=featured_trip,
+                order=1,
+                question='When should I submit my travel documents?',
+                defaults={
+                    'answer': 'Submit as early as possible after booking to avoid visa processing delays.'
+                },
+            )
+            TripUpdate.objects.get_or_create(
+                trip=featured_trip,
+                title='2026-2027 Calendar Seeded',
+                defaults={
+                    'body_md': 'Initial trip schedule has been seeded from the official calendar.',
+                    'urgency': 'INFO',
+                    'pinned': False,
+                    'publish_at': timezone.now(),
+                },
+            )
+
         self.stdout.write('')
 
     def create_duas(self):
@@ -553,4 +684,3 @@ class Command(BaseCommand):
         
         self.stdout.write(f'   ✓ Created {count} duas')
         self.stdout.write('')
-
