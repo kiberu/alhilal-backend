@@ -8,7 +8,6 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Linking,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +15,7 @@ import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing, BorderRadius, Typography, Shadow } from '@/constants/theme';
 import type { OTPFallback } from '@/lib/api/types';
+import { openExternalUrl, openWhatsAppConversation } from '@/lib/support/open-external';
 
 const OTP_LENGTH = 6;
 const RESEND_TIMEOUT = 60; // seconds
@@ -260,7 +260,7 @@ export default function VerifyOTPScreen() {
               {fallback.supportPhone ? (
                 <TouchableOpacity
                   style={[styles.supportButton, { borderColor: colors.border }]}
-                  onPress={() => Linking.openURL(`tel:${fallback.supportPhone}`)}
+                  onPress={() => void openExternalUrl(`tel:${fallback.supportPhone}`)}
                   activeOpacity={0.8}
                 >
                   <Ionicons name="call-outline" size={16} color={colors.primary} />
@@ -270,7 +270,7 @@ export default function VerifyOTPScreen() {
               {fallback.supportWhatsApp ? (
                 <TouchableOpacity
                   style={[styles.supportButton, { borderColor: colors.border }]}
-                  onPress={() => Linking.openURL(`https://wa.me/${fallback.supportWhatsApp.replace(/\D/g, '')}`)}
+                  onPress={() => void openWhatsAppConversation({ phone: fallback.supportWhatsApp || '' })}
                   activeOpacity={0.8}
                 >
                   <Ionicons name="logo-whatsapp" size={16} color={colors.primary} />

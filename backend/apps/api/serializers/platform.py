@@ -1,8 +1,9 @@
-"""Serializers for platform-level settings and synced video content."""
+"""Serializers for platform-level settings and synced public content."""
 
 from rest_framework import serializers
 
 from apps.common.models import PlatformSettings, WebsiteLead
+from apps.content.models import GuidanceArticle
 from apps.trips.models import Trip
 
 
@@ -50,6 +51,43 @@ class PublicVideoFeedSerializer(serializers.Serializer):
     items = PublicVideoItemSerializer(many=True)
     syncedAt = serializers.DateTimeField(allow_null=True)
     sourceType = serializers.CharField()
+
+
+class GuidanceArticleListSerializer(serializers.ModelSerializer):
+    """Serializer for public guidance article list responses."""
+
+    author_name = serializers.CharField(source='author.name', read_only=True)
+
+    class Meta:
+        model = GuidanceArticle
+        fields = [
+            'id',
+            'slug',
+            'title',
+            'description',
+            'category',
+            'featured',
+            'featured_order',
+            'image_url',
+            'read_time',
+            'published_at',
+            'updated_at',
+            'author_name',
+            'author_role_label',
+        ]
+
+
+class GuidanceArticleDetailSerializer(GuidanceArticleListSerializer):
+    """Serializer for a full public guidance article payload."""
+
+    class Meta(GuidanceArticleListSerializer.Meta):
+        fields = GuidanceArticleListSerializer.Meta.fields + [
+            'intro',
+            'sections',
+            'takeaway',
+            'sources',
+            'keywords',
+        ]
 
 
 class OTPFallbackSerializer(serializers.Serializer):

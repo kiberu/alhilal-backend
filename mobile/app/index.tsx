@@ -1,34 +1,40 @@
 import { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/auth-context';
-import { Colors } from '@/constants/theme';
+import { readGuestOnboardingSeen } from '@/lib/guest/onboarding';
+import { LoadingScreen } from '@/components/guest/primitives';
 
 export default function IndexScreen() {
   const router = useRouter();
-  const { isLoading } = useAuth();
+  const { isLoading, isAuthenticated } = useAuth();
 
   useEffect(() => {
-    if (!isLoading) {
-      // Always redirect to home - guests can access the app
-      router.replace('/(tabs)');
-    }
-  }, [isLoading]);
+    let cancelled = false;
 
-  // Show loading screen while checking auth state
-  return (
-    <View style={styles.container}>
-      <ActivityIndicator size="large" color={Colors.light.primary} />
-    </View>
-  );
+    const resolveRoute = async () => {
+      if (isLoading) {
+        return;
+      }
+
+      if (isAuthenticated) {
+        router.replace('/(tabs)');
+        return;
+      }
+
+      const hasSeenOnboarding = await readGuestOnboardingSeen();
+      if (cancelled) {
+        return;
+      }
+
+      router.replace(hasSeenOnboarding ? '/(tabs)' : '/get-started');
+    };
+
+    void resolveRoute();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, isLoading, router]);
+
+  return <LoadingScreen message="Preparing Al Hilal..." />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-  },
-});
-

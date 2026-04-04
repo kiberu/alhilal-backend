@@ -18,7 +18,6 @@ import {
   brand,
   featuredDeparture,
   finalCtaCopy,
-  guidanceArticles,
   homeFaqs,
   imagery,
   journeySupport,
@@ -28,6 +27,7 @@ import {
 } from '../data/site'
 import { analyticsEventNames, trackEvent } from '../lib/analytics'
 import { formatDateRange, formatMoney, formatNightsLabel } from '../lib/format'
+import { getPublicGuidanceArticles, type PublicGuidanceArticle } from '../lib/guidance'
 import { createWebsiteLead } from '../lib/leads'
 import {
   featuredJourneySlug,
@@ -45,6 +45,7 @@ function toMonthLabel(value: string): string {
 
 export function HomePage() {
   const [journeys, setJourneys] = useState<PublicJourneyListItem[]>([])
+  const [guidancePreview, setGuidancePreview] = useState<PublicGuidanceArticle[]>([])
   const [bookingForm, setBookingForm] = useState({
     departureMonth: '',
     travellers: '1',
@@ -71,6 +72,24 @@ export function HomePage() {
       .catch(() => {
         if (isMounted) {
           setJourneys([])
+        }
+      })
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  useEffect(() => {
+    let isMounted = true
+    getPublicGuidanceArticles({ featured: true, limit: 3 })
+      .then((items) => {
+        if (isMounted) {
+          setGuidancePreview(items.slice(0, 3))
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setGuidancePreview([])
         }
       })
     return () => {
@@ -513,11 +532,11 @@ export function HomePage() {
           </Reveal>
 
           <div className="projects-grid">
-            {guidanceArticles.slice(0, 3).map((guide) => (
+            {guidancePreview.map((guide) => (
               <Reveal key={guide.slug}>
                 <Card as="article" className="project-card">
                   <div className="project-card__media">
-                    <img alt={guide.title} decoding="async" loading="lazy" src={guide.image} />
+                    <img alt={guide.title} decoding="async" loading="lazy" src={guide.imageUrl} />
                   </div>
                   <div className="project-card__body">
                     <div className="section-stack">
@@ -532,7 +551,7 @@ export function HomePage() {
                         </span>
                         <span className="journey-card__meta-item">
                           <AppIcon icon={appIcons.users} size="xs" />
-                          <span>{guide.author}</span>
+                          <span>{guide.authorName || 'Al-Hilal Team'}</span>
                         </span>
                       </div>
                       <h3 className="project-card__title">{guide.title}</h3>

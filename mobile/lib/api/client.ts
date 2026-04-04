@@ -17,6 +17,62 @@ export class ApiClient {
   private retryDelay = RETRY_DELAY;
   private refreshPromise: Promise<string | null> | null = null;
 
+  private looksLikeHtml(payload: string): boolean {
+    const sample = payload.trim().slice(0, 256).toLowerCase();
+    return sample.startsWith('<!doctype html') || sample.startsWith('<html') || sample.includes('<body');
+  }
+
+  private normalizeErrorPayload(payload: unknown, status: number, url: string): string {
+    if (typeof payload === 'object' && payload !== null) {
+      const message = (payload as Record<string, unknown>).message
+        || (payload as Record<string, unknown>).error
+        || (payload as Record<string, unknown>).detail;
+      if (typeof message === 'string' && message.trim()) {
+        return message;
+      }
+    }
+
+    if (typeof payload === 'string') {
+      if (this.looksLikeHtml(payload)) {
+        const endpoint = (() => {
+          try {
+            return new URL(url).pathname;
+          } catch {
+            return url;
+          }
+        })();
+
+        if (status === 404) {
+          return `API endpoint not found (${endpoint}). Check your API base URL (${this.baseURL}).`;
+        }
+
+        return `Unexpected non-JSON response from the API (${status}).`;
+      }
+
+      const trimmed = payload.trim();
+      if (trimmed.length) {
+        return trimmed;
+      }
+    }
+
+    return `Request failed with status ${status}.`;
+  }
+
+  private normalizeNetworkError(error: unknown): string {
+    const raw = error instanceof Error ? error.message : String(error || 'Network error');
+    const lowered = raw.toLowerCase();
+
+    if (lowered.includes('abort')) {
+      return 'Request timed out. Check your connection and retry.';
+    }
+
+    if (lowered.includes('network request failed') || lowered.includes('failed to fetch')) {
+      return `Unable to reach the API at ${this.baseURL}. If you are on a real device, use your computer LAN IP instead of localhost.`;
+    }
+
+    return raw;
+  }
+
   private buildURL(endpoint: string, params?: Record<string, any>): string {
     const url = new URL(endpoint, this.baseURL);
     if (params) {
@@ -81,8 +137,11 @@ export class ApiClient {
       }
 
       if (!res.ok) {
-        const message = typeof payload === 'object' ? (payload.message || payload.error || payload.detail) : String(payload || 'Request failed');
-        return { success: false, error: message, status: res.status };
+        return {
+          success: false,
+          error: this.normalizeErrorPayload(payload, res.status, url),
+          status: res.status,
+        };
       }
 
       // Handle different response formats
@@ -99,7 +158,7 @@ export class ApiClient {
         await this.sleep(this.retryDelay * (retry + 1));
         return this.request<T>(method, endpoint, data, params, retry + 1, token, allowAuthRetry);
       }
-      return { success: false, error: e?.message || 'Network error', status: 0 };
+      return { success: false, error: this.normalizeNetworkError(e), status: 0 };
     }
   }
 

@@ -5,13 +5,42 @@ import { Reveal } from '../components/motion/Reveal'
 import { AppIcon, appIcons } from '../components/ui/AppIcon'
 import { Container } from '../components/ui/Container'
 import { InlineLink } from '../components/ui/InlineLink'
-import { guidanceArticles } from '../data/site'
 import { appEnv } from '../lib/env'
+import { formatGuidanceDate, getPublicGuidanceArticleBySlug, type PublicGuidanceArticle } from '../lib/guidance'
 
 export function GuideDetailPage() {
   const { slug } = useParams()
-  const guide = guidanceArticles.find((item) => item.slug === slug)
+  const [guide, setGuide] = useState<PublicGuidanceArticle | null>(null)
+  const [resolvedSlug, setResolvedSlug] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    let isMounted = true
+
+    if (!slug) {
+      return () => {
+        isMounted = false
+      }
+    }
+
+    getPublicGuidanceArticleBySlug(slug)
+      .then((article) => {
+        if (isMounted) {
+          setGuide(article)
+          setResolvedSlug(slug)
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setGuide(null)
+          setResolvedSlug(slug)
+        }
+      })
+
+    return () => {
+      isMounted = false
+    }
+  }, [slug])
 
   const shareUrls = useMemo(() => {
     if (typeof window === 'undefined') {
@@ -19,7 +48,7 @@ export function GuideDetailPage() {
     }
 
     const articleUrl = new URL(`${window.location.pathname}${window.location.search}`, appEnv.siteUrl).toString()
-    const shareText = `${guide?.title} | Al Hilal Guidance`
+    const shareText = `${guide?.title || 'Al Hilal Guidance'} | Al Hilal Guidance`
 
     return {
       articleUrl,
@@ -40,7 +69,13 @@ export function GuideDetailPage() {
     }
   }, [guide])
 
-  if (!guide) {
+  if (!slug) {
+    return <Navigate replace to="/guidance" />
+  }
+
+  const isLoading = resolvedSlug !== slug
+
+  if (!isLoading && !guide) {
     return <Navigate replace to="/guidance" />
   }
 
@@ -58,6 +93,10 @@ export function GuideDetailPage() {
     }
   }
 
+  if (!guide) {
+    return null
+  }
+
   return (
     <>
       <section className="section detail-page">
@@ -69,22 +108,22 @@ export function GuideDetailPage() {
               <ul className="detail-meta">
                 <li className="detail-meta__item">
                   <AppIcon icon={appIcons.clock} size="xs" />
-                  <span>{guide.readTime}</span>
+                  <span>{guide.readTime || 'Guidance article'}</span>
                 </li>
                 <li className="detail-meta__item">
                   <AppIcon icon={appIcons.calendar} size="xs" />
-                  <span>{guide.publishedAt}</span>
+                  <span>{formatGuidanceDate(guide.publishedAt)}</span>
                 </li>
                 <li className="detail-meta__item">
                   <AppIcon icon={appIcons.users} size="xs" />
-                  <span>{guide.author}</span>
+                  <span>{guide.authorName || 'Al-Hilal Team'}</span>
                 </li>
               </ul>
               <p className="page-hero__description">{guide.description}</p>
             </Reveal>
 
             <div className="detail-image">
-              <img alt={guide.title} decoding="async" src={guide.image} />
+              <img alt={guide.title} decoding="async" src={guide.imageUrl} />
             </div>
           </div>
         </Container>
@@ -96,16 +135,16 @@ export function GuideDetailPage() {
             <Reveal className="detail-copy card article-author-card">
               <h2 className="detail-copy__title">Article details</h2>
               <p>
-                <strong>Author:</strong> {guide.author}
+                <strong>Author:</strong> {guide.authorName || 'Al-Hilal Team'}
               </p>
               <p>
-                <strong>Role:</strong> {guide.authorRole}
+                <strong>Role:</strong> {guide.authorRole || 'Pilgrim Support and Guidance'}
               </p>
               <p>
-                <strong>Published:</strong> {guide.publishedAt}
+                <strong>Published:</strong> {formatGuidanceDate(guide.publishedAt)}
               </p>
               <p>
-                <strong>Updated:</strong> {guide.updatedAt}
+                <strong>Updated:</strong> {formatGuidanceDate(guide.updatedAt)}
               </p>
               <p>
                 <strong>Keywords:</strong> {guide.keywords.join(', ')}
@@ -113,14 +152,14 @@ export function GuideDetailPage() {
 
               <h3 className="article-share__title">Share this article</h3>
               <div className="article-share">
-                  <a
-                    className="button button--ghost"
-                    href={shareUrls?.whatsapp || '#'}
-                    rel="noreferrer"
-                    target="_blank"
-                  >
-                    WhatsApp
-                  </a>
+                <a
+                  className="button button--ghost"
+                  href={shareUrls?.whatsapp || '#'}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  WhatsApp
+                </a>
                 <a className="button button--ghost" href={shareUrls?.x || '#'} rel="noreferrer" target="_blank">
                   X
                 </a>
@@ -150,7 +189,7 @@ export function GuideDetailPage() {
                   {section.paragraphs.map((paragraph) => (
                     <p key={`${section.heading}-${paragraph}`}>{paragraph}</p>
                   ))}
-                  {section.checklist ? (
+                  {section.checklist?.length ? (
                     <ul className="article-post__list">
                       {section.checklist.map((item) => (
                         <li key={`${section.heading}-${item}`}>{item}</li>

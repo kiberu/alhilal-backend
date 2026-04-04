@@ -11,6 +11,8 @@ export { TripsService } from './trips';
 export type {
   Trip,
   TripDetail,
+  PublicTrip,
+  PublicTripDetail,
   TripPackage,
   PackageFlight,
   PackageHotel,
@@ -24,6 +26,7 @@ export type {
   TripReadinessChecks,
   PaginatedResponse,
 } from './trips';
+export { normalizePublicTrip, normalizePublicTripDetail } from './trips';
 
 export { SupportService } from './support';
 export type {
@@ -39,4 +42,15 @@ export type {
 } from './support';
 
 export { ContentService } from './content';
-export type { PublicVideoFeed, PublicVideoItem } from './content';
+export type {
+  PublicVideoFeed,
+  PublicVideoItem,
+  GuidanceArticleSummary,
+  GuidanceArticleDetail,
+  GuidanceSection,
+  GuidanceSource,
+} from './content';
+export { normalizeGuidanceSummary, normalizeGuidanceDetail } from './content';
+
+export { LeadsService } from './leads';
+export type { PublicLeadRequest, PublicLeadResponse } from './leads';

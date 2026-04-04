@@ -24,38 +24,18 @@ test("journeys listing to journey detail", async ({ page }) => {
 
   await expect(januaryCard.getByRole("heading", { name: "January Umrah 2027" })).toBeVisible();
   await expect(januaryCard.getByText("Open for sales")).toBeVisible();
-  await januaryCard.getByRole("link", { name: /see dates and pricing/i }).click();
+  await januaryCard.getByRole("link", { name: /trip and booking information/i }).click();
 
   await expect(page).toHaveURL(new RegExp(`/journeys/${primaryJourneySlug}$`));
-  await expect(page.getByText(/package truth, not brochure shorthand/i)).toBeVisible();
+  await expect(page.getByRole("heading", { name: /every package, with booking guidance/i })).toBeVisible();
 });
 
-test("journey detail consultation save", async ({ page }) => {
-  await mockLeadSuccess(page);
+test("journey detail package booking guidance links", async ({ page }) => {
   await page.goto(`/journeys/${primaryJourneySlug}`, { waitUntil: "networkidle" });
 
-  const section = page.locator("#consultation-form");
-  let savedPayload;
-
-  page.on("request", (request) => {
-    if (request.url().includes("/public/leads/") && request.method() === "POST") {
-      savedPayload = request.postDataJSON();
-    }
-  });
-
-  await section.getByLabel("Full name *").fill("Yusuf Family");
-  await section.getByLabel("Phone or WhatsApp *").fill("+256700333444");
-  await section.getByLabel("Email address").fill("yusuf@example.com");
-  await section.getByLabel("Preferred travel window").fill("January 2027");
-  await section.getByLabel("What would you like help with?").fill("Need help comparing premium and family packages.");
-  await section.getByRole("button", { name: /request follow-up/i }).click();
-
-  await expect(section.getByText(/consultation request is saved/i)).toBeVisible();
-  expect(savedPayload).toMatchObject({
-    source: "journey_detail",
-    context_label: primaryJourneySlug,
-    trip: "trip-jan-2027",
-  });
+  await expect(page.getByRole("heading", { name: /how to book this package/i }).first()).toBeVisible();
+  await page.getByRole("link", { name: /read how to book/i }).first().click();
+  await expect(page).toHaveURL(/\/how-to-book$/);
 });
 
 test("contact consultation save", async ({ page }) => {
@@ -86,8 +66,19 @@ test("contact consultation save", async ({ page }) => {
 test("guidance hub to article to contact CTA", async ({ page }) => {
   await page.goto("/guidance", { waitUntil: "networkidle" });
 
-  await page.getByRole("link", { name: /read this guide/i }).first().click();
+  await page.getByRole("link", { name: /read article/i }).first().click();
   await expect(page).toHaveURL(new RegExp(`/guidance/${firstGuidanceSlug}$`));
   await page.getByRole("link", { name: /talk to al hilal/i }).first().click();
   await expect(page).toHaveURL(/\/contact$/);
+});
+
+test("guidance hub falls back to static guidance when API is unavailable", async ({ page }) => {
+  await page.route("**/public/guidance/**", async (route) => {
+    await route.abort();
+  });
+
+  await page.goto("/guidance", { waitUntil: "networkidle" });
+  await expect(
+    page.getByRole("heading", { name: /first-time umrah checklist from uganda and east africa/i })
+  ).toBeVisible();
 });

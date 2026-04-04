@@ -5,11 +5,14 @@ Usage:
     python manage.py seed_data
     python manage.py seed_data --clear  # Clear existing data first
 """
-from django.core.management.base import BaseCommand
-from django.contrib.auth import get_user_model
-from django.utils import timezone
-from datetime import date, timedelta, time, datetime
 import random
+import re
+from datetime import date, datetime, time, timedelta
+from pathlib import Path
+
+from django.contrib.auth import get_user_model
+from django.core.management.base import BaseCommand
+from django.utils import timezone
 
 Account = get_user_model()
 
@@ -37,6 +40,7 @@ class Command(BaseCommand):
         self.create_staff_users()
         self.create_pilgrims()
         self.create_trips()
+        self.create_guidance_articles()
         self.create_duas()
         
         self.stdout.write('')
@@ -58,7 +62,7 @@ class Command(BaseCommand):
         from apps.trips.models import Trip
         from apps.bookings.models import Booking
         from apps.pilgrims.models import Document
-        from apps.content.models import Dua
+        from apps.content.models import Dua, GuidanceArticle
         
         self.stdout.write('🗑️  Clearing existing data...')
         
@@ -66,6 +70,7 @@ class Command(BaseCommand):
         Booking.objects.all().delete()
         Document.objects.all().delete()
         Dua.objects.all().delete()
+        GuidanceArticle.objects.all().delete()
         Account.objects.filter(is_superuser=False).delete()
         
         self.stdout.write(self.style.SUCCESS('   ✓ Data cleared'))
@@ -627,6 +632,332 @@ class Command(BaseCommand):
                 },
             )
 
+        self.stdout.write('')
+
+    @staticmethod
+    def _extract_array_block(text, start_index):
+        """Return an array slice (including brackets) starting at start_index."""
+        if start_index < 0 or start_index >= len(text) or text[start_index] != '[':
+            return ''
+
+        depth = 0
+        in_string = False
+        escaped = False
+        for index in range(start_index, len(text)):
+            char = text[index]
+            if in_string:
+                if escaped:
+                    escaped = False
+                    continue
+                if char == '\\':
+                    escaped = True
+                    continue
+                if char == "'":
+                    in_string = False
+                continue
+
+            if char == "'":
+                in_string = True
+                continue
+            if char == '[':
+                depth += 1
+                continue
+            if char == ']':
+                depth -= 1
+                if depth == 0:
+                    return text[start_index:index + 1]
+
+        return ''
+
+    @staticmethod
+    def _extract_object_block(text, start_index):
+        """Return an object slice (including braces) starting at start_index."""
+        if start_index < 0 or start_index >= len(text) or text[start_index] != '{':
+            return ''
+
+        depth = 0
+        in_string = False
+        escaped = False
+        for index in range(start_index, len(text)):
+            char = text[index]
+            if in_string:
+                if escaped:
+                    escaped = False
+                    continue
+                if char == '\\':
+                    escaped = True
+                    continue
+                if char == "'":
+                    in_string = False
+                continue
+
+            if char == "'":
+                in_string = True
+                continue
+            if char == '{':
+                depth += 1
+                continue
+            if char == '}':
+                depth -= 1
+                if depth == 0:
+                    return text[start_index:index + 1]
+
+        return ''
+
+    @staticmethod
+    def _split_top_level_objects(collection_text):
+        """Split a text block into top-level object snippets."""
+        objects = []
+        index = 0
+        while index < len(collection_text):
+            start = collection_text.find('{', index)
+            if start == -1:
+                break
+
+            object_block = Command._extract_object_block(collection_text, start)
+            if not object_block:
+                break
+            objects.append(object_block)
+            index = start + len(object_block)
+        return objects
+
+    @staticmethod
+    def _extract_single_quoted_value(text, key):
+        """Extract a single-quoted string value for a key."""
+        match = re.search(rf"{re.escape(key)}:\s*'([^']*)'", text)
+        return match.group(1).strip() if match else ''
+
+    def _extract_string_list_for_key(self, text, key):
+        """Extract a simple array of single-quoted strings for a key."""
+        key_index = text.find(f'{key}:')
+        if key_index == -1:
+            return []
+
+        array_start = text.find('[', key_index)
+        if array_start == -1:
+            return []
+
+        array_block = self._extract_array_block(text, array_start)
+        if not array_block:
+            return []
+
+        return [item.strip() for item in re.findall(r"'([^']*)'", array_block)]
+
+    def _extract_sources_for_key(self, text, key):
+        """Extract source objects with label/url from a keyed array."""
+        key_index = text.find(f'{key}:')
+        if key_index == -1:
+            return []
+
+        array_start = text.find('[', key_index)
+        if array_start == -1:
+            return []
+
+        array_block = self._extract_array_block(text, array_start)
+        if not array_block:
+            return []
+
+        sources = []
+        for source_object in self._split_top_level_objects(array_block[1:-1]):
+            label = self._extract_single_quoted_value(source_object, 'label')
+            url = self._extract_single_quoted_value(source_object, 'url')
+            if label and url:
+                sources.append({'label': label, 'url': url})
+        return sources
+
+    def _extract_sections_for_key(self, text, key):
+        """Extract section objects with heading, paragraphs, and optional checklist."""
+        key_index = text.find(f'{key}:')
+        if key_index == -1:
+            return []
+
+        array_start = text.find('[', key_index)
+        if array_start == -1:
+            return []
+
+        array_block = self._extract_array_block(text, array_start)
+        if not array_block:
+            return []
+
+        sections = []
+        for section_object in self._split_top_level_objects(array_block[1:-1]):
+            heading = self._extract_single_quoted_value(section_object, 'heading')
+            paragraphs = self._extract_string_list_for_key(section_object, 'paragraphs')
+            checklist = self._extract_string_list_for_key(section_object, 'checklist')
+            if not heading:
+                continue
+            section_payload = {'heading': heading, 'paragraphs': paragraphs}
+            if checklist:
+                section_payload['checklist'] = checklist
+            sections.append(section_payload)
+        return sections
+
+    def _fallback_guidance_seed_rows(self):
+        """Return a minimal fallback article if web source parsing is unavailable."""
+        now = timezone.now()
+        return [
+            {
+                'slug': 'first-time-umrah-checklist',
+                'title': 'First-Time Umrah Checklist From Uganda and East Africa',
+                'description': (
+                    'A full step-by-step preparation path for first-time Umrah pilgrims '
+                    'travelling from Uganda and nearby East African countries.'
+                ),
+                'category': 'Pilgrimage readiness',
+                'featured': True,
+                'featured_order': 1,
+                'image_url': 'https://www.alhilaltravels.com/assets/journeys/guidance.jpg',
+                'read_time': '9 min read',
+                'published_at': now,
+                'author_role_label': 'Pilgrim Support and Guidance',
+                'intro': [
+                    'Most first-time pilgrims struggle because information arrives in pieces.',
+                    'This guide gives one clear preparation path from intention to booking.',
+                ],
+                'sections': [
+                    {
+                        'heading': 'Start with readiness',
+                        'paragraphs': [
+                            'Confirm identity documents and align household travel timing early.',
+                            'Set realistic budget and timeline before comparing package options.',
+                        ],
+                    }
+                ],
+                'takeaway': 'Sequence decisions correctly: readiness, timing, then logistics.',
+                'sources': [
+                    {'label': 'Ministry of Hajj and Umrah FAQ', 'url': 'https://haj.gov.sa/en/FAQ'},
+                    {'label': 'Nusuk Platform', 'url': 'https://www.nusuk.sa/'},
+                ],
+                'keywords': [
+                    'first time umrah checklist uganda',
+                    'umrah planning east africa',
+                    'umrah preparation kampala',
+                ],
+            }
+        ]
+
+    def _load_guidance_seed_rows(self):
+        """Parse guidance article content from the website static data source."""
+        project_root = Path(__file__).resolve().parents[6]
+        site_data_path = project_root / 'apps' / 'web' / 'src' / 'data' / 'site.ts'
+        if not site_data_path.exists():
+            return self._fallback_guidance_seed_rows()
+
+        site_text = site_data_path.read_text(encoding='utf-8')
+        marker = 'export const guidanceArticles'
+        marker_index = site_text.find(marker)
+        if marker_index == -1:
+            return self._fallback_guidance_seed_rows()
+
+        guidance_array_start = site_text.find('[', marker_index)
+        if guidance_array_start == -1:
+            return self._fallback_guidance_seed_rows()
+
+        guidance_array_block = self._extract_array_block(site_text, guidance_array_start)
+        if not guidance_array_block:
+            return self._fallback_guidance_seed_rows()
+
+        default_image_path = self._extract_single_quoted_value(site_text, 'guidance')
+        default_image_url = (
+            f"https://www.alhilaltravels.com{default_image_path}"
+            if default_image_path.startswith('/')
+            else 'https://www.alhilaltravels.com/assets/journeys/guidance.jpg'
+        )
+
+        rows = []
+        for index, article_object in enumerate(self._split_top_level_objects(guidance_array_block[1:-1])):
+            slug = self._extract_single_quoted_value(article_object, 'slug')
+            if not slug:
+                continue
+
+            published_label = self._extract_single_quoted_value(article_object, 'publishedAt')
+            published_at = timezone.now()
+            if published_label:
+                try:
+                    parsed_date = datetime.strptime(published_label, '%d %b %Y').date()
+                    published_at = timezone.make_aware(datetime.combine(parsed_date, time(9, 0)))
+                except ValueError:
+                    published_at = timezone.now()
+
+            image_value = self._extract_single_quoted_value(article_object, 'image')
+            if image_value.startswith('http'):
+                image_url = image_value
+            elif image_value.startswith('/'):
+                image_url = f'https://www.alhilaltravels.com{image_value}'
+            else:
+                image_url = default_image_url
+
+            featured = index < 3
+            rows.append(
+                {
+                    'slug': slug,
+                    'title': self._extract_single_quoted_value(article_object, 'title'),
+                    'description': self._extract_single_quoted_value(article_object, 'description'),
+                    'category': self._extract_single_quoted_value(article_object, 'category') or 'Guidance',
+                    'featured': featured,
+                    'featured_order': index + 1 if featured else 0,
+                    'image_url': image_url,
+                    'read_time': self._extract_single_quoted_value(article_object, 'readTime'),
+                    'published_at': published_at,
+                    'author_name': self._extract_single_quoted_value(article_object, 'author'),
+                    'author_role_label': self._extract_single_quoted_value(article_object, 'authorRole'),
+                    'intro': self._extract_string_list_for_key(article_object, 'intro'),
+                    'sections': self._extract_sections_for_key(article_object, 'sections'),
+                    'takeaway': self._extract_single_quoted_value(article_object, 'takeaway'),
+                    'sources': self._extract_sources_for_key(article_object, 'sources'),
+                    'keywords': self._extract_string_list_for_key(article_object, 'keywords'),
+                }
+            )
+
+        return rows or self._fallback_guidance_seed_rows()
+
+    def create_guidance_articles(self):
+        """Seed website guidance articles into the backend editorial model."""
+        from apps.content.models import GuidanceArticle
+
+        self.stdout.write('📝 Creating guidance articles...')
+
+        guidance_rows = self._load_guidance_seed_rows()
+        author = (
+            Account.objects.filter(role='STAFF', is_staff=True, staff_profile__role='ADMIN')
+            .order_by('created_at')
+            .first()
+        )
+        if not author:
+            author = Account.objects.filter(role='STAFF', is_staff=True).order_by('created_at').first()
+
+        created_count = 0
+        updated_count = 0
+        for row in guidance_rows:
+            defaults = {
+                'title': row['title'],
+                'description': row['description'],
+                'category': row['category'],
+                'featured': row['featured'],
+                'featured_order': row['featured_order'],
+                'image_url': row['image_url'],
+                'read_time': row['read_time'],
+                'published_at': row['published_at'],
+                'author': author,
+                'author_role_label': row.get('author_role_label') or '',
+                'intro': row.get('intro') or [],
+                'sections': row.get('sections') or [],
+                'takeaway': row.get('takeaway') or '',
+                'sources': row.get('sources') or [],
+                'keywords': row.get('keywords') or [],
+            }
+            _, created = GuidanceArticle.objects.update_or_create(slug=row['slug'], defaults=defaults)
+            if created:
+                created_count += 1
+            else:
+                updated_count += 1
+
+        self.stdout.write(f'   ✓ Created {created_count} guidance articles')
+        self.stdout.write(f'   ✓ Updated {updated_count} guidance articles')
+        if author:
+            self.stdout.write(f'   ✓ Linked author account: {author.name}')
+        else:
+            self.stdout.write('   - No staff author account found; articles were seeded without linked author')
         self.stdout.write('')
 
     def create_duas(self):

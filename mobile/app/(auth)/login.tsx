@@ -10,7 +10,7 @@ export default function LoginScreen() {
   
   React.useEffect(() => {
     router.replace('/(auth)/phone-login');
-  }, []);
+  }, [router]);
   
   return null;
 }

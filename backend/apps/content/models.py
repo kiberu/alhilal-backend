@@ -58,3 +58,47 @@ class NotificationLog(models.Model):
     def __str__(self):
         return f"{self.scope} - {self.title}"
 
+
+class GuidanceArticle(models.Model):
+    """Editorial guidance content surfaced on website and mobile public channels."""
+
+    id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
+    slug = models.SlugField(max_length=180, unique=True)
+    title = models.CharField(max_length=220)
+    description = models.TextField()
+    category = models.CharField(max_length=120)
+    featured = models.BooleanField(default=False)
+    featured_order = models.PositiveIntegerField(default=0)
+    image_url = models.URLField(blank=True, default="")
+    read_time = models.CharField(max_length=48, blank=True, default="")
+    published_at = models.DateTimeField(null=True, blank=True)
+    author = models.ForeignKey(
+        "accounts.Account",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="guidance_articles",
+    )
+    author_role_label = models.CharField(max_length=120, blank=True, default="")
+    intro = models.JSONField(default=list, blank=True)
+    sections = models.JSONField(default=list, blank=True)
+    takeaway = models.TextField(blank=True, default="")
+    sources = models.JSONField(default=list, blank=True)
+    keywords = models.JSONField(default=list, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "guidance_articles"
+        verbose_name = "Guidance Article"
+        verbose_name_plural = "Guidance Articles"
+        ordering = ["-featured", "featured_order", "-published_at", "-created_at"]
+        indexes = [
+            models.Index(fields=["slug"]),
+            models.Index(fields=["category"]),
+            models.Index(fields=["featured", "featured_order"]),
+            models.Index(fields=["published_at"]),
+        ]
+
+    def __str__(self):
+        return self.title

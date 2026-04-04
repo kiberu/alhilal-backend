@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { ContactBlock } from '../components/sections/ContactBlock'
 import { Reveal } from '../components/motion/Reveal'
 import { AppIcon, appIcons } from '../components/ui/AppIcon'
@@ -6,11 +6,30 @@ import { Card } from '../components/ui/Card'
 import { Container } from '../components/ui/Container'
 import { InlineLink } from '../components/ui/InlineLink'
 import { SectionHeading } from '../components/ui/SectionHeading'
-import { guidanceArticles } from '../data/site'
+import { getFallbackPublicGuidanceArticles, getPublicGuidanceArticles, type PublicGuidanceArticle } from '../lib/guidance'
 
 export function GuidancePage() {
+  const [articles, setArticles] = useState<PublicGuidanceArticle[]>(getFallbackPublicGuidanceArticles())
+
   useEffect(() => {
     document.title = 'Guidance Articles | Umrah and Hajj in Uganda and East Africa'
+  }, [])
+
+  useEffect(() => {
+    let isMounted = true
+    getPublicGuidanceArticles()
+      .then((items) => {
+        if (isMounted && items.length) {
+          setArticles(items)
+        }
+      })
+      .catch(() => {
+        // Keep fallback content if API is unavailable.
+      })
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   return (
@@ -41,11 +60,11 @@ export function GuidancePage() {
           </Reveal>
 
           <div className="projects-grid">
-            {guidanceArticles.map((guide) => (
+            {articles.map((guide) => (
               <Reveal key={guide.slug}>
                 <Card as="article" className="project-card">
                   <div className="project-card__media">
-                    <img alt={guide.title} decoding="async" loading="lazy" src={guide.image} />
+                    <img alt={guide.title} decoding="async" loading="lazy" src={guide.imageUrl} />
                   </div>
                   <div className="project-card__body">
                     <div className="journey-card__meta">
@@ -55,11 +74,11 @@ export function GuidancePage() {
                       </span>
                       <span className="journey-card__meta-item">
                         <AppIcon icon={appIcons.clock} size="xs" />
-                        <span>{guide.readTime}</span>
+                        <span>{guide.readTime || 'Guidance article'}</span>
                       </span>
                       <span className="journey-card__meta-item">
                         <AppIcon icon={appIcons.users} size="xs" />
-                        <span>{guide.author}</span>
+                        <span>{guide.authorName || 'Al-Hilal Team'}</span>
                       </span>
                     </div>
                     <h3 className="project-card__title">{guide.title}</h3>

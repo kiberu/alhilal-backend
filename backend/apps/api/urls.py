@@ -10,7 +10,7 @@ from .views.trips import (
 from .views.packages import (
     PackageDetailView, PackageFlightsView, PackageHotelsView
 )
-from .views.content import DuaListView
+from .views.content import DuaListView, PublicGuidanceArticleDetailView, PublicGuidanceArticleListView
 from .views.dashboard import (
     DashboardStatsView, DashboardActivityView, DashboardUpcomingTripsView
 )
@@ -85,6 +85,8 @@ urlpatterns = [
     path('public/trips/slug/<slug:slug>/', PublicTripDetailBySlugView.as_view(), name='public-trip-detail-by-slug'),
     path('public/trips/<uuid:id>/', PublicTripDetailView.as_view(), name='public-trip-detail'),
     path('public/leads/', PublicWebsiteLeadCreateView.as_view(), name='public-website-leads'),
+    path('public/guidance/', PublicGuidanceArticleListView.as_view(), name='public-guidance-list'),
+    path('public/guidance/<slug:slug>/', PublicGuidanceArticleDetailView.as_view(), name='public-guidance-detail'),
     path('public/videos/', PublicVideoFeedView.as_view(), name='public-videos'),
     
     # Dashboard endpoints (staff only)

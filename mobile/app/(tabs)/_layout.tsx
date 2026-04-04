@@ -1,68 +1,68 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { HapticTab } from '@/components/haptic-tab';
+import { useGuestTheme } from '@/lib/guest/theme';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const theme = useGuestTheme();
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.tabIconDefault,
+        tabBarActiveTintColor: theme.palette.primary,
+        tabBarInactiveTintColor: theme.palette.tabInactive,
         headerShown: false,
         tabBarButton: HapticTab,
+        tabBarHideOnKeyboard: true,
+        tabBarActiveBackgroundColor: 'transparent',
         tabBarStyle: Platform.select({
           ios: {
             position: 'absolute',
-            backgroundColor: 'transparent',
-            borderTopWidth: 0,
-            elevation: 0,
-            height: 88,
-            paddingBottom: 28,
+            left: 16,
+            right: 16,
+            bottom: 16,
+            backgroundColor: theme.palette.card,
+            borderWidth: 1,
+            borderColor: theme.palette.border,
+            shadowColor: theme.palette.shadow,
+            shadowOffset: { width: 0, height: 12 },
+            shadowOpacity: 0.12,
+            shadowRadius: 20,
+            elevation: 12,
+            height: 78,
+            paddingTop: 8,
+            paddingBottom: 16,
+            borderRadius: 30,
           },
           default: {
-            backgroundColor: colors.background,
-            borderTopWidth: 1,
-            borderTopColor: colors.border,
-            elevation: 8,
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
-            height: 68,
-            paddingBottom: 8,
+            position: 'absolute',
+            left: 16,
+            right: 16,
+            bottom: 16,
+            backgroundColor: theme.palette.card,
+            borderWidth: 1,
+            borderColor: theme.palette.border,
+            shadowColor: theme.palette.shadow,
+            shadowOffset: { width: 0, height: 12 },
+            shadowOpacity: 0.12,
+            shadowRadius: 20,
+            elevation: 12,
+            height: 74,
+            paddingBottom: 12,
+            paddingTop: 8,
+            borderRadius: 30,
           },
         }),
-        tabBarBackground: () =>
-          Platform.OS === 'ios' ? (
-            <BlurView
-              intensity={80}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                overflow: 'hidden',
-                borderTopLeftRadius: 20,
-                borderTopRightRadius: 20,
-              }}
-            />
-          ) : null,
         tabBarLabelStyle: {
           fontSize: 11,
           fontWeight: '600',
-          marginTop: 4,
+          marginTop: 2,
         },
-        tabBarIconStyle: {
-          marginTop: 4,
+        tabBarItemStyle: {
+          borderRadius: 24,
+          marginHorizontal: 4,
         },
       }}
     >
@@ -71,50 +71,36 @@ export default function TabLayout() {
         options={{
           title: 'Home',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'home' : 'home-outline'}
-              size={24}
-              color={color}
-            />
+            <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="trips"
+        name="journeys"
         options={{
-          title: 'Trips',
+          title: 'Journeys',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'calendar' : 'calendar-outline'}
-              size={24}
-              color={color}
-            />
+            <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="lessons"
+        name="guidance"
         options={{
-          title: 'Learn',
+          title: 'Guidance',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'book' : 'book-outline'}
-              size={24}
-              color={color}
-            />
+            <Ionicons name={focused ? 'book' : 'book-outline'} size={24} color={color} />
           ),
         }}
       />
+      <Tabs.Screen name="trips" options={{ href: null }} />
+      <Tabs.Screen name="lessons" options={{ href: null }} />
       <Tabs.Screen
         name="more"
         options={{
           title: 'More',
           tabBarIcon: ({ color, focused }) => (
-            <Ionicons
-              name={focused ? 'menu' : 'menu-outline'}
-              size={24}
-              color={color}
-            />
+            <Ionicons name={focused ? 'menu' : 'menu-outline'} size={24} color={color} />
           ),
         }}
       />
