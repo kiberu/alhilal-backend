@@ -5,7 +5,6 @@ import { useRouter } from 'expo-router';
 import IndexScreen from '@/app/index';
 import { useAuth } from '@/contexts/auth-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { readGuestOnboardingSeen } from '@/lib/guest/onboarding';
 
 jest.mock('@/contexts/auth-context', () => ({
   useAuth: jest.fn(),
@@ -13,10 +12,6 @@ jest.mock('@/contexts/auth-context', () => ({
 
 jest.mock('@/hooks/use-color-scheme', () => ({
   useColorScheme: jest.fn(),
-}));
-
-jest.mock('@/lib/guest/onboarding', () => ({
-  readGuestOnboardingSeen: jest.fn(),
 }));
 
 const mockRouter = {
@@ -30,20 +25,18 @@ describe('Index Screen', () => {
     (useColorScheme as jest.Mock).mockReturnValue('light');
   });
 
-  it('routes new guests into get-started', async () => {
+  it('routes guests into tabs', async () => {
     (useAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: false });
-    (readGuestOnboardingSeen as jest.Mock).mockResolvedValue(false);
 
     render(<IndexScreen />);
 
     await waitFor(() => {
-      expect(mockRouter.replace).toHaveBeenCalledWith('/get-started');
+      expect(mockRouter.replace).toHaveBeenCalledWith('/(tabs)');
     });
   });
 
-  it('routes returning guests into tabs', async () => {
-    (useAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: false });
-    (readGuestOnboardingSeen as jest.Mock).mockResolvedValue(true);
+  it('routes authenticated users into tabs', async () => {
+    (useAuth as jest.Mock).mockReturnValue({ isLoading: false, isAuthenticated: true });
 
     render(<IndexScreen />);
 
