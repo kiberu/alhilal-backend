@@ -2,6 +2,11 @@ import * as SQLite from "expo-sqlite";
 
 export type EntitySet =
   | "home_next_trip"
+  | "public_trips"
+  | "public_trip_detail"
+  | "public_guidance_articles"
+  | "public_guidance_detail"
+  | "public_videos"
   | "bookings"
   | "trips"
   | "trip_detail"
@@ -187,34 +192,32 @@ export async function readSingleton<T>(entitySet: EntitySet, cacheKey = "default
 export async function replaceCollection<T extends { id?: string }>(entitySet: EntitySet, items: T[]) {
   const db = await getDatabase();
   const syncedAt = nowIso();
-  await db.withTransactionAsync(async () => {
-    await db.runAsync("DELETE FROM cached_records WHERE entity_set = ?", entitySet);
+  await db.runAsync("DELETE FROM cached_records WHERE entity_set = ?", entitySet);
 
-    for (const [index, item] of items.entries()) {
-      const cacheKey = item.id || `${entitySet}-${index}`;
-      const updatedAt = (item as { updated_at?: string; updatedAt?: string }).updated_at
-        || (item as { updated_at?: string; updatedAt?: string }).updatedAt
-        || syncedAt;
-      await db.runAsync(
-        `
-          INSERT INTO cached_records (entity_set, cache_key, payload, updated_at)
-          VALUES (?, ?, ?, ?)
-        `,
-        entitySet,
-        cacheKey,
-        JSON.stringify(item),
-        updatedAt
-      );
-    }
+  for (const [index, item] of items.entries()) {
+    const cacheKey = item.id || `${entitySet}-${index}`;
+    const updatedAt = (item as { updated_at?: string; updatedAt?: string }).updated_at
+      || (item as { updated_at?: string; updatedAt?: string }).updatedAt
+      || syncedAt;
+    await db.runAsync(
+      `
+        INSERT INTO cached_records (entity_set, cache_key, payload, updated_at)
+        VALUES (?, ?, ?, ?)
+      `,
+      entitySet,
+      cacheKey,
+      JSON.stringify(item),
+      updatedAt
+    );
+  }
 
-    await upsertSyncState(db, entitySet, {
-      lastSuccessfulSync: syncedAt,
-      stale: false,
-      hardFailure: false,
-      lastError: null,
-      lastKnownGoodPayload: JSON.stringify(items),
-      updatedAt: syncedAt,
-    });
+  await upsertSyncState(db, entitySet, {
+    lastSuccessfulSync: syncedAt,
+    stale: false,
+    hardFailure: false,
+    lastError: null,
+    lastKnownGoodPayload: JSON.stringify(items),
+    updatedAt: syncedAt,
   });
 }
 

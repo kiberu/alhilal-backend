@@ -22,6 +22,9 @@ class TestPublicTripListView:
         trip = Trip.objects.create(
             code='NOV2025',
             name='November Umrah',
+            excerpt='Published November departure with clear package direction.',
+            seo_title='November Umrah | Al Hilal Travels Uganda',
+            seo_description='Compare the November Umrah departure before you message the team.',
             cities=['Makkah', 'Madinah'],
             start_date=timezone.now().date() + timedelta(days=30),
             end_date=timezone.now().date() + timedelta(days=40),
@@ -48,6 +51,9 @@ class TestPublicTripListView:
         assert response.data['results'][0]['code'] == 'NOV2025'
         assert response.data['results'][0]['name'] == 'November Umrah'
         assert response.data['results'][0]['slug'] == 'november-umrah'
+        assert response.data['results'][0]['excerpt'] == 'Published November departure with clear package direction.'
+        assert response.data['results'][0]['seo_title'] == 'November Umrah | Al Hilal Travels Uganda'
+        assert response.data['results'][0]['seo_description'] == 'Compare the November Umrah departure before you message the team.'
         assert response.data['results'][0]['featured'] is True
         assert response.data['results'][0]['cover_image'] == 'https://example.com/image.jpg'
         assert response.data['results'][0]['packages_count'] == 1

@@ -293,6 +293,18 @@ CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[
     'http://127.0.0.1:3000',
     'http://127.0.0.1:3001',
 ])
+
+# Ensure primary production web/admin origins are always present when DEBUG=False.
+if not DEBUG:
+    production_cors_origins = [
+        'https://alhilaltravels.com',
+        'https://www.alhilaltravels.com',
+        'https://admin.alhilaltravels.com',
+    ]
+    for origin in production_cors_origins:
+        if origin not in CORS_ALLOWED_ORIGINS:
+            CORS_ALLOWED_ORIGINS.append(origin)
+
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_ALL_ORIGINS = DEBUG  # Allow all origins in development
 

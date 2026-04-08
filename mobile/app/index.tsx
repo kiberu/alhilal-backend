@@ -1,34 +1,23 @@
 import { useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/contexts/auth-context';
-import { Colors } from '@/constants/theme';
+import { LoadingScreen } from '@/components/guest/primitives';
 
 export default function IndexScreen() {
   const router = useRouter();
   const { isLoading } = useAuth();
 
   useEffect(() => {
-    if (!isLoading) {
-      // Always redirect to home - guests can access the app
+    const resolveRoute = async () => {
+      if (isLoading) {
+        return;
+      }
+
       router.replace('/(tabs)');
-    }
-  }, [isLoading]);
+    };
 
-  // Show loading screen while checking auth state
-  return (
-    <View style={styles.container}>
-      <ActivityIndicator size="large" color={Colors.light.primary} />
-    </View>
-  );
+    void resolveRoute();
+  }, [isLoading, router]);
+
+  return <LoadingScreen message="Preparing Al Hilal..." />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-  },
-});
-

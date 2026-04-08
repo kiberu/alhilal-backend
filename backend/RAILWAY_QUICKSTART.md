@@ -77,6 +77,12 @@ CORS_ALLOWED_ORIGINS=https://your-frontend.vercel.app
 FIELD_ENCRYPTION_KEY=<32-char-random-string>
 ```
 
+For Al Hilal domains, set:
+
+```env
+CORS_ALLOWED_ORIGINS=https://alhilaltravels.com,https://www.alhilaltravels.com,https://admin.alhilaltravels.com
+```
+
 **Generate secrets:**
 ```bash
 # SECRET_KEY
@@ -121,4 +127,3 @@ See `RAILWAY_DEPLOYMENT.md` for detailed documentation.
 ✅ Auto-deploy on git push
 ✅ Environment variable management
 ✅ Daily database backups
-

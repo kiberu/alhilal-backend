@@ -61,6 +61,10 @@ sleep 10
 echo -e "${YELLOW}📊 Running database migrations...${NC}"
 docker-compose exec -T backend python manage.py migrate
 
+# Seed published demo content used by website and mobile public surfaces
+echo -e "${YELLOW}🌱 Seeding public trips and guidance content...${NC}"
+docker-compose exec -T backend python manage.py seed_data
+
 # Create superuser (optional)
 echo -e "${YELLOW}👤 Would you like to create a superuser? (y/n)${NC}"
 read -r CREATE_SUPERUSER
@@ -84,4 +88,3 @@ echo "   make test           - Run tests"
 echo "   make dev-down       - Stop containers"
 echo ""
 echo -e "${YELLOW}⚠️  Don't forget to update backend/.env with your Cloudinary credentials!${NC}"
-

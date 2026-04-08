@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   StyleSheet,
   ScrollView,
@@ -42,13 +42,7 @@ export default function BookingDetailsScreen() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (id && typeof id === 'string' && accessToken) {
-      loadBookingDetails(id);
-    }
-  }, [id, accessToken]);
-
-  const loadBookingDetails = async (bookingId: string) => {
+  const loadBookingDetails = useCallback(async (bookingId: string) => {
     if (!accessToken) return;
 
     try {
@@ -67,7 +61,13 @@ export default function BookingDetailsScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [accessToken]);
+
+  useEffect(() => {
+    if (id && typeof id === 'string' && accessToken) {
+      void loadBookingDetails(id);
+    }
+  }, [accessToken, id, loadBookingDetails]);
 
   const handleBack = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -144,7 +144,11 @@ export default function BookingDetailsScreen() {
           </Text>
           <TouchableOpacity
             style={[styles.retryButton, { backgroundColor: colors.primary }]}
-            onPress={() => id && typeof id === 'string' && loadBookingDetails(id)}
+            onPress={() => {
+              if (id && typeof id === 'string') {
+                void loadBookingDetails(id);
+              }
+            }}
           >
             <Text style={styles.retryButtonText}>Try Again</Text>
           </TouchableOpacity>

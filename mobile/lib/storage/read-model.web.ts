@@ -1,5 +1,10 @@
 export type EntitySet =
   | "home_next_trip"
+  | "public_trips"
+  | "public_trip_detail"
+  | "public_guidance_articles"
+  | "public_guidance_detail"
+  | "public_videos"
   | "bookings"
   | "trips"
   | "trip_detail"

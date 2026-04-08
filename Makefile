@@ -19,6 +19,9 @@ help:
 
 dev-up:
 	docker-compose up -d
+	@sleep 10
+	docker-compose exec -T backend python manage.py migrate
+	docker-compose exec -T backend python manage.py seed_data
 	@echo "Development environment started!"
 	@echo "Django Admin: http://localhost:$${BACKEND_HOST_PORT:-18000}/admin/"
 	@echo "Admin Dashboard: http://localhost:$${FRONTEND_HOST_PORT:-13001}/"

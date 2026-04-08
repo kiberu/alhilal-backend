@@ -6,7 +6,6 @@ import {
   Text,
   Linking,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -99,22 +98,6 @@ export default function TripsScreen() {
     const end = new Date(endDate);
     const nights = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) - 1;
     return `${nights} nights`;
-  };
-  
-  // Get default image
-  const getDefaultTripImage = () => require('@/assets/alhilal-assets/Kaaba-hero1.jpg');
-  
-  // Format price
-  const formatPrice = (packages: any[], currency?: string) => {
-    if (packages.length === 0) return 'Contact for pricing';
-    const lowestPrice = Math.min(...packages.map(p => p.price_minor_units));
-    const major = lowestPrice / 100;
-    const curr = currency || packages[0].currency;
-    
-    if (curr === 'UGX') {
-      return `UGX ${major.toLocaleString('en-UG', { maximumFractionDigits: 0 })}`;
-    }
-    return `${curr} ${major.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
   
   // Get gradient colors based on featured status

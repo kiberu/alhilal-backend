@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Dua, NotificationLog
+from .models import Dua, GuidanceArticle, NotificationLog
 
 
 @admin.register(Dua)
@@ -21,3 +21,20 @@ class NotificationLogAdmin(admin.ModelAdmin):
     search_fields = ['title', 'message']
     readonly_fields = ['created_at']
 
+
+@admin.register(GuidanceArticle)
+class GuidanceArticleAdmin(admin.ModelAdmin):
+    """Admin for guidance article content."""
+
+    list_display = [
+        'title',
+        'slug',
+        'category',
+        'featured',
+        'featured_order',
+        'published_at',
+        'author',
+    ]
+    list_filter = ['featured', 'category', 'published_at']
+    search_fields = ['title', 'slug', 'description', 'category']
+    readonly_fields = ['created_at', 'updated_at']
