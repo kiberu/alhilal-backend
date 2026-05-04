@@ -1388,56 +1388,148 @@ export const legalContent = {
     eyebrow: 'Privacy',
     title: 'Privacy policy',
     description:
-      'How Al Hilal handles enquiry details submitted through the public site.',
+      'How Al Hilal Travels Uganda handles personal information on the website and mobile app.',
     sections: [
       {
-        title: 'What information this site collects',
+        title: 'Last updated',
         paragraphs: [
-          'The public site collects the contact details and planning context you submit through consultation or planning-guide forms.',
-          'That may include your name, phone number, email address, preferred travel window, and notes about your travel needs.',
+          'This privacy policy was last updated on 4 May 2026 and applies to the Al Hilal Travels Uganda website and the Al-Hilal Travels mobile app.',
+          'Al Hilal Travels Uganda is based at Kyato Complex, Suite B5-18, Bombo Road, Kampala, Uganda. For privacy questions, contact info@alhilaltravels.com or +256 700 773535.',
         ],
       },
       {
-        title: 'Why Al Hilal collects it',
+        title: 'Information we collect',
         paragraphs: [
-          'The information is used to respond to your enquiry, understand what support you need, and follow up about journeys or planning guidance you requested.',
-          'It is not collected to create a member account or a public profile.',
+          'When you use the website, we may collect the contact details and planning context you submit through consultation, enquiry, or planning-guide forms. This may include your name, phone number, email address, preferred travel window, traveler count, and notes about your Umrah or Hajj needs.',
+          'When you use the mobile app, we may process account and pilgrim profile details, login credentials or tokens, booking references, trip assignments, itinerary and readiness information, support updates, notification preferences, device registration details, and feedback you choose to submit.',
+          'If documents are linked to your pilgrim record, the app may display read-only document information such as document type, document number, expiry date, verification status, and support next steps. Document replacement and upload handoff is handled by Al Hilal support unless the app clearly provides another upload flow.',
         ],
       },
       {
-        title: 'How the data is handled',
+        title: 'Device data and permissions',
         paragraphs: [
-          "Lead submissions are handled through Al Hilal's internal systems and follow-up processes.",
-          'If you want a record corrected or clarified, contact the team directly using the office contact details on the contact page.',
+          'The Android app currently requests internet access so it can connect to Al Hilal services. The app also uses secure local storage for login state and local caching so selected trip, guide, document, and support information can remain available when network access is unreliable.',
+          'If you enable notifications, the app may register your device, platform, app version, operating system version, locale, timezone, notification preferences, and push-notification token so we can send trip, document, readiness, daily-program, support, or service messages according to your settings.',
+          'The app does not request background location, contacts, SMS, call log, camera, microphone, or broad device storage access based on the current app configuration.',
+        ],
+      },
+      {
+        title: 'How we use information',
+        paragraphs: [
+          'We use information to respond to enquiries, create and support bookings, verify pilgrim readiness, coordinate journey operations, provide trip guidance, deliver support messages, manage notification preferences, improve service quality, and protect the security of user accounts and internal systems.',
+          'We may use submitted feedback to improve Al Hilal services. We will only use a testimonial publicly when the user has clearly opted in or given direct permission.',
+        ],
+      },
+      {
+        title: 'Sharing and service providers',
+        paragraphs: [
+          'We do not sell personal information. We share information only when needed to operate the website, mobile app, support processes, booking and travel services, or when required by law.',
+          'Depending on the service requested, information may be handled by Al Hilal staff, hosting and database providers, mobile platform providers, notification delivery services, communication channels such as email or WhatsApp, payment or banking partners, travel operators, airlines, hotels, visa or pilgrimage service providers, and government or border authorities where required for travel.',
+          'Third-party service providers are expected to handle information only for the purpose of providing the relevant service to Al Hilal or the traveler.',
+        ],
+      },
+      {
+        title: 'Security and retention',
+        paragraphs: [
+          'We use reasonable administrative, technical, and operational safeguards, including encrypted network connections where supported, authenticated API access, secure token storage in the mobile app, access controls, and internal review processes.',
+          'We keep personal information for as long as needed to provide services, meet travel, accounting, legal, dispute-resolution, and operational requirements, and maintain accurate pilgrim support records. When information is no longer needed, we delete, anonymize, or securely archive it according to our operational and legal needs.',
+        ],
+      },
+      {
+        title: 'Your choices and deletion requests',
+        paragraphs: [
+          'You may request correction, access, clarification, or deletion of your personal information by contacting info@alhilaltravels.com or +256 700 773535. We may need to verify your identity before acting on a request.',
+          'Some records may need to be retained for legitimate travel, safety, accounting, legal, fraud-prevention, or dispute-resolution reasons. If that applies, we will explain what can be deleted and what must be retained.',
+          'You can manage notification preferences inside the mobile app where available. You may also disable push notifications from your device settings.',
+        ],
+      },
+      {
+        title: 'Children and family travel',
+        paragraphs: [
+          'Al Hilal services may support family travel, but the website and mobile app are not directed to children as independent users. Information about minors should be provided by a parent, guardian, sponsor, or authorized adult traveler.',
+          'If you believe a child has provided personal information without appropriate permission, contact us so we can review and respond.',
+        ],
+      },
+      {
+        title: 'Policy updates',
+        paragraphs: [
+          'We may update this policy when the website, mobile app, service providers, legal requirements, or data practices change. The latest version will be published on this page.',
+          'The privacy information submitted in App Store Connect and Google Play Console should remain consistent with this policy and the actual behavior of the app.',
         ],
       },
     ],
   },
   terms: {
     eyebrow: 'Terms',
-    title: 'Website terms',
+    title: 'Website and app terms',
     description:
-      'What to expect from the information and enquiry flows on this public site.',
+      'What to expect when using the Al Hilal website, mobile app, enquiry flows, and pilgrim support tools.',
     sections: [
       {
-        title: 'Information on the site',
+        title: 'Last updated',
         paragraphs: [
-          'The website provides journey information, planning guidance, trust signals, and consultation paths for Umrah and Hajj enquiries.',
-          'Journey prices, dates, package details, and support information can change when operational details change.',
+          'These terms were last updated on 4 May 2026. They apply to the Al Hilal Travels Uganda website, public enquiry flows, and the Al-Hilal Travels mobile app.',
+          'By using these services, you agree to use them lawfully, responsibly, and for genuine travel planning or pilgrim support purposes.',
         ],
       },
       {
-        title: 'No automatic booking guarantee',
+        title: 'Information and availability',
         paragraphs: [
-          'Submitting a consultation or planning-guide request does not confirm a booking, reserve a place, or guarantee package availability.',
-          'Booking status becomes real only after direct confirmation with the Al Hilal team.',
+          'The website and app provide journey information, planning guidance, trip support, document status visibility, readiness reminders, and communication paths for Umrah and Hajj services.',
+          'Prices, travel dates, airline schedules, hotel arrangements, package inclusions, visa requirements, pilgrimage rules, and support timelines can change because of operational, supplier, regulatory, or government decisions.',
+          'We try to keep published information accurate, but final details are confirmed directly by the Al Hilal team and relevant travel providers.',
         ],
       },
       {
-        title: 'Contact and next steps',
+        title: 'Bookings and payments',
         paragraphs: [
-          'If you need clarification on a published journey, use the contact routes on the site so the team can respond with the latest operational details.',
-          'WhatsApp may be the fastest path for a short question, while the consultation form is better for more complex support needs.',
+          'Submitting a website enquiry, consultation request, planning-guide request, or in-app message does not confirm a booking, reserve a seat, guarantee package availability, or lock a price.',
+          'A booking becomes confirmed only after direct confirmation by Al Hilal and completion of the payment, documentation, and approval steps communicated to you.',
+          'Payment schedules, refund rules, cancellation terms, and supplier conditions may vary by journey or package. Always review the specific written terms shared for your booking before paying.',
+        ],
+      },
+      {
+        title: 'Traveler responsibilities',
+        paragraphs: [
+          'Travelers are responsible for providing accurate names, contact details, passport information, document copies, medical or mobility notes, emergency contacts, and any other information needed for safe and lawful travel support.',
+          'Travelers must review their own passport validity, visa requirements, vaccination requirements, permit requirements, payment deadlines, and official travel rules. Al Hilal can guide and support, but travelers remain responsible for truthful information and timely cooperation.',
+          'If information changes, contact Al Hilal promptly so records, booking support, and readiness guidance can be updated.',
+        ],
+      },
+      {
+        title: 'Mobile app accounts and access',
+        paragraphs: [
+          'Some app features require a pilgrim account or booking-linked access. You are responsible for keeping your phone, login codes, and account access secure.',
+          'The app may show booking details, document status, daily program information, support updates, notifications, and feedback tools. These tools are provided to support your journey, but urgent or sensitive issues should still be raised directly with Al Hilal support.',
+          'We may suspend or restrict access if an account is misused, if access appears unauthorized, or if doing so is needed to protect travelers, staff, systems, or service integrity.',
+        ],
+      },
+      {
+        title: 'Documents and support records',
+        paragraphs: [
+          'Document information shown in the app is provided to help travelers understand readiness status and support next steps. It may not replace official passports, visas, permits, vaccination records, airline documents, or government systems.',
+          'If a document status appears wrong, expired, missing, or unclear, contact Al Hilal support. Do not rely on an app screen alone for airport, immigration, visa, or pilgrimage permit decisions.',
+        ],
+      },
+      {
+        title: 'Acceptable use',
+        paragraphs: [
+          'Do not use the website or app to submit false information, access another traveler’s account, interfere with the service, copy private content, reverse engineer the app, or attempt unauthorized access to Al Hilal systems.',
+          'Do not upload, send, or request content that is unlawful, abusive, fraudulent, misleading, or unrelated to genuine travel planning and pilgrim support.',
+        ],
+      },
+      {
+        title: 'Service changes and availability',
+        paragraphs: [
+          'We may update, pause, remove, or change website or app features as operations, security, platform rules, or service needs change.',
+          'We aim to keep the service available, but we do not guarantee uninterrupted access. Network issues, maintenance, device problems, hosting incidents, or third-party service outages may affect availability.',
+        ],
+      },
+      {
+        title: 'Privacy and contact',
+        paragraphs: [
+          'Use of the website and app is also governed by the Privacy Policy. The privacy policy explains what information is collected, how it is used, who it may be shared with, and how to request correction or deletion.',
+          'For questions about these terms, a booking, or app support, contact Al Hilal Travels Uganda at info@alhilaltravels.com, +256 700 773535, or Kyato Complex, Suite B5-18, Bombo Road, Kampala, Uganda.',
         ],
       },
     ],
