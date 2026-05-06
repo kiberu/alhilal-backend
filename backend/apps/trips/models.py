@@ -13,6 +13,11 @@ class Trip(models.Model):
         ('PRIVATE', 'Private'),
     ]
 
+    JOURNEY_TYPE_CHOICES = [
+        ('UMRAH', 'Umrah'),
+        ('HAJJ', 'Hajj'),
+    ]
+
     STATUS_CHOICES = [
         ('DRAFT', 'Draft'),
         ('PLANNING', 'Planning'),
@@ -31,6 +36,7 @@ class Trip(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid4, editable=False)
     code = models.CharField(max_length=24, unique=True)
     family_code = models.CharField(max_length=40, blank=True, default="")
+    journey_type = models.CharField(max_length=10, choices=JOURNEY_TYPE_CHOICES, default='UMRAH')
     commercial_month_label = models.CharField(max_length=80, blank=True, default="")
     name = models.CharField(max_length=120)
     slug = models.SlugField(max_length=180, unique=True, blank=True, null=True)

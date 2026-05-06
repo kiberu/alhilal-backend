@@ -1,10 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Image,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -27,10 +32,27 @@ import {
 } from '@/components/guest/primitives';
 import { guestImages, guestSupport } from '@/lib/guest/config';
 import { useGuestTheme } from '@/lib/guest/theme';
+import { LeadsService } from '@/lib/api/services/leads';
 import type { GuidanceArticleSummary, PublicTripDetail, TripPackage } from '@/lib/api/services';
 import { formatPublicDateRange, formatPublicMoney, formatPublicNightsLabel } from '@/lib/public-format';
 import { openExternalUrl, openWhatsAppConversation } from '@/lib/support/open-external';
 import { syncPublicGuidanceArticles, syncPublicTripDetail } from '@/lib/support/public-cache';
+
+type BookingRequestForm = {
+  name: string;
+  phone: string;
+  email: string;
+  travellers: string;
+  notes: string;
+};
+
+const EMPTY_BOOKING_FORM: BookingRequestForm = {
+  name: '',
+  phone: '',
+  email: '',
+  travellers: '',
+  notes: '',
+};
 
 function resolveImageSource(uri: string | null | undefined, fallback: any) {
   if (uri) {
@@ -47,6 +69,22 @@ function buildWhatsAppMessage(journey: PublicTripDetail, tripPackage?: TripPacka
     tripPackage ? `Package: ${tripPackage.name}` : '',
     'Please guide me on the next booking step.',
   ].filter(Boolean);
+}
+
+function buildLeadNotes(journey: PublicTripDetail, form: BookingRequestForm, tripPackage?: TripPackage) {
+  return [
+    `Journey: ${journey.name}`,
+    `Journey dates: ${formatPublicDateRange(journey.start_date, journey.end_date)}`,
+    tripPackage ? `Package: ${tripPackage.name}` : '',
+    tripPackage ? `Package dates: ${formatPublicDateRange(tripPackage.start_date, tripPackage.end_date)}` : '',
+    tripPackage ? `Package price: ${formatPublicMoney(tripPackage.price_minor_units, tripPackage.currency || 'UGX')}` : '',
+    form.travellers.trim() ? `Travellers: ${form.travellers.trim()}` : '',
+    form.notes.trim() ? `Notes: ${form.notes.trim()}` : '',
+  ].filter(Boolean).join('\n');
+}
+
+function isValidEmail(value: string) {
+  return !value.trim() || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
 function buildFactItems(journey: PublicTripDetail) {
@@ -69,6 +107,11 @@ export default function JourneyDetailScreen() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [bookingModalVisible, setBookingModalVisible] = useState(false);
+  const [selectedPackage, setSelectedPackage] = useState<TripPackage | undefined>();
+  const [bookingForm, setBookingForm] = useState<BookingRequestForm>(EMPTY_BOOKING_FORM);
+  const [bookingFeedback, setBookingFeedback] = useState('');
+  const [submittingBooking, setSubmittingBooking] = useState(false);
 
   const factItems = useMemo(() => (journey ? buildFactItems(journey) : []), [journey]);
 
@@ -104,6 +147,84 @@ export default function JourneyDetailScreen() {
   useEffect(() => {
     void loadJourney();
   }, [loadJourney]);
+
+  const openBookingRequest = useCallback((tripPackage?: TripPackage) => {
+    setSelectedPackage(tripPackage);
+    setBookingForm(EMPTY_BOOKING_FORM);
+    setBookingFeedback('');
+    setBookingModalVisible(true);
+  }, []);
+
+  const closeBookingRequest = useCallback(() => {
+    if (submittingBooking) {
+      return;
+    }
+
+    setBookingModalVisible(false);
+  }, [submittingBooking]);
+
+  const submitBookingRequest = useCallback(async () => {
+    if (!journey) {
+      return;
+    }
+
+    const name = bookingForm.name.trim();
+    const phone = bookingForm.phone.trim();
+    const email = bookingForm.email.trim();
+
+    if (!name || !phone) {
+      setBookingFeedback('Please enter your name and phone or WhatsApp number.');
+      return;
+    }
+
+    if (!isValidEmail(email)) {
+      setBookingFeedback('Please enter a valid email address, or leave it blank.');
+      return;
+    }
+
+    setSubmittingBooking(true);
+    setBookingFeedback('');
+
+    try {
+      const response = await LeadsService.createPublicLead({
+        name,
+        phone,
+        email,
+        interestType: 'CONSULTATION',
+        travelWindow: formatPublicDateRange(journey.start_date, journey.end_date),
+        notes: buildLeadNotes(journey, bookingForm, selectedPackage),
+        tripId: journey.id,
+        source: 'mobile_journey_detail',
+        pagePath: `/journey/${journey.slug || journey.id}`,
+        contextLabel: selectedPackage ? 'mobile_journey_package_booking' : 'mobile_journey_booking',
+        ctaLabel: selectedPackage ? 'mobile_package_book_trip' : 'mobile_book_trip',
+        campaign: 'mobile_booking',
+      });
+
+      if (!response.success) {
+        throw new Error(response.error || 'Unable to save this booking request right now.');
+      }
+
+      setBookingModalVisible(false);
+      setBookingForm(EMPTY_BOOKING_FORM);
+      Alert.alert('Request sent', 'Thank you. Your booking request is saved and the team will follow up shortly.');
+    } catch (submitError: any) {
+      setBookingFeedback(submitError?.message || 'Unable to save this booking request right now.');
+    } finally {
+      setSubmittingBooking(false);
+    }
+  }, [bookingForm, journey, selectedPackage]);
+
+  const openBookingRequestWhatsApp = useCallback(() => {
+    if (!journey) {
+      return;
+    }
+
+    void openWhatsAppConversation({
+      phone: guestSupport.whatsapp,
+      text: buildWhatsAppMessage(journey, selectedPackage).join('\n'),
+    });
+  }, [journey, selectedPackage]);
 
   if (loading) {
     return <LoadingScreen message="Loading journey..." />;
@@ -247,13 +368,8 @@ export default function JourneyDetailScreen() {
                     />
                     <PrimaryPillButton
                       label="Book Trip"
-                      icon="logo-whatsapp"
-                      onPress={() =>
-                        void openWhatsAppConversation({
-                          phone: guestSupport.whatsapp,
-                          text: buildWhatsAppMessage(journey, tripPackage).join('\n'),
-                        })
-                      }
+                      icon="send-outline"
+                      onPress={() => openBookingRequest(tripPackage)}
                       fullWidth
                     />
                   </View>
@@ -325,14 +441,134 @@ export default function JourneyDetailScreen() {
         <StickyBottomActionBar
           primaryLabel="Book Trip"
           secondaryLabel="Plan This Trip"
-          onPrimaryPress={() =>
-            void openWhatsAppConversation({
-              phone: guestSupport.whatsapp,
-              text: buildWhatsAppMessage(journey).join('\n'),
-            })
-          }
+          primaryIcon="send-outline"
+          onPrimaryPress={() => openBookingRequest()}
           onSecondaryPress={() => router.push('/contact' as never)}
         />
+
+        <Modal
+          visible={bookingModalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={closeBookingRequest}
+        >
+          <KeyboardAvoidingView
+            style={styles.modalOverlay}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <View style={[styles.modalCard, { backgroundColor: theme.palette.card, borderColor: theme.palette.border }]}>
+              <View style={styles.modalHeader}>
+                <View style={styles.modalTitleWrap}>
+                  <Text style={[styles.modalTitle, { color: theme.palette.text }]}>Booking request</Text>
+                  <Text style={[styles.modalSubtitle, { color: theme.palette.mutedText }]}>
+                    {selectedPackage ? selectedPackage.name : journey.name}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.modalCloseButton, { backgroundColor: theme.palette.surface, borderColor: theme.palette.border }]}
+                  onPress={closeBookingRequest}
+                  disabled={submittingBooking}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="close" size={18} color={theme.palette.text} />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView
+                style={styles.modalScroll}
+                contentContainerStyle={styles.formStack}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+              >
+                <View style={styles.fieldWrap}>
+                  <Text style={[styles.fieldLabel, { color: theme.palette.text }]}>Full name *</Text>
+                  <TextInput
+                    value={bookingForm.name}
+                    onChangeText={(value) => setBookingForm((current) => ({ ...current, name: value }))}
+                    placeholder="Your name"
+                    placeholderTextColor={theme.palette.mutedText}
+                    autoCapitalize="words"
+                    style={[styles.fieldInput, { color: theme.palette.text, borderColor: theme.palette.border, backgroundColor: theme.palette.surface }]}
+                  />
+                </View>
+
+                <View style={styles.fieldWrap}>
+                  <Text style={[styles.fieldLabel, { color: theme.palette.text }]}>Phone or WhatsApp *</Text>
+                  <TextInput
+                    value={bookingForm.phone}
+                    onChangeText={(value) => setBookingForm((current) => ({ ...current, phone: value }))}
+                    placeholder="+256 700 773535"
+                    placeholderTextColor={theme.palette.mutedText}
+                    keyboardType="phone-pad"
+                    style={[styles.fieldInput, { color: theme.palette.text, borderColor: theme.palette.border, backgroundColor: theme.palette.surface }]}
+                  />
+                </View>
+
+                <View style={styles.fieldWrap}>
+                  <Text style={[styles.fieldLabel, { color: theme.palette.text }]}>Email</Text>
+                  <TextInput
+                    value={bookingForm.email}
+                    onChangeText={(value) => setBookingForm((current) => ({ ...current, email: value }))}
+                    placeholder="you@example.com"
+                    placeholderTextColor={theme.palette.mutedText}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    style={[styles.fieldInput, { color: theme.palette.text, borderColor: theme.palette.border, backgroundColor: theme.palette.surface }]}
+                  />
+                </View>
+
+                <View style={styles.fieldWrap}>
+                  <Text style={[styles.fieldLabel, { color: theme.palette.text }]}>Travellers</Text>
+                  <TextInput
+                    value={bookingForm.travellers}
+                    onChangeText={(value) => setBookingForm((current) => ({ ...current, travellers: value }))}
+                    placeholder="Example: 2 adults"
+                    placeholderTextColor={theme.palette.mutedText}
+                    style={[styles.fieldInput, { color: theme.palette.text, borderColor: theme.palette.border, backgroundColor: theme.palette.surface }]}
+                  />
+                </View>
+
+                <View style={styles.fieldWrap}>
+                  <Text style={[styles.fieldLabel, { color: theme.palette.text }]}>Notes</Text>
+                  <TextInput
+                    value={bookingForm.notes}
+                    onChangeText={(value) => setBookingForm((current) => ({ ...current, notes: value }))}
+                    placeholder="Any family, rooming, or timing questions?"
+                    placeholderTextColor={theme.palette.mutedText}
+                    multiline
+                    textAlignVertical="top"
+                    style={[
+                      styles.fieldInput,
+                      styles.notesInput,
+                      { color: theme.palette.text, borderColor: theme.palette.border, backgroundColor: theme.palette.surface },
+                    ]}
+                  />
+                </View>
+              </ScrollView>
+
+              {bookingFeedback ? (
+                <Text style={[styles.formFeedback, { color: theme.palette.error }]}>{bookingFeedback}</Text>
+              ) : null}
+
+              <View style={styles.modalActions}>
+                <SecondaryPillButton
+                  label="Submit to WhatsApp"
+                  icon="logo-whatsapp"
+                  onPress={openBookingRequestWhatsApp}
+                  disabled={submittingBooking}
+                  fullWidth
+                />
+                <PrimaryPillButton
+                  label="Submit Request"
+                  icon="send-outline"
+                  onPress={() => void submitBookingRequest()}
+                  loading={submittingBooking}
+                  fullWidth
+                />
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
       </View>
     </SafeAreaView>
   );
@@ -452,5 +688,77 @@ const styles = StyleSheet.create({
   relatedHeading: {
     fontSize: 20,
     fontWeight: '700',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+  },
+  modalCard: {
+    borderTopLeftRadius: 26,
+    borderTopRightRadius: 26,
+    borderWidth: 1,
+    padding: 18,
+    gap: 16,
+    maxHeight: '92%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  modalTitleWrap: {
+    flex: 1,
+    gap: 4,
+  },
+  modalTitle: {
+    fontSize: 22,
+    lineHeight: 28,
+    fontWeight: '800',
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  modalCloseButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  formStack: {
+    gap: 12,
+  },
+  modalScroll: {
+    flexGrow: 0,
+  },
+  fieldWrap: {
+    gap: 7,
+  },
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  fieldInput: {
+    minHeight: 48,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 15,
+  },
+  notesInput: {
+    minHeight: 88,
+  },
+  formFeedback: {
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '600',
+  },
+  modalActions: {
+    gap: 10,
   },
 });

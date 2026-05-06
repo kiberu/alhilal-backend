@@ -20,6 +20,7 @@ class TestPublicTripContractExtensions:
         """Public trip detail should expose the new calendar-truth fields."""
         trip.family_code = "UMRAH-2027"
         trip.commercial_month_label = "January Umrah 2027"
+        trip.journey_type = "UMRAH"
         trip.status = "OPEN_FOR_SALES"
         trip.default_nights = 8
         trip.save()
@@ -46,6 +47,7 @@ class TestPublicTripContractExtensions:
         assert response.status_code == status.HTTP_200_OK
         assert response.data["family_code"] == "UMRAH-2027"
         assert response.data["commercial_month_label"] == "January Umrah 2027"
+        assert response.data["journey_type"] == "UMRAH"
         assert response.data["status"] == "OPEN_FOR_SALES"
         assert response.data["default_nights"] == 8
         assert len(response.data["packages"]) == 1

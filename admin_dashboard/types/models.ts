@@ -357,6 +357,7 @@ export interface Visa {
 
 /** Trip Visibility */
 export type TripVisibility = "PUBLIC" | "PRIVATE" | "ARCHIVED"
+export type TripJourneyType = "UMRAH" | "HAJJ"
 export type TripOperationalStatus =
   | "DRAFT"
   | "PLANNING"
@@ -377,6 +378,7 @@ export interface Trip {
   code: string
   familyCode?: string
   commercialMonthLabel?: string
+  journeyType?: TripJourneyType
   status?: TripOperationalStatus
   salesOpenDate?: string
   defaultNights?: number | null
@@ -765,6 +767,7 @@ export interface PaginatedResponse<T> {
 
 export interface TripFilters extends PaginationParams {
   visibility?: TripVisibility
+  journeyType?: TripJourneyType
   status?: TripOperationalStatus
   startDate?: string
   endDate?: string
@@ -1019,6 +1022,7 @@ export interface CreateTripData {
   code: string
   familyCode?: string
   commercialMonthLabel?: string
+  journeyType?: TripJourneyType
   name: string
   slug?: string
   excerpt?: string

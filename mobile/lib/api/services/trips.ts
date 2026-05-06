@@ -120,6 +120,7 @@ export interface PublicTrip {
   id: string;
   code: string;
   commercial_month_label: string | null;
+  journey_type: 'UMRAH' | 'HAJJ';
   status: string;
   default_nights: number | null;
   name: string;
@@ -319,6 +320,7 @@ export function normalizePublicTrip(rawValue: unknown): PublicTrip {
     code: stringValue(raw.code),
     commercial_month_label:
       nullableStringValue(raw.commercial_month_label ?? raw.commercialMonthLabel),
+    journey_type: stringValue(raw.journey_type ?? raw.journeyType).toUpperCase() === 'HAJJ' ? 'HAJJ' : 'UMRAH',
     status: stringValue(raw.status),
     default_nights: numberValue(raw.default_nights ?? raw.defaultNights),
     name: stringValue(raw.name),

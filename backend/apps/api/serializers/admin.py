@@ -68,7 +68,7 @@ class AdminTripListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trip
         fields = [
-            'id', 'code', 'family_code', 'commercial_month_label', 'status',
+            'id', 'code', 'family_code', 'commercial_month_label', 'journey_type', 'status',
             'sales_open_date', 'default_nights', 'name', 'slug', 'excerpt', 'seo_title', 'seo_description',
             'cities', 'start_date', 'end_date', 'cover_image', 'featured',
             'visibility', 'created_at', 'updated_at', 'packages'
@@ -82,6 +82,7 @@ class AdminTripListSerializer(serializers.ModelSerializer):
             'code': data['code'],
             'familyCode': data.get('family_code'),
             'commercialMonthLabel': data.get('commercial_month_label'),
+            'journeyType': data.get('journey_type'),
             'status': data.get('status'),
             'salesOpenDate': data.get('sales_open_date'),
             'defaultNights': data.get('default_nights'),
@@ -115,7 +116,7 @@ class AdminTripDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trip
         fields = [
-            'id', 'code', 'family_code', 'commercial_month_label', 'status',
+            'id', 'code', 'family_code', 'commercial_month_label', 'journey_type', 'status',
             'sales_open_date', 'default_nights', 'name', 'slug', 'excerpt', 'seo_title', 'seo_description',
             'cities', 'start_date', 'end_date', 'cover_image', 'featured',
             'visibility', 'operator_notes', 'created_at', 'updated_at',
@@ -220,6 +221,7 @@ class AdminTripDetailSerializer(serializers.ModelSerializer):
             'code': data['code'],
             'familyCode': data.get('family_code'),
             'commercialMonthLabel': data.get('commercial_month_label'),
+            'journeyType': data.get('journey_type'),
             'status': data.get('status'),
             'salesOpenDate': data.get('sales_open_date'),
             'defaultNights': data.get('default_nights'),
@@ -252,6 +254,7 @@ class AdminTripDetailSerializer(serializers.ModelSerializer):
         field_mapping = {
             'familyCode': 'family_code',
             'commercialMonthLabel': 'commercial_month_label',
+            'journeyType': 'journey_type',
             'salesOpenDate': 'sales_open_date',
             'defaultNights': 'default_nights',
             'startDate': 'start_date',

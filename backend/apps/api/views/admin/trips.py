@@ -26,7 +26,7 @@ class AdminTripViewSet(StaffRoleAccessMixin, viewsets.ModelViewSet):
     
     permission_classes = [IsAuthenticated, StaffActionRolePermission]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['visibility', 'status']  # Removed 'cities' - JSONField not supported by django-filter
+    filterset_fields = ['visibility', 'status', 'journey_type']  # Removed 'cities' - JSONField not supported by django-filter
     search_fields = ['name', 'code', 'family_code', 'commercial_month_label']
     ordering_fields = ['start_date', 'sales_open_date', 'created_at', 'name']
     ordering = ['-start_date']
@@ -114,6 +114,7 @@ class AdminTripViewSet(StaffRoleAccessMixin, viewsets.ModelViewSet):
         new_trip = Trip.objects.create(
             code=f"{trip.code}-COPY",
             family_code=trip.family_code,
+            journey_type=trip.journey_type,
             commercial_month_label=trip.commercial_month_label,
             name=f"{trip.name} (Copy)",
             excerpt=trip.excerpt,
