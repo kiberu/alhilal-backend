@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
@@ -9,48 +9,71 @@ import {
   FilterChip,
   InfoPromptCard,
   LoadingScreen,
+  SectionHeader,
   SecondaryPillButton,
   TopBar,
 } from '@/components/guest/primitives';
-import { guestContent, guestSupport } from '@/lib/guest/config';
+import { guestSupport } from '@/lib/guest/config';
 import { useGuestTheme } from '@/lib/guest/theme';
 import { type PublicTrip } from '@/lib/api/services';
-import { formatPublicMoney } from '@/lib/public-format';
+import { formatPublicPackageCountLabel } from '@/lib/public-format';
 import { openWhatsAppConversation } from '@/lib/support/open-external';
 import { syncPublicTrips } from '@/lib/support/public-cache';
+
+type JourneyTypeFilter = 'UMRAH' | 'HAJJ';
+
+const journeyTypeOptions: { label: string; value: JourneyTypeFilter }[] = [
+  { label: 'Umrah', value: 'UMRAH' },
+  { label: 'Hajj', value: 'HAJJ' },
+];
+
+function getJourneyTypeLabel(value: JourneyTypeFilter) {
+  return value === 'HAJJ' ? 'Hajj' : 'Umrah';
+}
 
 export default function JourneysScreen() {
   const theme = useGuestTheme();
   const router = useRouter();
 
   const [journeys, setJourneys] = useState<PublicTrip[]>([]);
+  const [journeyTypeFilter, setJourneyTypeFilter] = useState<JourneyTypeFilter>('UMRAH');
   const [monthFilter, setMonthFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const journeysByType = useMemo(
+    () => journeys.filter((journey) => journey.journey_type === journeyTypeFilter),
+    [journeys, journeyTypeFilter]
+  );
 
   const monthOptions = useMemo(
     () => [
       'ALL',
       ...Array.from(
         new Set(
-          journeys
+          journeysByType
             .map((item) => item.commercial_month_label)
             .filter((item): item is string => Boolean(item))
         )
-      ),
+      ).sort((left, right) => left.localeCompare(right)),
     ],
-    [journeys]
+    [journeysByType]
   );
 
   const filteredJourneys = useMemo(() => {
-    const next = journeys.filter((journey) =>
+    const next = journeysByType.filter((journey) =>
       monthFilter === 'ALL' ? true : journey.commercial_month_label === monthFilter
     );
 
     return next.sort(
       (left, right) => new Date(left.start_date).getTime() - new Date(right.start_date).getTime()
     );
-  }, [journeys, monthFilter]);
+  }, [journeysByType, monthFilter]);
+
+  const handleJourneyTypePress = (value: JourneyTypeFilter) => {
+    setJourneyTypeFilter(value);
+    setMonthFilter('ALL');
+  };
 
   const loadJourneys = async () => {
     try {
@@ -94,48 +117,74 @@ export default function JourneysScreen() {
         showsVerticalScrollIndicator={false}
       >
         <TopBar
-          title={guestContent.journeys.title}
-          subtitle="Browse published departures by month."
+          title="Plan your pilgrimage"
+          subtitle="Choose Umrah or Hajj, then narrow the upcoming trips by month."
         />
 
-        {monthOptions.length ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.chipList}
-          >
-            {monthOptions.map((option) => (
+        <View style={[styles.filterPanel, { backgroundColor: theme.palette.surface, borderColor: theme.palette.border }]}>
+          <View style={styles.filterHeader}>
+            <Text style={[styles.filterTitle, { color: theme.palette.text }]}>Select journey type</Text>
+          </View>
+          <View style={styles.segmentedControl}>
+            {journeyTypeOptions.map((option) => (
               <FilterChip
-                key={option}
-                label={option === 'ALL' ? 'All departures' : option}
-                selected={monthFilter === option}
-                onPress={() => setMonthFilter(option)}
+                key={option.value}
+                label={option.label}
+                selected={journeyTypeFilter === option.value}
+                onPress={() => handleJourneyTypePress(option.value)}
               />
             ))}
-          </ScrollView>
+          </View>
+        </View>
+
+        {monthOptions.length ? (
+          <View style={[styles.filterPanel, { backgroundColor: theme.palette.surface, borderColor: theme.palette.border }]}>
+            <View style={styles.filterHeader}>
+              <Text style={[styles.filterTitle, { color: theme.palette.text }]}>Select month</Text>
+              <Text style={[styles.filterCount, { color: theme.palette.mutedText }]}>
+                {filteredJourneys.length} {filteredJourneys.length === 1 ? 'trip' : 'trips'}
+              </Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.chipList}
+            >
+              {monthOptions.map((option) => (
+                <FilterChip
+                  key={option}
+                  label={option === 'ALL' ? 'All months' : option}
+                  selected={monthFilter === option}
+                  onPress={() => setMonthFilter(option)}
+                />
+              ))}
+            </ScrollView>
+          </View>
         ) : null}
 
         <View style={styles.section}>
+          <SectionHeader title="Upcoming Trips" />
           {filteredJourneys.length ? (
             filteredJourneys.map((journey) => (
               <JourneyHorizontalCard
                 key={journey.id || journey.slug}
                 journey={journey}
-                subtitle={
-                  journey.starting_price_minor_units
-                    ? `Published price direction: ${formatPublicMoney(
-                        journey.starting_price_minor_units,
-                        journey.starting_price_currency || 'UGX'
-                      )}`
-                    : 'Speak to Al Hilal for current pricing'
-                }
+                subtitle={formatPublicPackageCountLabel(journey.packages_count)}
                 onPress={() => router.push(`/journey/${journey.slug || journey.id}` as never)}
               />
             ))
           ) : (
             <EmptyStateCard
-              title="No journeys matched this month"
-              body="Try another month to see more published departures."
+              title={
+                journeysByType.length
+                  ? 'No trips matched this month'
+                  : `No upcoming ${getJourneyTypeLabel(journeyTypeFilter)} trips yet`
+              }
+              body={
+                journeysByType.length
+                  ? 'Try another month to see more published departures.'
+                  : `Published ${getJourneyTypeLabel(journeyTypeFilter)} departures will appear here when they are available.`
+              }
             />
           )}
         </View>
@@ -167,8 +216,35 @@ const styles = StyleSheet.create({
   section: {
     gap: 12,
   },
+  filterPanel: {
+    borderRadius: 22,
+    borderWidth: 1,
+    padding: 14,
+    gap: 12,
+  },
+  filterHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  filterTitle: {
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: '800',
+  },
+  filterCount: {
+    fontSize: 13,
+    lineHeight: 18,
+    fontWeight: '700',
+  },
   chipList: {
     gap: 10,
-    paddingRight: 20,
+    paddingRight: 4,
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
   },
 });

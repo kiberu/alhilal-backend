@@ -143,10 +143,17 @@ export default function TripDetailsPage() {
       const duplicateData = {
         code: newCode,
         name: `${trip.name} (Copy)`,
+        familyCode: trip.familyCode,
+        commercialMonthLabel: trip.commercialMonthLabel,
+        journeyType: trip.journeyType || "UMRAH",
         cities: trip.cities || [],
+        status: trip.status,
+        salesOpenDate: trip.salesOpenDate,
         startDate: trip.startDate,
         endDate: trip.endDate,
+        defaultNights: trip.defaultNights,
         visibility: trip.visibility || "PRIVATE",
+        featured: false,
         coverImage: trip.coverImage,
         operatorNotes: trip.operatorNotes ? `${trip.operatorNotes}\n\n(Duplicated from ${trip.code})` : `Duplicated from ${trip.code}`,
       }
@@ -364,6 +371,10 @@ export default function TripDetailsPage() {
                   <div>
                     <p className="font-medium">Commercial Month</p>
                     <p className="text-muted-foreground">{trip.commercialMonthLabel || "Not set"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium">Journey Type</p>
+                    <p className="text-muted-foreground">{trip.journeyType === "HAJJ" ? "Hajj" : "Umrah"}</p>
                   </div>
                   <div>
                     <p className="font-medium">Default Nights</p>

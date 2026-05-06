@@ -7,11 +7,13 @@ interface AlHilalLogoProps {
   width?: number;
   height?: number;
   style?: StyleProp<ViewStyle>;
+  markColor?: string;
   wordmarkColor?: string;
 }
 
-export function AlHilalLogo({ width = 200, height = 36, style, wordmarkColor }: AlHilalLogoProps) {
+export function AlHilalLogo({ width = 200, height = 36, style, markColor, wordmarkColor }: AlHilalLogoProps) {
   const colorScheme = useColorScheme();
+  const resolvedMarkColor = markColor ?? '#7F003A';
   const resolvedWordmarkColor =
     wordmarkColor ?? (colorScheme === 'dark' ? '#FFFFFF' : '#1A1A1A');
 
@@ -19,11 +21,11 @@ export function AlHilalLogo({ width = 200, height = 36, style, wordmarkColor }: 
     <Svg width={width} height={height} viewBox="0 0 200 36" fill="none" style={style}>
       <Path
         d="M0 19.1102L20.1836 7.89934L30.7176 2.33902C33.3899 0.739638 36.8186 0 40.1692 0C43.1058 0 45.8756 0.707059 48.3143 1.95858C50.3191 2.98741 52.1001 4.38417 53.5661 6.05856C55.3691 8.11774 56.6956 10.5968 57.376 13.3277C57.7124 14.6779 57.8909 16.0897 57.8909 17.5427C57.8909 18.1083 57.8638 18.6676 57.811 19.2196C56.9582 28.1215 49.3852 35.0854 40.1692 35.0854C37.39 35.0854 34.7602 34.4521 32.4191 33.3233L47.9974 24.6704C48.6609 23.2088 49.03 21.5879 49.03 19.8817C49.03 19.2565 48.9805 18.6427 48.885 18.044C48.4314 15.1988 46.9413 12.6947 44.8096 10.9223C42.7561 9.21491 40.1072 8.18659 37.2156 8.18659C37.1772 8.18659 37.1389 8.18677 37.1006 8.18713L9.77322 23.3659C9.51936 23.3821 9.26332 23.3902 9.00535 23.3902C5.39735 23.3902 2.16709 21.7893 0 19.2658V19.1102Z"
-        fill="#7F003A"
+        fill={resolvedMarkColor}
       />
       <Path
         d="M44.4055 20.1253C44.4293 19.9061 44.4415 19.6834 44.4415 19.4578C44.4415 16.3325 42.0987 13.7616 39.0954 13.4494L12.2799 28.6937C14.4639 31.1801 17.6465 32.7463 21.1902 32.7463C21.5625 32.7463 21.9307 32.7291 22.2942 32.6952L44.4055 20.1253Z"
-        fill="#7F003A"
+        fill={resolvedMarkColor}
       />
       <Path
         d="M197.333 30.5718C195.346 30.5706 193.797 30.0458 192.684 28.9972C191.571 27.9268 191.015 26.4202 191.016 24.4772L191.027 6.0083L196.136 6.01132L196.125 24.1855C196.125 24.9278 196.31 25.5064 196.681 25.9214C197.073 26.3146 197.619 26.5114 198.318 26.5118C198.58 26.512 198.842 26.4794 199.104 26.414C199.387 26.3487 199.606 26.2724 199.759 26.1852L199.986 30.1477C199.134 30.431 198.25 30.5723 197.333 30.5718Z"
@@ -60,4 +62,3 @@ export function AlHilalLogo({ width = 200, height = 36, style, wordmarkColor }: 
     </Svg>
   );
 }
-

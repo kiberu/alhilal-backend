@@ -22,6 +22,7 @@ export type PublicJourneyListItem = {
   seoDescription: string;
   cities: string[];
   commercialMonthLabel: string | null;
+  journeyType: "UMRAH" | "HAJJ";
   status: string;
   defaultNights: number | null;
   startingPriceMinorUnits: number | null;
@@ -139,6 +140,7 @@ const fallbackTripListResponse = {
         "Season II Fenna Umrah this July: dates, packages, and Al Hilal support from Kampala to the Haram.",
       cities: ["Makkah", "Madinah"],
       commercial_month_label: "July Umrah 2026",
+      journey_type: "UMRAH",
       status: "OPEN_FOR_SALES",
       default_nights: 8,
       starting_price_minor_units: 4650000,
@@ -161,6 +163,7 @@ const fallbackTripListResponse = {
         "Published January departure with truthful package and support details.",
       cities: ["Makkah", "Madinah"],
       commercial_month_label: "January Umrah 2027",
+      journey_type: "UMRAH",
       status: "OPEN_FOR_SALES",
       default_nights: 8,
       starting_price_minor_units: 4650000,
@@ -182,6 +185,7 @@ const fallbackTripListResponse = {
       seo_description: "October family departure with published dates and price direction.",
       cities: ["Makkah", "Madinah"],
       commercial_month_label: "October Umrah 2026",
+      journey_type: "UMRAH",
       status: "PLANNING",
       default_nights: 10,
       starting_price_minor_units: 5200000,
@@ -200,6 +204,7 @@ const fallbackTripDetailsBySlug: Record<string, Record<string, unknown>> = {
     id: "trip-fenna-2026",
     code: "FENNA2026",
     commercial_month_label: "July Umrah 2026",
+    journey_type: "UMRAH",
     name: "Fenna Umrah Season II, This July",
     slug: featuredJourneySlug,
     excerpt:
@@ -326,6 +331,7 @@ const fallbackTripDetailsBySlug: Record<string, Record<string, unknown>> = {
     id: "trip-jan-2027",
     code: "JAN27",
     commercial_month_label: "January Umrah 2027",
+    journey_type: "UMRAH",
     name: "January Umrah 2027",
     slug: primaryJourneySlug,
     excerpt: "A January departure with published itinerary, support proof, and multiple packages.",
@@ -461,6 +467,7 @@ const fallbackTripDetailsBySlug: Record<string, Record<string, unknown>> = {
     id: "trip-oct-2026",
     code: "OCT26",
     commercial_month_label: "October Umrah 2026",
+    journey_type: "UMRAH",
     name: "Family Umrah October 2026",
     slug: familyJourneySlug,
     excerpt: "A calmer October departure with one package and family-support positioning.",
@@ -571,6 +578,7 @@ export function normalizeJourneyListItem(rawValue: unknown): PublicJourneyListIt
     commercialMonthLabel:
       nullableStringValue(raw.commercial_month_label) ||
       nullableStringValue(raw.commercialMonthLabel),
+    journeyType: stringValue(raw.journey_type ?? raw.journeyType).toUpperCase() === "HAJJ" ? "HAJJ" : "UMRAH",
     status: stringValue(raw.status),
     defaultNights: numberValue(raw.default_nights) ?? numberValue(raw.defaultNights),
     startingPriceMinorUnits:

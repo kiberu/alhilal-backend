@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -115,19 +114,12 @@ export default function HomeScreen() {
       >
         <View style={styles.brandHeader}>
           <View style={styles.brandStack}>
-            {theme.colorScheme === 'dark' ? (
-              <Image
-                source={require('@/assets/brand/al-hilal-light-logo.png')}
-                style={styles.brandLogo}
-                resizeMode="contain"
-              />
-            ) : (
-              <AlHilalLogo
-                width={138}
-                height={28}
-                wordmarkColor={theme.palette.text}
-              />
-            )}
+            <AlHilalLogo
+              width={138}
+              height={28}
+              markColor={theme.palette.primary}
+              wordmarkColor={theme.palette.text}
+            />
           </View>
           {!isAuthenticated ? (
             <SecondaryPillButton

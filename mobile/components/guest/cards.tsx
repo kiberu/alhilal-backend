@@ -199,23 +199,26 @@ export function JourneyHorizontalCard({
           {journey.featured ? <Badge text="Featured" tone="primary" /> : null}
           <Badge text={journey.status.replaceAll('_', ' ')} tone="gold" />
         </View>
-        <Text style={[styles.horizontalTitle, { color: theme.palette.text }]}>{journey.name}</Text>
+        <Text style={[styles.horizontalTitle, { color: theme.palette.text }]} numberOfLines={2}>
+          {journey.name}
+        </Text>
         <Text style={[styles.metaCopy, { color: theme.palette.mutedText }]}>
           {formatPublicDateRange(journey.start_date, journey.end_date)}
         </Text>
         <Text style={[styles.metaCopy, { color: theme.palette.mutedText }]} numberOfLines={1}>
-          {journey.cities.join(', ') || 'Cities to be confirmed'}
+          {[journey.cities.join(', ') || 'Cities to be confirmed', subtitle].filter(Boolean).join(' · ')}
         </Text>
-        {subtitle ? <Text style={[styles.metaCopy, { color: theme.palette.mutedText }]}>{subtitle}</Text> : null}
         <Text style={[styles.priceCopy, { color: theme.palette.primary }]}>
           {journey.starting_price_minor_units
-            ? `Starting from ${formatPublicMoney(
+            ? `From ${formatPublicMoney(
                 journey.starting_price_minor_units,
                 journey.starting_price_currency || 'UGX'
               )}`
             : 'Pricing available on request'}
         </Text>
-        <SecondaryPillButton label="View Details" icon="arrow-forward-outline" onPress={onPress} />
+      </View>
+      <View style={[styles.horizontalArrow, { backgroundColor: theme.palette.primarySoft }]}>
+        <Ionicons name="chevron-forward" size={18} color={theme.palette.primary} />
       </View>
     </TouchableOpacity>
   );
@@ -529,11 +532,13 @@ export function PartnerLogoStrip({
 export function StickyBottomActionBar({
   primaryLabel,
   secondaryLabel,
+  primaryIcon = 'logo-whatsapp',
   onPrimaryPress,
   onSecondaryPress,
 }: {
   primaryLabel: string;
   secondaryLabel: string;
+  primaryIcon?: keyof typeof Ionicons.glyphMap;
   onPrimaryPress: () => void;
   onSecondaryPress: () => void;
 }) {
@@ -557,7 +562,7 @@ export function StickyBottomActionBar({
       />
       <PrimaryPillButton
         label={primaryLabel}
-        icon="logo-whatsapp"
+        icon={primaryIcon}
         onPress={onPrimaryPress}
         fullWidth
       />
@@ -697,22 +702,39 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   horizontalCard: {
-    borderRadius: 24,
+    minHeight: 132,
+    borderRadius: 20,
     borderWidth: 1,
     overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'stretch',
   },
   horizontalImage: {
-    width: '100%',
-    height: 180,
+    width: 104,
+    height: '100%',
+    alignSelf: 'stretch',
   },
   horizontalBody: {
-    padding: 16,
-    gap: 10,
+    flex: 1,
+    minWidth: 0,
+    padding: 12,
+    paddingRight: 4,
+    gap: 5,
+    justifyContent: 'center',
   },
   horizontalTitle: {
-    fontSize: 20,
-    lineHeight: 26,
+    fontSize: 17,
+    lineHeight: 22,
     fontWeight: '700',
+  },
+  horizontalArrow: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
   },
   featuredGuidanceCard: {
     width: 300,

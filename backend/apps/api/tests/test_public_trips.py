@@ -54,6 +54,7 @@ class TestPublicTripListView:
         assert response.data['results'][0]['excerpt'] == 'Published November departure with clear package direction.'
         assert response.data['results'][0]['seo_title'] == 'November Umrah | Al Hilal Travels Uganda'
         assert response.data['results'][0]['seo_description'] == 'Compare the November Umrah departure before you message the team.'
+        assert response.data['results'][0]['journey_type'] == 'UMRAH'
         assert response.data['results'][0]['featured'] is True
         assert response.data['results'][0]['cover_image'] == 'https://example.com/image.jpg'
         assert response.data['results'][0]['packages_count'] == 1
@@ -205,6 +206,57 @@ class TestPublicTripListView:
         assert response.data['count'] == 1
         assert response.data['results'][0]['code'] == 'FEAT2025'
         assert response.data['results'][0]['featured'] is True
+
+    def test_filter_by_journey_type(self, api_client, currency_usd):
+        """Public trip list should filter by canonical journey type."""
+        umrah_trip = Trip.objects.create(
+            code='UMRAH2026',
+            name='Umrah Journey',
+            journey_type='UMRAH',
+            cities=['Makkah'],
+            start_date=timezone.now().date() + timedelta(days=30),
+            end_date=timezone.now().date() + timedelta(days=40),
+            visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
+        )
+        TripPackage.objects.create(
+            trip=umrah_trip,
+            name='Umrah Package',
+            price_minor_units=100000,
+            currency=currency_usd,
+            visibility='PUBLIC',
+        )
+
+        hajj_trip = Trip.objects.create(
+            code='HAJJ2026',
+            name='Hajj Journey',
+            journey_type='HAJJ',
+            cities=['Makkah'],
+            start_date=timezone.now().date() + timedelta(days=60),
+            end_date=timezone.now().date() + timedelta(days=70),
+            visibility='PUBLIC',
+            status='OPEN_FOR_SALES',
+        )
+        TripPackage.objects.create(
+            trip=hajj_trip,
+            name='Hajj Package',
+            price_minor_units=200000,
+            currency=currency_usd,
+            visibility='PUBLIC',
+        )
+
+        umrah_response = api_client.get('/api/v1/public/trips/?journey_type=UMRAH')
+        hajj_response = api_client.get('/api/v1/public/trips/?journey_type=HAJJ')
+
+        assert umrah_response.status_code == status.HTTP_200_OK
+        assert umrah_response.data['count'] == 1
+        assert umrah_response.data['results'][0]['code'] == 'UMRAH2026'
+        assert umrah_response.data['results'][0]['journey_type'] == 'UMRAH'
+
+        assert hajj_response.status_code == status.HTTP_200_OK
+        assert hajj_response.data['count'] == 1
+        assert hajj_response.data['results'][0]['code'] == 'HAJJ2026'
+        assert hajj_response.data['results'][0]['journey_type'] == 'HAJJ'
 
     def test_list_public_trips_excludes_draft_status(self, api_client, currency_usd):
         """Draft trips should not appear in public listings."""

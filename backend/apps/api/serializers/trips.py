@@ -34,6 +34,7 @@ class TripListSerializer(serializers.ModelSerializer):
             'seo_description',
             'cities',
             'commercial_month_label',
+            'journey_type',
             'status',
             'default_nights',
             'starting_price_minor_units',
@@ -71,7 +72,7 @@ class TripDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trip
         fields = [
-            'id', 'code', 'family_code', 'commercial_month_label', 'name', 'cities',
+            'id', 'code', 'family_code', 'commercial_month_label', 'journey_type', 'name', 'cities',
             'status', 'sales_open_date', 'default_nights',
             'start_date', 'end_date', 'visibility',
             'packages_count', 'updated_at'
@@ -349,7 +350,7 @@ class PublicTripDetailSerializer(serializers.ModelSerializer):
     class Meta:
         model = Trip
         fields = [
-            'id', 'code', 'family_code', 'commercial_month_label', 'name', 'slug', 'excerpt', 'seo_title', 'seo_description',
+            'id', 'code', 'family_code', 'commercial_month_label', 'journey_type', 'name', 'slug', 'excerpt', 'seo_title', 'seo_description',
             'cities', 'status', 'default_nights', 'start_date', 'end_date',
             'cover_image', 'featured', 'packages', 'itinerary',
             'has_itinerary', 'faqs', 'guide_sections', 'emergency_contacts', 'milestones'

@@ -38,6 +38,7 @@ const tripSchema = z.object({
   code: z.string().min(3, "Code must be at least 3 characters").max(20, "Code must be less than 20 characters"),
   familyCode: z.string().optional(),
   commercialMonthLabel: z.string().optional(),
+  journeyType: z.enum(["UMRAH", "HAJJ"]).default("UMRAH"),
   name: z.string().min(3, "Name must be at least 3 characters"),
   slug: z.string().optional(),
   excerpt: z.string().max(280, "Excerpt must be 280 characters or fewer").optional(),
@@ -92,6 +93,7 @@ export default function EditTripPage() {
       code: "",
       familyCode: "",
       commercialMonthLabel: "",
+      journeyType: "UMRAH",
       name: "",
       slug: "",
       excerpt: "",
@@ -136,6 +138,7 @@ export default function EditTripPage() {
           code: trip.code || "",
           familyCode: trip.familyCode || "",
           commercialMonthLabel: trip.commercialMonthLabel || "",
+          journeyType: trip.journeyType || "UMRAH",
           name: trip.name || "",
           slug: trip.slug || "",
           excerpt: trip.excerpt || "",
@@ -302,7 +305,32 @@ export default function EditTripPage() {
                 />
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-3">
+                <FormField
+                  control={form.control}
+                  name="journeyType"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Journey Type *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select journey type" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="UMRAH">Umrah</SelectItem>
+                          <SelectItem value="HAJJ">Hajj</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Used for public Hajj and Umrah filtering.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="familyCode"

@@ -58,6 +58,7 @@ class AdminTripAPITestCase(TestCase):
         self.trip2 = Trip.objects.create(
             code='HAJ2025',
             name='Hajj Package 2025',
+            journey_type='HAJJ',
             cities=['Makkah', 'Madinah', 'Mina'],
             start_date=date.today() + timedelta(days=60),
             end_date=date.today() + timedelta(days=75),
@@ -97,6 +98,7 @@ class AdminTripAPITestCase(TestCase):
         self.assertIn('totalPages', response.data)
         self.assertEqual(response.data['count'], 2)
         self.assertEqual(len(response.data['results']), 2)
+        self.assertIn('journeyType', response.data['results'][0])
     
     def test_list_trips_pagination(self):
         """Test trip list pagination."""
@@ -119,6 +121,17 @@ class AdminTripAPITestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['count'], 1)
         self.assertEqual(response.data['results'][0]['code'], 'UMR2025')
+
+    def test_list_trips_filtering_by_journey_type(self):
+        """Test filtering trips by journey type."""
+        self.client.force_authenticate(user=self.staff_user)
+
+        response = self.client.get('/api/v1/trips?journey_type=HAJJ')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['count'], 1)
+        self.assertEqual(response.data['results'][0]['code'], 'HAJ2025')
+        self.assertEqual(response.data['results'][0]['journeyType'], 'HAJJ')
     
     def test_list_trips_search_by_name(self):
         """Test searching trips by name."""
@@ -158,6 +171,7 @@ class AdminTripAPITestCase(TestCase):
             'code': 'TEST2025',
             'name': 'Test Trip',
             'cities': ['Makkah'],
+            'journeyType': 'HAJJ',
             'startDate': str(date.today() + timedelta(days=90)),
             'endDate': str(date.today() + timedelta(days=100)),
             'visibility': 'PUBLIC',
@@ -168,9 +182,10 @@ class AdminTripAPITestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['code'], 'TEST2025')
         self.assertEqual(response.data['name'], 'Test Trip')
+        self.assertEqual(response.data['journeyType'], 'HAJJ')
         
         # Verify trip was created in database
-        self.assertTrue(Trip.objects.filter(code='TEST2025').exists())
+        self.assertTrue(Trip.objects.filter(code='TEST2025', journey_type='HAJJ').exists())
     
     def test_create_trip_requires_staff_permission(self):
         """Test that only staff can create trips."""
@@ -196,6 +211,7 @@ class AdminTripAPITestCase(TestCase):
         data = {
             'name': 'Updated Umrah Package',
             'visibility': 'PRIVATE',
+            'journeyType': 'HAJJ',
         }
         
         response = self.client.patch(
@@ -207,11 +223,13 @@ class AdminTripAPITestCase(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data['name'], 'Updated Umrah Package')
         self.assertEqual(response.data['visibility'], 'PRIVATE')
+        self.assertEqual(response.data['journeyType'], 'HAJJ')
         
         # Verify update in database
         self.trip1.refresh_from_db()
         self.assertEqual(self.trip1.name, 'Updated Umrah Package')
         self.assertEqual(self.trip1.visibility, 'PRIVATE')
+        self.assertEqual(self.trip1.journey_type, 'HAJJ')
     
     def test_update_trip_requires_staff_permission(self):
         """Test that only staff can update trips."""
@@ -250,6 +268,8 @@ class AdminTripAPITestCase(TestCase):
     def test_duplicate_trip_success(self):
         """Test duplicating a trip."""
         self.client.force_authenticate(user=self.staff_user)
+        self.trip1.journey_type = 'HAJJ'
+        self.trip1.save(update_fields=['journey_type'])
         
         response = self.client.post(f'/api/v1/trips/{self.trip1.id}/duplicate')
         
@@ -257,6 +277,7 @@ class AdminTripAPITestCase(TestCase):
         self.assertTrue(response.data['code'].startswith('UMR2025'))
         self.assertTrue('Copy' in response.data['name'])
         self.assertEqual(response.data['visibility'], 'PRIVATE')
+        self.assertEqual(response.data['journeyType'], 'HAJJ')
     
     def test_camelcase_conversion(self):
         """Test that API returns camelCase keys."""

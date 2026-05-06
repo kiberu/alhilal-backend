@@ -480,6 +480,7 @@ class Command(BaseCommand):
                 code=row['code'],
                 defaults={
                     'family_code': row['family_code'],
+                    'journey_type': row.get('journey_type', 'UMRAH'),
                     'commercial_month_label': row['label'],
                     'name': row['name'],
                     'excerpt': excerpt,

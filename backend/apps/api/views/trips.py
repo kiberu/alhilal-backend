@@ -348,6 +348,7 @@ class PublicTripListView(generics.ListAPIView):
     
     Query parameters:
     - featured: true/false (filter featured trips only)
+    - journey_type: UMRAH/HAJJ
     
     Returns public trips ordered by start date.
     """
@@ -367,6 +368,13 @@ class PublicTripListView(generics.ListAPIView):
         featured = self.request.query_params.get('featured')
         if featured and featured.lower() == 'true':
             queryset = queryset.filter(featured=True)
+
+        journey_type = self.request.query_params.get('journey_type')
+        if journey_type:
+            normalized_journey_type = journey_type.upper()
+            valid_journey_types = {choice[0] for choice in Trip.JOURNEY_TYPE_CHOICES}
+            if normalized_journey_type in valid_journey_types:
+                queryset = queryset.filter(journey_type=normalized_journey_type)
         
         # Only show trips with at least one public package
         from django.db.models import Count, Q
